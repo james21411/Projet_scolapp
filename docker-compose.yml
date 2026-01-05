@@ -1,0 +1,48 @@
+services:
+  scolapp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_TELEMETRY_DISABLED=1
+      - DB_HOST=mysql
+      - DB_USER=scolapp
+      - DB_PASSWORD=scolapp123
+      - DB_NAME=scolapp
+      - DB_PORT=3306
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - scolapp-network
+    restart: unless-stopped
+
+  mysql:
+    image: mysql:8.0
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=root123
+      - MYSQL_DATABASE=scolapp
+      - MYSQL_USER=scolapp
+      - MYSQL_PASSWORD=scolapp123
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database:/docker-entrypoint-initdb.d
+    networks:
+      - scolapp-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+volumes:
+  mysql_data:
+
+networks:
+  scolapp-network:
+    driver: bridge

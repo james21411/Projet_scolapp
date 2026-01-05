@@ -1,0 +1,92 @@
+{
+  "payments": [
+    {
+      "studentId": "25-0006",
+      "amount": 50000,
+      "schoolYear": "2025-2026",
+      "method": "Espèces",
+      "reason": "Frais d'inscription 2025-2026",
+      "cashier": "Administrateur",
+      "cashierUsername": "ADMIN-001",
+      "id": "RECU-2025-0001",
+      "date": "2025-07-21T19:15:30.934Z"
+    },
+    {
+      "studentId": "24-0001",
+      "amount": 50000,
+      "schoolYear": "2024-2025",
+      "method": "Espèces",
+      "reason": "Frais d'inscription 2024-2025",
+      "cashier": "Administrateur",
+      "cashierUsername": "ADMIN-001",
+      "id": "RECU-2025-0002",
+      "date": "2025-07-21T19:15:45.589Z"
+    },
+    {
+      "studentId": "25-0002",
+      "amount": 50000,
+      "schoolYear": "2025-2026",
+      "method": "Espèces",
+      "reason": "Frais d'inscription 2025-2026",
+      "cashier": "Administrateur",
+      "cashierUsername": "ADMIN-001",
+      "id": "RECU-2025-0003",
+      "date": "2025-07-21T19:15:58.831Z"
+    },
+    {
+      "studentId": "26-0001",
+      "amount": 200000,
+      "schoolYear": "2025-2026",
+      "method": "Espèces",
+      "reason": "Paiement Tranche 1 Scolarité 2025-2026",
+      "cashier": "Administrateur",
+      "cashierUsername": "ADMIN-001",
+      "id": "RECU-2025-0004",
+      "date": "2025-07-21T21:44:59.131Z"
+    },
+    {
+      "studentId": "25-0002",
+      "amount": 65000,
+      "schoolYear": "2025-2026",
+      "method": "Espèces",
+      "reason": "Paiement tranche1 Scolarité 2025-2026",
+      "cashier": "Administrateur",
+      "cashierUsername": "ADMIN-001",
+      "id": "RECU-2025-0005",
+      "date": "2025-07-23T21:30:00.160Z"
+    },
+    {
+      "studentId": "25-0007",
+      "amount": 250000,
+      "schoolYear": "2025-2026",
+      "method": "Espèces",
+      "reason": "Paiement Tranche 1 Scolarité 2025-2026",
+      "cashier": "Administrateur",
+      "cashierUsername": "ADMIN-001",
+      "id": "RECU-2025-0006",
+      "date": "2025-07-24T11:36:57.413Z"
+    },
+    {
+      "studentId": "24-0001",
+      "amount": 100000,
+      "schoolYear": "2025-2026",
+      "method": "Espèces",
+      "reason": "Paiement Tranche 1 Scolarité 2025-2026",
+      "cashier": "Administrateur",
+      "cashierUsername": "ADMIN-001",
+      "id": "RECU-2025-0007",
+      "date": "2025-07-24T11:41:10.130Z"
+    },
+    {
+      "studentId": "25-0001",
+      "amount": 15000,
+      "schoolYear": "2025-2026",
+      "method": "Espèces",
+      "reason": "Frais d'inscription 2025-2026",
+      "cashier": "Administrateur",
+      "cashierUsername": "ADMIN-001",
+      "id": "RECU-2025-0008",
+      "date": "2025-07-24T12:27:08.280Z"
+    }
+  ]
+}

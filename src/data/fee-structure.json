@@ -1,0 +1,23 @@
+{
+  "Terminale C": {
+    "registrationFee": 15000,
+    "total": 300000,
+    "installments": [
+      {
+        "id": "tranche1753135618582",
+        "amount": 100000,
+        "dueDate": "2025-07-25"
+      },
+      {
+        "id": "tranche1753135644279",
+        "amount": 150000,
+        "dueDate": "2025-07-25"
+      },
+      {
+        "id": "tranche1753135667747",
+        "amount": 50000,
+        "dueDate": "2025-07-25"
+      }
+    ]
+  }
+}

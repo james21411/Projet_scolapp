@@ -1,0 +1,4 @@
+root: g:\pr\nvm  
+path:  
+arch: 64  
+proxy: none 

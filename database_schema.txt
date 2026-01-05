@@ -1,0 +1,407 @@
+Database Schema for scolapp:
+
+api_keys: Stores API keys for AI models
+- id (int, PRIMARY KEY, AUTO_INCREMENT)
+- name (varchar(255), NOT NULL)
+- model (varchar(255), NOT NULL)
+- api_key (text, NOT NULL)
+- endpoint (text)
+- is_active (tinyint(1), DEFAULT '1')
+- is_default (tinyint(1), DEFAULT '0')
+- rate_limit_requests_per_minute (int, DEFAULT '60')
+- timeout_seconds (int, DEFAULT '30')
+- retry_attempts (int, DEFAULT '3')
+- created_at (datetime, DEFAULT CURRENT_TIMESTAMP)
+- updated_at (datetime, DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)
+
+api_settings: Stores API configuration settings
+- id (int, PRIMARY KEY, AUTO_INCREMENT)
+- api_name (varchar(255), NOT NULL)
+- api_key (text, NOT NULL)
+- api_endpoint (text)
+- api_model (varchar(255), NOT NULL)
+- is_active (tinyint(1), DEFAULT '1')
+- is_default (tinyint(1), DEFAULT '0')
+- rate_limit_requests_per_minute (int, DEFAULT '60')
+- timeout_seconds (int, DEFAULT '30')
+- retry_attempts (int, DEFAULT '3')
+- created_at (datetime, DEFAULT CURRENT_TIMESTAMP)
+- updated_at (datetime, DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)
+
+audit_logs: Stores audit trail for system actions
+- id (varchar(255), PRIMARY KEY)
+- timestamp (timestamp, NOT NULL)
+- action (varchar(50), NOT NULL)
+- userId (varchar(255))
+- username (varchar(255))
+- details (longtext)
+
+class_subjects: Maps classes to subjects with coefficients
+- id (int, PRIMARY KEY, AUTO_INCREMENT)
+- className (varchar(100), NOT NULL)
+- schoolYear (varchar(10), NOT NULL)
+- subjectId (varchar(255), NOT NULL)
+- subjectName (varchar(255), NOT NULL)
+- coefficient (decimal(4,2), NOT NULL)
+- maxScore (int, NOT NULL)
+
+students: Stores student information
+- id (varchar(20), PRIMARY KEY)
+- nom (varchar(255), NOT NULL)
+- prenom (varchar(255), NOT NULL)
+- sexe (varchar(10))
+- dateNaissance (date, NOT NULL)
+- lieuNaissance (varchar(255), NOT NULL)
+- nationalite (varchar(100))
+- acteNaissance (varchar(100))
+- photoUrl (longtext)
+- infoParent (json, NOT NULL)
+- infoParent2 (json)
+- niveau (varchar(100), NOT NULL)
+- classe (varchar(100), NOT NULL)
+- anneeScolaire (varchar(10), NOT NULL)
+- historiqueClasse (json, NOT NULL)
+- statut (varchar(50), NOT NULL)
+- createdAt (timestamp, DEFAULT CURRENT_TIMESTAMP)
+
+payments: Records student payments
+- id (varchar(255), PRIMARY KEY)
+- studentId (varchar(20), NOT NULL, FOREIGN KEY -> students.id)
+- schoolYear (varchar(10), NOT NULL)
+- amount (decimal(12,2), NOT NULL)
+- date (timestamp, DEFAULT CURRENT_TIMESTAMP)
+- method (varchar(50), NOT NULL)
+- reason (text)
+- cashier (varchar(255), NOT NULL)
+- cashierUsername (varchar(255), NOT NULL)
+- installmentsPaid (json, NOT NULL)
+
+IMPORTANT: The installmentsPaid field contains JSON data tracking which tranches have been paid.
+Example structure:
+{
+  "tranche1": {"paid": true, "date": "2023-10-20", "amount": 50000},
+  "tranche2": {"paid": false, "date": null, "amount": 0},
+  "tranche3": {"paid": true, "date": "2024-01-10", "amount": 50000}
+}
+
+This allows tracking which specific tranches each student has paid.
+
+grades: Stores student grades
+- id (varchar(100), PRIMARY KEY)
+- studentId (varchar(20), NOT NULL, FOREIGN KEY -> students.id)
+- classId (varchar(100), NOT NULL)
+- schoolYear (varchar(10), NOT NULL)
+- subjectId (varchar(100), NOT NULL)
+- evaluationTypeId (varchar(100), NOT NULL, FOREIGN KEY -> evaluation_types.id)
+- evaluationPeriodId (varchar(100), FOREIGN KEY -> evaluation_periods.id)
+- score (decimal(5,2), NOT NULL)
+- maxScore (decimal(5,2), DEFAULT '20.00')
+- coefficient (decimal(4,2), DEFAULT '1.00')
+- weightedScore (decimal(6,2))
+- assessment (text)
+- recordedBy (varchar(100), NOT NULL, FOREIGN KEY -> users.id)
+- recordedAt (timestamp, DEFAULT CURRENT_TIMESTAMP)
+- updatedAt (timestamp, DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)
+
+subjects: Defines academic subjects
+- id (int, PRIMARY KEY, AUTO_INCREMENT)
+- name (varchar(255), NOT NULL)
+- code (varchar(50), NOT NULL)
+- description (text)
+- category (varchar(100))
+- maxScore (int, DEFAULT '20')
+- coefficient (decimal(3,1), DEFAULT '1.0')
+- isActive (tinyint(1), DEFAULT '1')
+- classId (varchar(100), NOT NULL)
+- schoolYear (varchar(10), NOT NULL)
+- createdAt (timestamp, DEFAULT CURRENT_TIMESTAMP)
+- updatedAt (timestamp, DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)
+
+evaluation_types: Defines types of evaluations
+- id (varchar(255), PRIMARY KEY)
+- name (varchar(255), NOT NULL)
+- description (text)
+- weight (decimal(4,2), DEFAULT '1.00')
+- maxScore (int, DEFAULT '20')
+- isActive (tinyint(1), DEFAULT '1')
+- createdAt (timestamp, DEFAULT CURRENT_TIMESTAMP)
+- updatedAt (timestamp, DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)
+
+evaluation_periods: Defines academic evaluation periods
+- id (varchar(255), PRIMARY KEY)
+- name (varchar(255), NOT NULL)
+- type (enum('sequence','trimestre'), DEFAULT 'sequence')
+- startDate (date, NOT NULL)
+- endDate (date, NOT NULL)
+- schoolYear (varchar(10), NOT NULL)
+- order (int, DEFAULT '0')
+- isActive (tinyint(1), DEFAULT '1')
+- createdAt (timestamp, DEFAULT CURRENT_TIMESTAMP)
+- updatedAt (timestamp, DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)
+
+general_averages: Stores overall student averages
+- id (varchar(100), PRIMARY KEY)
+- studentId (varchar(20), NOT NULL, FOREIGN KEY -> students.id)
+- classId (varchar(100), NOT NULL)
+- schoolYear (varchar(10), NOT NULL)
+- averageScore (decimal(5,2), NOT NULL)
+- totalCoefficient (decimal(6,2), NOT NULL)
+- studentRank (int)
+- totalStudents (int)
+- createdAt (timestamp, DEFAULT CURRENT_TIMESTAMP)
+- updatedAt (timestamp, DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)
+
+period_averages: Stores period-specific student averages
+- id (varchar(100), PRIMARY KEY)
+- studentId (varchar(20), NOT NULL, FOREIGN KEY -> students.id)
+- classId (varchar(100), NOT NULL)
+- schoolYear (varchar(10), NOT NULL)
+- evaluationPeriodId (varchar(100), NOT NULL, FOREIGN KEY -> evaluation_periods.id)
+- averageScore (decimal(5,2), NOT NULL)
+- totalCoefficient (decimal(6,2), NOT NULL)
+- studentRank (int)
+- totalStudents (int)
+- createdAt (timestamp, DEFAULT CURRENT_TIMESTAMP)
+- updatedAt (timestamp, DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)
+
+school_classes: Defines school classes
+- id (varchar(36), PRIMARY KEY)
+- levelId (varchar(36), NOT NULL, FOREIGN KEY -> school_levels.id)
+- name (varchar(100), NOT NULL)
+- order (int, DEFAULT '0')
+- created_at (timestamp, DEFAULT CURRENT_TIMESTAMP)
+- updated_at (timestamp, DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)
+
+school_levels: Defines academic levels
+- id (varchar(36), PRIMARY KEY)
+- name (varchar(100), NOT NULL)
+- order (int, DEFAULT '0')
+- isActive (tinyint(1), DEFAULT '1')
+- created_at (timestamp, DEFAULT CURRENT_TIMESTAMP)
+- updated_at (timestamp, DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)
+
+school_info: Stores school information
+- id (int, PRIMARY KEY, AUTO_INCREMENT)
+- name (varchar(255), NOT NULL)
+- slogan (varchar(255))
+- address (varchar(255))
+- phone (varchar(50))
+- email (varchar(255))
+- bp (varchar(50))
+- logoUrl (longtext)
+- currentSchoolYear (varchar(20))
+- currency (varchar(10))
+
+financial_services: Defines financial services
+- id (varchar(64), PRIMARY KEY)
+- name (varchar(200), NOT NULL)
+- category (varchar(50), NOT NULL)
+- levelId (varchar(36))
+- classId (varchar(36))
+- schoolYear (varchar(10))
+- price (decimal(12,2), DEFAULT '0.00')
+- isActive (tinyint(1), DEFAULT '1')
+- metadata (json)
+- createdAt (datetime, DEFAULT CURRENT_TIMESTAMP)
+- updatedAt (datetime, DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)
+
+financial_service_payments: Records service payments
+- id (varchar(64), PRIMARY KEY)
+- studentId (varchar(32), NOT NULL)
+- schoolYear (varchar(10), NOT NULL)
+- serviceId (varchar(64), NOT NULL)
+- serviceName (varchar(200), NOT NULL)
+- amount (decimal(12,2), NOT NULL)
+- method (varchar(50), NOT NULL)
+- date (datetime, DEFAULT CURRENT_TIMESTAMP)
+- cashier (varchar(100))
+- cashierUsername (varchar(100))
+- createdAt (datetime, DEFAULT CURRENT_TIMESTAMP)
+- updatedAt (datetime, DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)
+
+financial_transactions: Records financial transactions
+- id (varchar(64), PRIMARY KEY)
+- serviceId (varchar(64))
+- serviceName (varchar(200))
+- category (varchar(50), NOT NULL)
+- amount (decimal(12,2), NOT NULL)
+- quantity (int, DEFAULT '1')
+- totalAmount (decimal(12,2), NOT NULL)
+- date (datetime, NOT NULL)
+- schoolYear (varchar(10), NOT NULL)
+- cashier (varchar(100))
+- notes (text)
+- studentId (varchar(20))
+- createdAt (datetime, DEFAULT CURRENT_TIMESTAMP)
+- updatedAt (datetime, DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)
+
+fee_structures: Defines fee structures by class
+- className (varchar(100), PRIMARY KEY)
+- registrationFee (decimal(12,2), NOT NULL)
+- total (decimal(12,2), NOT NULL)
+- installments (json, NOT NULL)
+
+IMPORTANT: The installments field contains JSON data that defines the payment tranches (échéances) for each class.
+Example structure:
+{
+  "tranche1": {"amount": 50000, "dueDate": "2023-10-15", "label": "Première tranche"},
+  "tranche2": {"amount": 50000, "dueDate": "2023-12-15", "label": "Deuxième tranche"},
+  "tranche3": {"amount": 50000, "dueDate": "2024-02-15", "label": "Troisième tranche"}
+}
+
+Tranche labeling follows this pattern:
+- tranche1 = Première tranche (First installment)
+- tranche2 = Deuxième tranche (Second installment)
+- tranche3 = Troisième tranche (Third installment)
+- tranche4 = Quatrième tranche (Fourth installment)
+- etc.
+
+personnel: Stores personnel information
+- id (varchar(255), PRIMARY KEY)
+- username (varchar(255), NOT NULL)
+- fullName (varchar(255), NOT NULL)
+- email (varchar(255))
+- phone (varchar(255))
+- role (varchar(50), DEFAULT 'Personnel')
+- type_personnel (varchar(100))
+- dateEmbauche (date)
+- dateFinContrat (date)
+- typeContrat (enum('CDI','CDD','Stage','Vacataire'))
+- salaire (decimal(10,2))
+- statut (enum('Actif','Inactif','En cong??','D??mission'), DEFAULT 'Actif')
+- specialite (varchar(255))
+- diplome (varchar(255))
+- experience (int)
+- photoUrl (longtext)
+- personnelTypeId (varchar(255), FOREIGN KEY -> personnel_types.id)
+- createdAt (timestamp, DEFAULT CURRENT_TIMESTAMP)
+- updatedAt (timestamp, DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)
+
+personnel_types: Defines personnel types
+- id (varchar(255), PRIMARY KEY)
+- name (varchar(255), NOT NULL)
+- description (text)
+- color (varchar(7), DEFAULT '#3B82F6')
+- icon (varchar(50), DEFAULT 'User')
+- isActive (tinyint(1), DEFAULT '1')
+- createdAt (timestamp, DEFAULT CURRENT_TIMESTAMP)
+
+users: Stores user accounts
+- id (varchar(255), PRIMARY KEY)
+- username (varchar(255), NOT NULL)
+- fullName (varchar(255), NOT NULL)
+- email (varchar(255))
+- phone (varchar(255))
+- photoUrl (longtext)
+- passwordHash (varchar(255), NOT NULL)
+- role (varchar(50), NOT NULL)
+- createdAt (timestamp, DEFAULT CURRENT_TIMESTAMP)
+
+teacher_assignments: Maps teachers to classes and subjects
+- id (varchar(255), PRIMARY KEY)
+- teacherId (varchar(255), NOT NULL, FOREIGN KEY -> personnel.id)
+- teacherName (varchar(255), NOT NULL)
+- classId (varchar(255))
+- className (varchar(255), NOT NULL)
+- subject (varchar(255), NOT NULL)
+- schoolYear (varchar(20), NOT NULL)
+- hoursPerWeek (int, DEFAULT '0')
+- isMainTeacher (tinyint(1), DEFAULT '0')
+- semester (varchar(20))
+- createdAt (timestamp, DEFAULT CURRENT_TIMESTAMP)
+- updatedAt (timestamp, DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)
+
+presences: Records attendance
+- id (varchar(255), PRIMARY KEY)
+- type (enum('eleve','personnel'), NOT NULL)
+- personId (varchar(255), NOT NULL)
+- personName (varchar(255), NOT NULL)
+- date (date, NOT NULL)
+- status (enum('present','absent','retard','exclusion'), DEFAULT 'present')
+- details (text)
+- createdAt (datetime, NOT NULL)
+- updatedAt (datetime, NOT NULL)
+
+report_cards: Stores student report cards
+- id (varchar(100), PRIMARY KEY)
+- studentId (varchar(20), NOT NULL, FOREIGN KEY -> students.id)
+- classId (varchar(100), NOT NULL)
+- schoolYear (varchar(10), NOT NULL)
+- evaluationPeriodId (varchar(100), FOREIGN KEY -> evaluation_periods.id)
+- averageScore (decimal(5,2), NOT NULL)
+- totalCoefficient (decimal(5,2), DEFAULT '0.00')
+- studentRank (int)
+- totalStudents (int)
+- teacherComments (text)
+- principalComments (text)
+- mention (varchar(50))
+- parentSignature (varchar(100))
+- issuedBy (varchar(100), NOT NULL, FOREIGN KEY -> users.id)
+- issuedAt (timestamp, DEFAULT CURRENT_TIMESTAMP)
+- createdAt (timestamp, DEFAULT CURRENT_TIMESTAMP)
+- updatedAt (timestamp, DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)
+
+roles: Defines user roles and permissions
+- id (varchar(255), PRIMARY KEY)
+- name (varchar(100), NOT NULL)
+- description (text)
+- permissions (json)
+- isActive (tinyint(1), DEFAULT '1')
+- createdAt (datetime, DEFAULT CURRENT_TIMESTAMP)
+- updatedAt (datetime, DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)
+
+password_policies: Stores password security policies
+- id (int, PRIMARY KEY, AUTO_INCREMENT)
+- minLength (int, DEFAULT '8')
+- requireUppercase (tinyint(1), DEFAULT '1')
+- requireLowercase (tinyint(1), DEFAULT '1')
+- requireNumbers (tinyint(1), DEFAULT '1')
+- requireSpecialChars (tinyint(1), DEFAULT '1')
+- maxAge (int, DEFAULT '90')
+- createdAt (datetime, DEFAULT CURRENT_TIMESTAMP)
+- updatedAt (datetime, DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)
+
+security_settings: Stores security configuration
+- id (int, PRIMARY KEY, AUTO_INCREMENT)
+- sessionTimeout (int, DEFAULT '30')
+- maxLoginAttempts (int, DEFAULT '5')
+- lockoutDuration (int, DEFAULT '15')
+- requireTwoFactor (tinyint(1), DEFAULT '0')
+- createdAt (datetime, DEFAULT CURRENT_TIMESTAMP)
+- updatedAt (datetime, DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)
+
+payroll_records: Stores payroll information
+- id (varchar(255), PRIMARY KEY)
+- personnelId (varchar(255), NOT NULL, FOREIGN KEY -> users.id)
+- personnelName (varchar(255), NOT NULL)
+- month (int, NOT NULL)
+- year (int, NOT NULL)
+- baseSalary (decimal(10,2), NOT NULL)
+- bonuses (decimal(10,2), DEFAULT '0.00')
+- deductions (decimal(10,2), DEFAULT '0.00')
+- netSalary (decimal(10,2), NOT NULL)
+- status (enum('En attente','Pay├®','Annul├®'), DEFAULT 'En attente')
+- paymentDate (date)
+- notes (text)
+- createdAt (timestamp, DEFAULT CURRENT_TIMESTAMP)
+
+payment_receipts: Tracks payment receipts
+- receiptNumber (int, PRIMARY KEY, AUTO_INCREMENT)
+- paymentId (varchar(255), NOT NULL)
+- createdAt (datetime, DEFAULT CURRENT_TIMESTAMP)
+
+class_subjects: Maps classes to subjects
+- id (int, PRIMARY KEY, AUTO_INCREMENT)
+- className (varchar(100), NOT NULL)
+- schoolYear (varchar(10), NOT NULL)
+- subjectId (varchar(255), NOT NULL)
+- subjectName (varchar(255), NOT NULL)
+- coefficient (decimal(4,2), NOT NULL)
+- maxScore (int, NOT NULL)
+
+schema_cache: Caches database schema information
+- id (int, PRIMARY KEY, AUTO_INCREMENT)
+- schema_data (json, NOT NULL)
+- created_at (timestamp, DEFAULT CURRENT_TIMESTAMP)
+- updated_at (timestamp, DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)
+- is_active (tinyint(1), DEFAULT '1')

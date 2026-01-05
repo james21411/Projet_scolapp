@@ -1,0 +1,87 @@
+############################################################
+# ALLOWLIST-ONLY: Track ONLY specific folders and root files
+############################################################
+
+# 1) Ignore everything by default
+/*
+
+# 2) Keep these top-level folders tracked (and all their contents)
+!/src/**
+!/scripts/**
+!/script/**
+!/public/**
+!/electron/**
+!/database/**
+!/ai/**
+
+# 3) Keep root-level files commonly needed for the project
+!/.gitignore
+!/.dockerignore
+!/README*
+!/LICENSE*
+!/package.json
+!/package-lock.json
+!/pnpm-lock.yaml
+!/yarn.lock
+!/tsconfig.json
+!/next.config.js
+!/postcss.config.js
+!/tailwind.config.js
+!/Dockerfile
+!/.env*
+!/*.env
+!/*.md
+!/*.txt
+!/*.json
+!/*.yml
+!/*.yaml
+!/*.cjs
+!/*.mjs
+!/*.js
+!/*.ts
+
+# 4) Still ignore common heavy/generated folders even if present
+/node_modules/
+/.next/
+/out/
+/dist/
+/workspace/
+/docs/
+/nginx/
+/nvm/
+/node/
+/f/
+
+# 5) Ignore archives, dumps, and misc
+*.rar
+*.zip
+*.sql
+temp_*.sql
+table_structure.json
+RESUME_*.md
+TEST_*.md
+test-*.{js,sql,html,md}
+MYSQL_CONNECTION_FIX.md
+
+# 6) Logs and debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+firebase-debug.log
+firestore-debug.log
+.vercel
+.DS_Store
+*.pem
+.genkit/*
+
+# 7) Binaries and installers (never track executables)
+*.exe
+*.msi
+*.dll
+*.bin
+*.AppImage
+*.dmg
+*.pkg
+*.deb
+*.rpm

@@ -1,0 +1,397 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 220 20% 98%; /* Lighter gray */
+    --foreground: 224 71% 4%;
+    --card: 0 0% 100%;
+    --card-foreground: 224 71% 4%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 224 71% 4%;
+    --primary: 221 83% 53%; /* Vivid Blue */
+    --primary-foreground: 0 0% 98%;
+    --secondary: 220 13% 91%;
+    --secondary-foreground: 224 71% 4%;
+    --muted: 220 13% 91%;
+    --muted-foreground: 220 9% 46%;
+    --accent: 38 92% 50%; /* Vibrant Amber */
+    --accent-foreground: 48 96% 6%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 220 13% 86%; /* Slightly darker border */
+    --input: 220 13% 89%;
+    --ring: 221 83% 53%;
+    --chart-1: 221 83% 53%; /* primary */
+    --chart-2: 38 92% 50%; /* accent */
+    --chart-3: 221 83% 73%; /* lighter primary */
+    --chart-4: 38 92% 70%; /* lighter accent */
+    --chart-5: 216 70% 50%; /* another blue shade */
+    --radius: 0.5rem;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 215 28% 17%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 210 40% 98%;
+    --sidebar-accent: 210 40% 96.1%;
+    --sidebar-accent-foreground: 222.2 47.4% 11.2%;
+    --sidebar-border: 214.3 31.8% 91.4%;
+    --sidebar-ring: 217 91% 60%;
+  }
+
+  .dark {
+    --background: 224 71% 4%;
+    --foreground: 210 40% 98%;
+    --card: 224 71% 9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 224 71% 4%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 15%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 210 40% 15%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 38 92% 50%;
+    --accent-foreground: 48 96% 6%;
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 210 40% 20%;
+    --input: 210 40% 20%;
+    --ring: 217 91% 60%;
+    --chart-1: 217 91% 60%;
+    --chart-2: 38 92% 50%;
+    --chart-3: 217 80% 70%;
+    --chart-4: 38 85% 63%;
+    --chart-5: 220 70% 50%;
+    --sidebar-background: 224 71% 9%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 210 40% 98%;
+    --sidebar-accent: 210 40% 15%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 210 40% 20%;
+    --sidebar-ring: 217 91% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@layer components {
+  .card-glow {
+    @apply transition-all duration-300;
+  }
+  .card-glow:hover {
+    border-color: hsl(var(--primary) / 0.5);
+    box-shadow: 0 10px 15px -3px hsl(var(--primary) / 0.07), 0 4px 6px -4px hsl(var(--primary) / 0.07);
+  }
+
+  /* Styles pour l'en-tête administratif camerounais */
+  .cameroon-header {
+    @apply flex justify-between items-start mb-6 p-4 border-b-2 border-gray-300;
+  }
+
+  .header-left, .header-right {
+    @apply flex flex-col space-y-1 text-xs font-semibold text-gray-700;
+    flex: 1;
+  }
+
+  .header-center {
+    @apply flex flex-col items-center space-y-2 flex-1;
+  }
+
+  .republic-title {
+    @apply text-sm font-bold text-blue-800 uppercase tracking-wide;
+  }
+
+  .ministry-title {
+    @apply text-xs font-semibold text-gray-800 uppercase tracking-wide;
+  }
+
+  .delegation-title {
+    @apply text-xs font-medium text-gray-600 uppercase tracking-wide;
+  }
+  
+  .motto {
+    @apply text-xs font-normal text-gray-700 tracking-wide text-center;
+    margin: 4px 0;
+  }
+  
+  .contact-info {
+    @apply text-xs font-normal text-gray-600;
+    margin: 2px 0;
+  }
+  
+  .emblem-container {
+    @apply flex flex-col items-center space-y-3;
+  }
+  
+  .emblem-text {
+    @apply text-center space-y-1;
+  }
+  
+  .emblem-name {
+    @apply text-sm font-bold text-gray-800 uppercase tracking-wide;
+  }
+  
+  .emblem-subtitle {
+    @apply text-xs font-semibold text-gray-700 uppercase tracking-wide;
+  }
+
+  .school-name-print {
+    @apply text-xl font-bold text-center;
+  }
+
+  .school-info-print {
+    @apply text-sm text-center text-gray-600;
+  }
+
+  /* Styles pour l'impression */
+  .print-card {
+    @apply p-6 space-y-4;
+  }
+
+  .print-header {
+    @apply text-center space-y-2 mb-6;
+  }
+
+  .print-title {
+    @apply text-xl font-bold text-center;
+  }
+
+  .print-description {
+    @apply text-sm text-center text-gray-600;
+  }
+
+  .print-separator {
+    @apply my-4;
+  }
+
+  .print-student-info {
+    @apply grid grid-cols-2 gap-4 mb-4 p-3 border rounded;
+  }
+
+  .print-table {
+    @apply w-full border-collapse border border-gray-300 mb-6;
+  }
+
+  .print-table th,
+  .print-table td {
+    @apply border border-gray-300 p-2 text-sm;
+  }
+
+  .print-table th {
+    @apply bg-gray-100 font-semibold text-center;
+  }
+
+  .results-grid {
+    @apply grid grid-cols-1 md:grid-cols-2 gap-6 mb-6;
+  }
+
+  .results-card {
+    @apply border rounded-lg p-4;
+  }
+
+  .results-card-title {
+    @apply font-bold text-lg mb-3 text-center border-b pb-2;
+  }
+
+  .results-card-content {
+    @apply space-y-2;
+  }
+
+  .signatures-section {
+    @apply mt-8 space-y-6;
+  }
+
+  .cachet-section {
+    @apply flex justify-center mb-6;
+  }
+
+  .cachet-placeholder {
+    @apply text-center;
+  }
+
+  .cachet-circle {
+    @apply w-16 h-16 border-2 border-dashed border-gray-400 rounded-full mx-auto mt-2;
+  }
+
+  .signatures {
+    @apply grid grid-cols-2 gap-8 text-center;
+  }
+
+  .signature-item {
+    @apply space-y-4;
+  }
+
+  .signature-item p:first-child {
+    @apply font-semibold text-sm;
+  }
+
+  .signature-item p:last-child {
+    @apply text-lg;
+  }
+
+  /* Styles d'impression avancés */
+  @media print {
+    body * {
+      visibility: visible !important;
+    }
+    
+    .print-card {
+      display: block !important;
+      page-break-inside: avoid;
+    }
+    
+    .cameroon-header {
+      display: flex !important;
+      justify-content: space-between !important;
+      align-items: start !important;
+      margin-bottom: 20px !important;
+      padding: 20px !important;
+      border-bottom: 2px solid #ccc !important;
+      page-break-inside: avoid;
+    }
+    
+    .header-left, .header-right {
+      flex: 1 !important;
+      font-size: 12px !important;
+      font-weight: bold !important;
+    }
+    
+    .header-center {
+      flex: 1 !important;
+      text-align: center !important;
+    }
+    
+    .republic-title {
+      font-size: 14px !important;
+      font-weight: bold !important;
+      color: #1e40af !important;
+      text-transform: uppercase !important;
+    }
+    
+    .ministry-title {
+      font-size: 12px !important;
+      font-weight: bold !important;
+      text-transform: uppercase !important;
+    }
+    
+    .delegation-title {
+      font-size: 11px !important;
+      font-weight: 500 !important;
+      text-transform: uppercase !important;
+    }
+    
+    .motto {
+      font-size: 11px !important;
+      font-weight: normal !important;
+      text-align: center !important;
+      margin: 4px 0 !important;
+    }
+    
+    .contact-info {
+      font-size: 10px !important;
+      font-weight: normal !important;
+      margin: 2px 0 !important;
+    }
+    
+    .emblem-container {
+      display: flex !important;
+      flex-direction: column !important;
+      align-items: center !important;
+      gap: 12px !important;
+    }
+    
+    .emblem-text {
+      text-align: center !important;
+    }
+    
+    .emblem-name {
+      font-size: 12px !important;
+      font-weight: bold !important;
+      text-transform: uppercase !important;
+    }
+    
+    .emblem-subtitle {
+      font-size: 10px !important;
+      font-weight: 600 !important;
+      text-transform: uppercase !important;
+    }
+    
+    .print-table {
+      width: 100% !important;
+      border-collapse: collapse !important;
+      margin-bottom: 20px !important;
+      page-break-inside: avoid;
+    }
+    
+    .print-table th,
+    .print-table td {
+      border: 1px solid #ccc !important;
+      padding: 8px !important;
+      text-align: center !important;
+    }
+    
+    .print-table th {
+      background-color: #f3f4f6 !important;
+      font-weight: bold !important;
+    }
+    
+    .signatures-section {
+      margin-top: 40px !important;
+      page-break-inside: avoid;
+    }
+    
+    .signatures {
+      display: grid !important;
+      grid-template-columns: 1fr 1fr !important;
+      gap: 40px !important;
+      text-align: center !important;
+    }
+    
+    .cachet-section {
+      margin-bottom: 30px !important;
+    }
+    
+    .cachet-circle {
+      width: 64px !important;
+      height: 64px !important;
+      border: 2px dashed #ccc !important;
+      border-radius: 50% !important;
+      margin: 0 auto !important;
+      margin-top: 8px !important;
+    }
+    
+    /* Masquer les éléments non nécessaires à l'impression */
+    .print\\:hidden,
+    button,
+    .CardFooter {
+      display: none !important;
+    }
+    
+    /* Forcer l'affichage des éléments d'impression */
+    .print-card,
+    .print-header,
+    .print-title,
+    .print-description,
+    .print-separator,
+    .print-student-info,
+    .print-table,
+    .results-grid,
+    .results-card,
+    .results-card-title,
+    .results-card-content,
+    .signatures-section {
+      display: block !important;
+      visibility: visible !important;
+    }
+  }
+}

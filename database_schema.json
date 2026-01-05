@@ -1,0 +1,619 @@
+{
+  "database": "scolapp",
+  "tables": {
+    "api_keys": {
+      "columns": {
+        "id": {"type": "int", "autoIncrement": true, "primaryKey": true},
+        "name": {"type": "varchar(255)", "nullable": false},
+        "model": {"type": "varchar(255)", "nullable": false},
+        "api_key": {"type": "text", "nullable": false},
+        "endpoint": {"type": "text", "nullable": true},
+        "is_active": {"type": "tinyint(1)", "default": "1"},
+        "is_default": {"type": "tinyint(1)", "default": "0"},
+        "rate_limit_requests_per_minute": {"type": "int", "default": "60"},
+        "timeout_seconds": {"type": "int", "default": "30"},
+        "retry_attempts": {"type": "int", "default": "3"},
+        "created_at": {"type": "datetime", "default": "CURRENT_TIMESTAMP"},
+        "updated_at": {"type": "datetime", "default": "CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"}
+      },
+      "indexes": ["PRIMARY KEY (id)", "KEY idx_api_keys_active (is_active)", "KEY idx_api_keys_default (is_default)"],
+      "engine": "InnoDB",
+      "charset": "utf8mb4",
+      "collate": "utf8mb4_0900_ai_ci"
+    },
+    "api_settings": {
+      "columns": {
+        "id": {"type": "int", "autoIncrement": true, "primaryKey": true},
+        "api_name": {"type": "varchar(255)", "nullable": false},
+        "api_key": {"type": "text", "nullable": false},
+        "api_endpoint": {"type": "text", "nullable": true},
+        "api_model": {"type": "varchar(255)", "nullable": false},
+        "is_active": {"type": "tinyint(1)", "default": "1"},
+        "is_default": {"type": "tinyint(1)", "default": "0"},
+        "rate_limit_requests_per_minute": {"type": "int", "default": "60"},
+        "timeout_seconds": {"type": "int", "default": "30"},
+        "retry_attempts": {"type": "int", "default": "3"},
+        "created_at": {"type": "datetime", "default": "CURRENT_TIMESTAMP"},
+        "updated_at": {"type": "datetime", "default": "CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"}
+      },
+      "indexes": ["PRIMARY KEY (id)", "KEY idx_api_settings_active (is_active)", "KEY idx_api_settings_default (is_default)"],
+      "engine": "InnoDB",
+      "charset": "utf8mb4",
+      "collate": "utf8mb4_0900_ai_ci"
+    },
+    "audit_logs": {
+      "columns": {
+        "id": {"type": "varchar(255)", "primaryKey": true},
+        "timestamp": {"type": "timestamp", "nullable": false},
+        "action": {"type": "varchar(50)", "nullable": false},
+        "userId": {"type": "varchar(255)", "nullable": true},
+        "username": {"type": "varchar(255)", "nullable": true},
+        "details": {"type": "longtext", "nullable": true}
+      },
+      "indexes": ["PRIMARY KEY (id)"],
+      "engine": "InnoDB",
+      "charset": "utf8mb4",
+      "collate": "utf8mb4_0900_ai_ci"
+    },
+    "class_subjects": {
+      "columns": {
+        "id": {"type": "int", "autoIncrement": true, "primaryKey": true},
+        "className": {"type": "varchar(100)", "nullable": false},
+        "schoolYear": {"type": "varchar(10)", "nullable": false},
+        "subjectId": {"type": "varchar(255)", "nullable": false},
+        "subjectName": {"type": "varchar(255)", "nullable": false},
+        "coefficient": {"type": "decimal(4,2)", "nullable": false},
+        "maxScore": {"type": "int", "nullable": false}
+      },
+      "indexes": ["PRIMARY KEY (id)", "UNIQUE KEY unique_class_subject (className,schoolYear,subjectId)"],
+      "engine": "InnoDB",
+      "charset": "utf8mb4",
+      "collate": "utf8mb4_0900_ai_ci"
+    },
+    "evaluation_periods": {
+      "columns": {
+        "id": {"type": "varchar(255)", "primaryKey": true},
+        "name": {"type": "varchar(255)", "nullable": false},
+        "type": {"type": "enum('sequence','trimestre')", "default": "sequence"},
+        "startDate": {"type": "date", "nullable": false},
+        "endDate": {"type": "date", "nullable": false},
+        "schoolYear": {"type": "varchar(10)", "nullable": false},
+        "order": {"type": "int", "default": "0"},
+        "isActive": {"type": "tinyint(1)", "default": "1"},
+        "createdAt": {"type": "timestamp", "default": "CURRENT_TIMESTAMP"},
+        "updatedAt": {"type": "timestamp", "default": "CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"}
+      },
+      "indexes": ["PRIMARY KEY (id)"],
+      "engine": "InnoDB",
+      "charset": "utf8mb4",
+      "collate": "utf8mb4_0900_ai_ci"
+    },
+    "evaluation_types": {
+      "columns": {
+        "id": {"type": "varchar(255)", "primaryKey": true},
+        "name": {"type": "varchar(255)", "nullable": false},
+        "description": {"type": "text", "nullable": true},
+        "weight": {"type": "decimal(4,2)", "default": "1.00"},
+        "maxScore": {"type": "int", "default": "20"},
+        "isActive": {"type": "tinyint(1)", "default": "1"},
+        "createdAt": {"type": "timestamp", "default": "CURRENT_TIMESTAMP"},
+        "updatedAt": {"type": "timestamp", "default": "CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"}
+      },
+      "indexes": ["PRIMARY KEY (id)"],
+      "engine": "InnoDB",
+      "charset": "utf8mb4",
+      "collate": "utf8mb4_0900_ai_ci"
+    },
+    "fee_structures": {
+      "columns": {
+        "className": {"type": "varchar(100)", "primaryKey": true},
+        "registrationFee": {"type": "decimal(12,2)", "nullable": false},
+        "total": {"type": "decimal(12,2)", "nullable": false},
+        "installments": {"type": "json", "nullable": false}
+      },
+      "indexes": ["PRIMARY KEY (className)"],
+      "engine": "InnoDB",
+      "charset": "utf8mb4",
+      "collate": "utf8mb4_0900_ai_ci"
+    },
+    "finance_risk_settings": {
+      "columns": {
+        "id": {"type": "int", "autoIncrement": true, "primaryKey": true},
+        "settings": {"type": "json", "nullable": false},
+        "updatedAt": {"type": "datetime", "default": "CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"}
+      },
+      "indexes": ["PRIMARY KEY (id)"],
+      "engine": "InnoDB",
+      "charset": "utf8mb4",
+      "collate": "utf8mb4_0900_ai_ci"
+    },
+    "financial_service_payments": {
+      "columns": {
+        "id": {"type": "varchar(64)", "primaryKey": true},
+        "studentId": {"type": "varchar(32)", "nullable": false},
+        "schoolYear": {"type": "varchar(10)", "nullable": false},
+        "serviceId": {"type": "varchar(64)", "nullable": false},
+        "serviceName": {"type": "varchar(200)", "nullable": false},
+        "amount": {"type": "decimal(12,2)", "nullable": false},
+        "method": {"type": "varchar(50)", "nullable": false},
+        "date": {"type": "datetime", "default": "CURRENT_TIMESTAMP"},
+        "cashier": {"type": "varchar(100)", "nullable": true},
+        "cashierUsername": {"type": "varchar(100)", "nullable": true},
+        "createdAt": {"type": "datetime", "default": "CURRENT_TIMESTAMP"},
+        "updatedAt": {"type": "datetime", "default": "CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"}
+      },
+      "indexes": ["PRIMARY KEY (id)", "KEY idx_student_year (studentId,schoolYear)"],
+      "engine": "InnoDB",
+      "charset": "utf8mb4",
+      "collate": "utf8mb4_0900_ai_ci"
+    },
+    "financial_services": {
+      "columns": {
+        "id": {"type": "varchar(64)", "primaryKey": true},
+        "name": {"type": "varchar(200)", "nullable": false},
+        "category": {"type": "varchar(50)", "nullable": false},
+        "levelId": {"type": "varchar(36)", "nullable": true},
+        "classId": {"type": "varchar(36)", "nullable": true},
+        "schoolYear": {"type": "varchar(10)", "nullable": true},
+        "price": {"type": "decimal(12,2)", "default": "0.00"},
+        "isActive": {"type": "tinyint(1)", "default": "1"},
+        "metadata": {"type": "json", "nullable": true},
+        "createdAt": {"type": "datetime", "default": "CURRENT_TIMESTAMP"},
+        "updatedAt": {"type": "datetime", "default": "CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"}
+      },
+      "indexes": ["PRIMARY KEY (id)"],
+      "engine": "InnoDB",
+      "charset": "utf8mb4",
+      "collate": "utf8mb4_0900_ai_ci"
+    },
+    "financial_transactions": {
+      "columns": {
+        "id": {"type": "varchar(64)", "primaryKey": true},
+        "serviceId": {"type": "varchar(64)", "nullable": true},
+        "serviceName": {"type": "varchar(200)", "nullable": true},
+        "category": {"type": "varchar(50)", "nullable": false},
+        "amount": {"type": "decimal(12,2)", "nullable": false},
+        "quantity": {"type": "int", "default": "1"},
+        "totalAmount": {"type": "decimal(12,2)", "nullable": false},
+        "date": {"type": "datetime", "nullable": false},
+        "schoolYear": {"type": "varchar(10)", "nullable": false},
+        "cashier": {"type": "varchar(100)", "nullable": true},
+        "notes": {"type": "text", "nullable": true},
+        "studentId": {"type": "varchar(20)", "nullable": true},
+        "createdAt": {"type": "datetime", "default": "CURRENT_TIMESTAMP"},
+        "updatedAt": {"type": "datetime", "default": "CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"}
+      },
+      "indexes": ["PRIMARY KEY (id)", "KEY idx_year (schoolYear)", "KEY idx_category (category)", "KEY idx_date (date)"],
+      "engine": "InnoDB",
+      "charset": "utf8mb4",
+      "collate": "utf8mb4_0900_ai_ci"
+    },
+    "general_averages": {
+      "columns": {
+        "id": {"type": "varchar(100)", "primaryKey": true},
+        "studentId": {"type": "varchar(20)", "nullable": false},
+        "classId": {"type": "varchar(100)", "nullable": false},
+        "schoolYear": {"type": "varchar(10)", "nullable": false},
+        "averageScore": {"type": "decimal(5,2)", "nullable": false},
+        "totalCoefficient": {"type": "decimal(6,2)", "nullable": false},
+        "studentRank": {"type": "int", "nullable": true},
+        "totalStudents": {"type": "int", "nullable": true},
+        "createdAt": {"type": "timestamp", "default": "CURRENT_TIMESTAMP"},
+        "updatedAt": {"type": "timestamp", "default": "CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"}
+      },
+      "indexes": ["PRIMARY KEY (id)", "UNIQUE KEY unique_general_average (studentId,schoolYear)"],
+      "foreignKeys": ["FOREIGN KEY (studentId) REFERENCES students(id) ON DELETE CASCADE"],
+      "engine": "InnoDB",
+      "charset": "utf8mb4",
+      "collate": "utf8mb4_0900_ai_ci"
+    },
+    "grades": {
+      "columns": {
+        "id": {"type": "varchar(100)", "primaryKey": true},
+        "studentId": {"type": "varchar(20)", "nullable": false},
+        "classId": {"type": "varchar(100)", "nullable": false},
+        "schoolYear": {"type": "varchar(10)", "nullable": false},
+        "subjectId": {"type": "varchar(100)", "nullable": false},
+        "evaluationTypeId": {"type": "varchar(100)", "nullable": false},
+        "evaluationPeriodId": {"type": "varchar(100)", "nullable": true},
+        "score": {"type": "decimal(5,2)", "nullable": false},
+        "maxScore": {"type": "decimal(5,2)", "default": "20.00"},
+        "coefficient": {"type": "decimal(4,2)", "default": "1.00"},
+        "weightedScore": {"type": "decimal(6,2)", "nullable": true},
+        "assessment": {"type": "text", "nullable": true},
+        "recordedBy": {"type": "varchar(100)", "nullable": false},
+        "recordedAt": {"type": "timestamp", "default": "CURRENT_TIMESTAMP"},
+        "updatedAt": {"type": "timestamp", "default": "CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"}
+      },
+      "indexes": ["PRIMARY KEY (id)", "UNIQUE KEY unique_grade (studentId,schoolYear,subjectId,evaluationTypeId,evaluationPeriodId)", "KEY evaluationTypeId (evaluationTypeId)", "KEY evaluationPeriodId (evaluationPeriodId)", "KEY recordedBy (recordedBy)", "KEY grades_ibfk_2 (subjectId)"],
+      "foreignKeys": ["FOREIGN KEY (studentId) REFERENCES students(id) ON DELETE CASCADE", "FOREIGN KEY (evaluationTypeId) REFERENCES evaluation_types(id) ON DELETE CASCADE", "FOREIGN KEY (evaluationPeriodId) REFERENCES evaluation_periods(id) ON DELETE SET NULL", "FOREIGN KEY (recordedBy) REFERENCES users(id) ON DELETE CASCADE"],
+      "engine": "InnoDB",
+      "charset": "utf8mb4",
+      "collate": "utf8mb4_0900_ai_ci"
+    },
+    "grading_settings": {
+      "columns": {
+        "id": {"type": "int", "autoIncrement": true, "primaryKey": true},
+        "settingKey": {"type": "varchar(100)", "nullable": false},
+        "settingValue": {"type": "text", "nullable": false},
+        "description": {"type": "text", "nullable": true},
+        "category": {"type": "varchar(100)", "nullable": false},
+        "isActive": {"type": "tinyint(1)", "default": "1"},
+        "createdAt": {"type": "timestamp", "default": "CURRENT_TIMESTAMP"},
+        "updatedAt": {"type": "timestamp", "default": "CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"}
+      },
+      "indexes": ["PRIMARY KEY (id)", "UNIQUE KEY settingKey (settingKey)"],
+      "engine": "InnoDB",
+      "charset": "utf8mb4",
+      "collate": "utf8mb4_0900_ai_ci"
+    },
+    "password_policies": {
+      "columns": {
+        "id": {"type": "int", "autoIncrement": true, "primaryKey": true},
+        "minLength": {"type": "int", "default": "8"},
+        "requireUppercase": {"type": "tinyint(1)", "default": "1"},
+        "requireLowercase": {"type": "tinyint(1)", "default": "1"},
+        "requireNumbers": {"type": "tinyint(1)", "default": "1"},
+        "requireSpecialChars": {"type": "tinyint(1)", "default": "1"},
+        "maxAge": {"type": "int", "default": "90"},
+        "createdAt": {"type": "datetime", "default": "CURRENT_TIMESTAMP"},
+        "updatedAt": {"type": "datetime", "default": "CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"}
+      },
+      "indexes": ["PRIMARY KEY (id)"],
+      "engine": "InnoDB",
+      "charset": "utf8mb4",
+      "collate": "utf8mb4_0900_ai_ci"
+    },
+    "payment_receipts": {
+      "columns": {
+        "receiptNumber": {"type": "int", "autoIncrement": true, "primaryKey": true},
+        "paymentId": {"type": "varchar(255)", "nullable": false},
+        "createdAt": {"type": "datetime", "default": "CURRENT_TIMESTAMP"}
+      },
+      "indexes": ["PRIMARY KEY (receiptNumber)", "UNIQUE KEY paymentId (paymentId)"],
+      "engine": "InnoDB",
+      "charset": "utf8mb4",
+      "collate": "utf8mb4_0900_ai_ci"
+    },
+    "payments": {
+      "columns": {
+        "id": {"type": "varchar(255)", "primaryKey": true},
+        "studentId": {"type": "varchar(20)", "nullable": false},
+        "schoolYear": {"type": "varchar(10)", "nullable": false},
+        "amount": {"type": "decimal(12,2)", "nullable": false},
+        "date": {"type": "timestamp", "default": "CURRENT_TIMESTAMP"},
+        "method": {"type": "varchar(50)", "nullable": false},
+        "reason": {"type": "text", "nullable": true},
+        "cashier": {"type": "varchar(255)", "nullable": false},
+        "cashierUsername": {"type": "varchar(255)", "nullable": false},
+        "installmentsPaid": {"type": "json", "nullable": true}
+      },
+      "indexes": ["PRIMARY KEY (id)", "KEY studentId (studentId)"],
+      "foreignKeys": ["FOREIGN KEY (studentId) REFERENCES students(id)"],
+      "engine": "InnoDB",
+      "charset": "utf8mb4",
+      "collate": "utf8mb4_0900_ai_ci"
+    },
+    "payroll_records": {
+      "columns": {
+        "id": {"type": "varchar(255)", "primaryKey": true},
+        "personnelId": {"type": "varchar(255)", "nullable": false},
+        "personnelName": {"type": "varchar(255)", "nullable": false},
+        "month": {"type": "int", "nullable": false},
+        "year": {"type": "int", "nullable": false},
+        "baseSalary": {"type": "decimal(10,2)", "nullable": false},
+        "bonuses": {"type": "decimal(10,2)", "default": "0.00"},
+        "deductions": {"type": "decimal(10,2)", "default": "0.00"},
+        "netSalary": {"type": "decimal(10,2)", "nullable": false},
+        "status": {"type": "enum('En attente','Pay├®','Annul├®')", "default": "En attente"},
+        "paymentDate": {"type": "date", "nullable": true},
+        "notes": {"type": "text", "nullable": true},
+        "createdAt": {"type": "timestamp", "default": "CURRENT_TIMESTAMP"}
+      },
+      "indexes": ["PRIMARY KEY (id)", "KEY idx_payroll_records_personnelId (personnelId)", "KEY idx_payroll_records_month_year (month,year)"],
+      "foreignKeys": ["FOREIGN KEY (personnelId) REFERENCES users(id) ON DELETE CASCADE"],
+      "engine": "InnoDB",
+      "charset": "utf8mb4",
+      "collate": "utf8mb4_0900_ai_ci"
+    },
+    "period_averages": {
+      "columns": {
+        "id": {"type": "varchar(100)", "primaryKey": true},
+        "studentId": {"type": "varchar(20)", "nullable": false},
+        "classId": {"type": "varchar(100)", "nullable": false},
+        "schoolYear": {"type": "varchar(10)", "nullable": false},
+        "evaluationPeriodId": {"type": "varchar(100)", "nullable": false},
+        "averageScore": {"type": "decimal(5,2)", "nullable": false},
+        "totalCoefficient": {"type": "decimal(6,2)", "nullable": false},
+        "studentRank": {"type": "int", "nullable": true},
+        "totalStudents": {"type": "int", "nullable": true},
+        "createdAt": {"type": "timestamp", "default": "CURRENT_TIMESTAMP"},
+        "updatedAt": {"type": "timestamp", "default": "CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"}
+      },
+      "indexes": ["PRIMARY KEY (id)", "UNIQUE KEY unique_period_average (studentId,schoolYear,evaluationPeriodId)", "KEY evaluationPeriodId (evaluationPeriodId)"],
+      "foreignKeys": ["FOREIGN KEY (studentId) REFERENCES students(id) ON DELETE CASCADE", "FOREIGN KEY (evaluationPeriodId) REFERENCES evaluation_periods(id) ON DELETE CASCADE"],
+      "engine": "InnoDB",
+      "charset": "utf8mb4",
+      "collate": "utf8mb4_0900_ai_ci"
+    },
+    "personnel": {
+      "columns": {
+        "id": {"type": "varchar(255)", "primaryKey": true},
+        "username": {"type": "varchar(255)", "nullable": false},
+        "fullName": {"type": "varchar(255)", "nullable": false},
+        "email": {"type": "varchar(255)", "nullable": true},
+        "phone": {"type": "varchar(255)", "nullable": true},
+        "role": {"type": "varchar(50)", "default": "Personnel"},
+        "type_personnel": {"type": "varchar(100)", "nullable": true},
+        "dateEmbauche": {"type": "date", "nullable": true},
+        "dateFinContrat": {"type": "date", "nullable": true},
+        "typeContrat": {"type": "enum('CDI','CDD','Stage','Vacataire')", "nullable": true},
+        "salaire": {"type": "decimal(10,2)", "nullable": true},
+        "statut": {"type": "enum('Actif','Inactif','En cong??','D??mission')", "default": "Actif"},
+        "specialite": {"type": "varchar(255)", "nullable": true},
+        "diplome": {"type": "varchar(255)", "nullable": true},
+        "experience": {"type": "int", "nullable": true},
+        "photoUrl": {"type": "longtext", "nullable": true},
+        "personnelTypeId": {"type": "varchar(255)", "nullable": true},
+        "createdAt": {"type": "timestamp", "default": "CURRENT_TIMESTAMP"},
+        "updatedAt": {"type": "timestamp", "default": "CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"}
+      },
+      "indexes": ["PRIMARY KEY (id)", "UNIQUE KEY username (username)", "UNIQUE KEY email (email)", "KEY idx_personnel_role (role)", "KEY idx_personnel_type_personnel (type_personnel)", "KEY idx_personnel_statut (statut)", "KEY idx_personnel_personnelTypeId (personnelTypeId)", "KEY idx_personnel_dateEmbauche (dateEmbauche)"],
+      "foreignKeys": ["FOREIGN KEY (personnelTypeId) REFERENCES personnel_types(id) ON DELETE SET NULL"],
+      "engine": "InnoDB",
+      "charset": "utf8mb4",
+      "collate": "utf8mb4_0900_ai_ci"
+    },
+    "personnel_types": {
+      "columns": {
+        "id": {"type": "varchar(255)", "primaryKey": true},
+        "name": {"type": "varchar(255)", "nullable": false},
+        "description": {"type": "text", "nullable": true},
+        "color": {"type": "varchar(7)", "default": "#3B82F6"},
+        "icon": {"type": "varchar(50)", "default": "User"},
+        "isActive": {"type": "tinyint(1)", "default": "1"},
+        "createdAt": {"type": "timestamp", "default": "CURRENT_TIMESTAMP"}
+      },
+      "indexes": ["PRIMARY KEY (id)"],
+      "engine": "InnoDB",
+      "charset": "utf8mb4",
+      "collate": "utf8mb4_0900_ai_ci"
+    },
+    "presences": {
+      "columns": {
+        "id": {"type": "varchar(255)", "primaryKey": true},
+        "type": {"type": "enum('eleve','personnel')", "nullable": false},
+        "personId": {"type": "varchar(255)", "nullable": false},
+        "personName": {"type": "varchar(255)", "nullable": false},
+        "date": {"type": "date", "nullable": false},
+        "status": {"type": "enum('present','absent','retard','exclusion')", "default": "present"},
+        "details": {"type": "text", "nullable": true},
+        "createdAt": {"type": "datetime", "nullable": false},
+        "updatedAt": {"type": "datetime", "nullable": false}
+      },
+      "indexes": ["PRIMARY KEY (id)", "KEY idx_date (date)", "KEY idx_type (type)", "KEY idx_person (personId)", "KEY idx_status (status)"],
+      "engine": "InnoDB",
+      "charset": "utf8mb4",
+      "collate": "utf8mb4_0900_ai_ci"
+    },
+    "report_cards": {
+      "columns": {
+        "id": {"type": "varchar(100)", "primaryKey": true},
+        "studentId": {"type": "varchar(20)", "nullable": false},
+        "classId": {"type": "varchar(100)", "nullable": false},
+        "schoolYear": {"type": "varchar(10)", "nullable": false},
+        "evaluationPeriodId": {"type": "varchar(100)", "nullable": true},
+        "averageScore": {"type": "decimal(5,2)", "nullable": false},
+        "totalCoefficient": {"type": "decimal(5,2)", "default": "0.00"},
+        "studentRank": {"type": "int", "nullable": true},
+        "totalStudents": {"type": "int", "nullable": true},
+        "teacherComments": {"type": "text", "nullable": true},
+        "principalComments": {"type": "text", "nullable": true},
+        "mention": {"type": "varchar(50)", "nullable": true},
+        "parentSignature": {"type": "varchar(100)", "nullable": true},
+        "issuedBy": {"type": "varchar(100)", "nullable": false},
+        "issuedAt": {"type": "timestamp", "default": "CURRENT_TIMESTAMP"},
+        "createdAt": {"type": "timestamp", "default": "CURRENT_TIMESTAMP"},
+        "updatedAt": {"type": "timestamp", "default": "CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"}
+      },
+      "indexes": ["PRIMARY KEY (id)", "KEY studentId (studentId)", "KEY evaluationPeriodId (evaluationPeriodId)", "KEY issuedBy (issuedBy)"],
+      "foreignKeys": ["FOREIGN KEY (studentId) REFERENCES students(id) ON DELETE CASCADE", "FOREIGN KEY (evaluationPeriodId) REFERENCES evaluation_periods(id) ON DELETE SET NULL", "FOREIGN KEY (issuedBy) REFERENCES users(id) ON DELETE CASCADE"],
+      "engine": "InnoDB",
+      "charset": "utf8mb4",
+      "collate": "utf8mb4_0900_ai_ci"
+    },
+    "roles": {
+      "columns": {
+        "id": {"type": "varchar(255)", "primaryKey": true},
+        "name": {"type": "varchar(100)", "nullable": false},
+        "description": {"type": "text", "nullable": true},
+        "permissions": {"type": "json", "nullable": true},
+        "isActive": {"type": "tinyint(1)", "default": "1"},
+        "createdAt": {"type": "datetime", "default": "CURRENT_TIMESTAMP"},
+        "updatedAt": {"type": "datetime", "default": "CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"}
+      },
+      "indexes": ["PRIMARY KEY (id)", "UNIQUE KEY name (name)"],
+      "engine": "InnoDB",
+      "charset": "utf8mb4",
+      "collate": "utf8mb4_0900_ai_ci"
+    },
+    "schema_cache": {
+      "columns": {
+        "id": {"type": "int", "autoIncrement": true, "primaryKey": true},
+        "schema_data": {"type": "json", "nullable": false},
+        "created_at": {"type": "timestamp", "default": "CURRENT_TIMESTAMP"},
+        "updated_at": {"type": "timestamp", "default": "CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"},
+        "is_active": {"type": "tinyint(1)", "default": "1"}
+      },
+      "indexes": ["PRIMARY KEY (id)"],
+      "engine": "InnoDB",
+      "charset": "utf8mb4",
+      "collate": "utf8mb4_0900_ai_ci"
+    },
+    "school_classes": {
+      "columns": {
+        "id": {"type": "varchar(36)", "primaryKey": true},
+        "levelId": {"type": "varchar(36)", "nullable": false},
+        "name": {"type": "varchar(100)", "nullable": false},
+        "order": {"type": "int", "default": "0"},
+        "created_at": {"type": "timestamp", "default": "CURRENT_TIMESTAMP"},
+        "updated_at": {"type": "timestamp", "default": "CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"}
+      },
+      "indexes": ["PRIMARY KEY (id)", "KEY levelId (levelId)"],
+      "foreignKeys": ["FOREIGN KEY (levelId) REFERENCES school_levels(id) ON DELETE CASCADE"],
+      "engine": "InnoDB",
+      "charset": "utf8mb4",
+      "collate": "utf8mb4_0900_ai_ci"
+    },
+    "school_info": {
+      "columns": {
+        "id": {"type": "int", "autoIncrement": true, "primaryKey": true},
+        "name": {"type": "varchar(255)", "nullable": false},
+        "slogan": {"type": "varchar(255)", "nullable": true},
+        "address": {"type": "varchar(255)", "nullable": true},
+        "phone": {"type": "varchar(50)", "nullable": true},
+        "email": {"type": "varchar(255)", "nullable": true},
+        "bp": {"type": "varchar(50)", "nullable": true},
+        "logoUrl": {"type": "longtext", "nullable": true},
+        "currentSchoolYear": {"type": "varchar(20)", "nullable": true},
+        "currency": {"type": "varchar(10)", "nullable": true}
+      },
+      "indexes": ["PRIMARY KEY (id)"],
+      "engine": "InnoDB",
+      "charset": "utf8mb4",
+      "collate": "utf8mb4_0900_ai_ci"
+    },
+    "school_levels": {
+      "columns": {
+        "id": {"type": "varchar(36)", "primaryKey": true},
+        "name": {"type": "varchar(100)", "nullable": false},
+        "order": {"type": "int", "default": "0"},
+        "isActive": {"type": "tinyint(1)", "default": "1"},
+        "created_at": {"type": "timestamp", "default": "CURRENT_TIMESTAMP"},
+        "updated_at": {"type": "timestamp", "default": "CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"}
+      },
+      "indexes": ["PRIMARY KEY (id)", "UNIQUE KEY name (name)"],
+      "engine": "InnoDB",
+      "charset": "utf8mb4",
+      "collate": "utf8mb4_0900_ai_ci"
+    },
+    "security_settings": {
+      "columns": {
+        "id": {"type": "int", "autoIncrement": true, "primaryKey": true},
+        "sessionTimeout": {"type": "int", "default": "30"},
+        "maxLoginAttempts": {"type": "int", "default": "5"},
+        "lockoutDuration": {"type": "int", "default": "15"},
+        "requireTwoFactor": {"type": "tinyint(1)", "default": "0"},
+        "createdAt": {"type": "datetime", "default": "CURRENT_TIMESTAMP"},
+        "updatedAt": {"type": "datetime", "default": "CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"}
+      },
+      "indexes": ["PRIMARY KEY (id)"],
+      "engine": "InnoDB",
+      "charset": "utf8mb4",
+      "collate": "utf8mb4_0900_ai_ci"
+    },
+    "students": {
+      "columns": {
+        "id": {"type": "varchar(20)", "primaryKey": true},
+        "nom": {"type": "varchar(255)", "nullable": false},
+        "prenom": {"type": "varchar(255)", "nullable": false},
+        "sexe": {"type": "varchar(10)", "nullable": true},
+        "dateNaissance": {"type": "date", "nullable": false},
+        "lieuNaissance": {"type": "varchar(255)", "nullable": false},
+        "nationalite": {"type": "varchar(100)", "nullable": true},
+        "acteNaissance": {"type": "varchar(100)", "nullable": true},
+        "photoUrl": {"type": "longtext", "nullable": true},
+        "infoParent": {"type": "json", "nullable": false},
+        "infoParent2": {"type": "json", "nullable": true},
+        "niveau": {"type": "varchar(100)", "nullable": false},
+        "classe": {"type": "varchar(100)", "nullable": false},
+        "anneeScolaire": {"type": "varchar(10)", "nullable": false},
+        "historiqueClasse": {"type": "json", "nullable": false},
+        "statut": {"type": "varchar(50)", "nullable": false},
+        "createdAt": {"type": "timestamp", "default": "CURRENT_TIMESTAMP"}
+      },
+      "indexes": ["PRIMARY KEY (id)"],
+      "engine": "InnoDB",
+      "charset": "utf8mb4",
+      "collate": "utf8mb4_0900_ai_ci"
+    },
+    "subjects": {
+      "columns": {
+        "id": {"type": "int", "autoIncrement": true, "primaryKey": true},
+        "name": {"type": "varchar(255)", "nullable": false},
+        "code": {"type": "varchar(50)", "nullable": false},
+        "description": {"type": "text", "nullable": true},
+        "category": {"type": "varchar(100)", "nullable": true},
+        "maxScore": {"type": "int", "default": "20"},
+        "coefficient": {"type": "decimal(3,1)", "default": "1.0"},
+        "isActive": {"type": "tinyint(1)", "default": "1"},
+        "classId": {"type": "varchar(100)", "nullable": false},
+        "schoolYear": {"type": "varchar(10)", "nullable": false},
+        "createdAt": {"type": "timestamp", "default": "CURRENT_TIMESTAMP"},
+        "updatedAt": {"type": "timestamp", "default": "CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"}
+      },
+      "indexes": ["PRIMARY KEY (id)", "UNIQUE KEY unique_subject_class_year (code,classId,schoolYear)"],
+      "engine": "InnoDB",
+      "charset": "utf8mb4",
+      "collate": "utf8mb4_0900_ai_ci"
+    },
+    "subjects_old": {
+      "columns": {
+        "id": {"type": "varchar(255)", "primaryKey": true},
+        "name": {"type": "varchar(255)", "nullable": false},
+        "code": {"type": "varchar(50)", "nullable": false},
+        "description": {"type": "text", "nullable": true},
+        "category": {"type": "varchar(100)", "nullable": true},
+        "maxScore": {"type": "int", "default": "20"},
+        "coefficient": {"type": "decimal(3,1)", "default": "1.0"},
+        "isActive": {"type": "tinyint(1)", "default": "1"},
+        "classId": {"type": "varchar(100)", "nullable": false},
+        "schoolYear": {"type": "varchar(10)", "nullable": false},
+        "createdAt": {"type": "timestamp", "default": "CURRENT_TIMESTAMP"},
+        "updatedAt": {"type": "timestamp", "default": "CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"}
+      },
+      "indexes": ["PRIMARY KEY (id)", "UNIQUE KEY unique_subject_class_year (code,classId,schoolYear)"],
+      "engine": "InnoDB",
+      "charset": "utf8mb4",
+      "collate": "utf8mb4_0900_ai_ci"
+    },
+    "teacher_assignments": {
+      "columns": {
+        "id": {"type": "varchar(255)", "primaryKey": true},
+        "teacherId": {"type": "varchar(255)", "nullable": false},
+        "teacherName": {"type": "varchar(255)", "nullable": false},
+        "classId": {"type": "varchar(255)", "nullable": true},
+        "className": {"type": "varchar(255)", "nullable": false},
+        "subject": {"type": "varchar(255)", "nullable": false},
+        "schoolYear": {"type": "varchar(20)", "nullable": false},
+        "hoursPerWeek": {"type": "int", "default": "0"},
+        "isMainTeacher": {"type": "tinyint(1)", "default": "0"},
+        "semester": {"type": "varchar(20)", "nullable": true},
+        "createdAt": {"type": "timestamp", "default": "CURRENT_TIMESTAMP"},
+        "updatedAt": {"type": "timestamp", "default": "CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"}
+      },
+      "indexes": ["PRIMARY KEY (id)", "KEY idx_teacher_assignments_teacherId (teacherId)", "KEY idx_teacher_assignments_schoolYear (schoolYear)", "KEY idx_teacher_assignments_className (className)"],
+      "foreignKeys": ["FOREIGN KEY (teacherId) REFERENCES personnel(id) ON DELETE CASCADE"],
+      "engine": "InnoDB",
+      "charset": "utf8mb4",
+      "collate": "utf8mb4_0900_ai_ci"
+    },
+    "users": {
+      "columns": {
+        "id": {"type": "varchar(255)", "primaryKey": true},
+        "username": {"type": "varchar(255)", "nullable": false},
+        "fullName": {"type": "varchar(255)", "nullable": false},
+        "email": {"type": "varchar(255)", "nullable": true},
+        "phone": {"type": "varchar(255)", "nullable": true},
+        "photoUrl": {"type": "longtext", "nullable": true},
+        "passwordHash": {"type": "varchar(255)", "nullable": false},
+        "role": {"type": "varchar(50)", "nullable": false},
+        "createdAt": {"type": "timestamp", "default": "CURRENT_TIMESTAMP"}
+      },
+      "indexes": ["PRIMARY KEY (id)", "UNIQUE KEY username (username)", "UNIQUE KEY email (email)"],
+      "engine": "InnoDB",
+      "charset": "utf8mb4",
+      "collate": "utf8mb4_0900_ai_ci"
+    }
+  }
+}
