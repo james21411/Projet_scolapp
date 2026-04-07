@@ -146,6 +146,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuPortal,
 } from "@/components/ui/dropdown-menu";
+import IDCardManager from "./id-card-manager";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -351,6 +352,7 @@ const navItemsConfig = {
     { icon: Users, label: "Personnel" },
     { icon: Bell, label: "Communication" },
     { icon: Users, label: "Utilisateurs" },
+    { icon: Ticket, label: "Cartes Scolaires" },
     { icon: Settings, label: "Paramètres" },
   ],
   Direction: [
@@ -362,6 +364,7 @@ const navItemsConfig = {
     { icon: FileText, label: "Gestion Bulletins" },
     { icon: FileText, label: "Rapports" },
     { icon: BarChart, label: "Statistiques" },
+    { icon: Ticket, label: "Cartes Scolaires" },
   ],
   Comptable: [
     { icon: Home, label: "Tableau de bord" },
@@ -8328,8 +8331,8 @@ function SettingsTab({ role, currentUser, currentThemeId, onThemeChange }: { rol
               key={t.id}
               onClick={() => onThemeChange(t.id)}
               className={`group relative flex flex-col items-center gap-2 p-3 rounded-xl transition-all duration-200 border-2 ${currentThemeId === t.id
-                  ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
-                  : 'border-gray-100 bg-gray-50/50 hover:border-gray-200 hover:bg-gray-100'
+                ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
+                : 'border-gray-100 bg-gray-50/50 hover:border-gray-200 hover:bg-gray-100'
                 }`}
             >
               <div
@@ -8509,6 +8512,8 @@ function TableauDeBord({ role, currentUser }: { role: string, currentUser: User 
         return <ReportsTab role={role} />;
       case 'statistiques':
         return <StatisticsDashboard role={role} />;
+      case 'cartesscolaires':
+        return <IDCardManager />;
       case 'personnel':
         return <PersonnelTab role={role} />;
       case 'communication':
@@ -8684,8 +8689,8 @@ function TableauDeBord({ role, currentUser }: { role: string, currentUser: User 
                 <DropdownMenuLabel className="px-2 py-1.5 text-xs font-semibold uppercase text-muted-foreground">Thèmes Ergonomiques</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 {themes.map((t) => (
-                  <DropdownMenuItem 
-                    key={t.id} 
+                  <DropdownMenuItem
+                    key={t.id}
                     onClick={() => handleThemeChange(t.id)}
                     className={`flex items-center justify-between rounded-lg px-2 py-2 cursor-pointer transition-colors ${currentThemeId === t.id ? 'bg-primary/10 text-primary' : 'hover:bg-accent'}`}
                   >
@@ -8816,8 +8821,8 @@ function TableauDeBord({ role, currentUser }: { role: string, currentUser: User 
                 <DropdownMenuLabel className="px-2 py-1.5 text-xs font-semibold uppercase text-muted-foreground">Thèmes Ergonomiques</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 {themes.map((t) => (
-                  <DropdownMenuItem 
-                    key={t.id} 
+                  <DropdownMenuItem
+                    key={t.id}
                     onClick={() => handleThemeChange(t.id)}
                     className={`flex items-center justify-between rounded-lg px-2 py-2 cursor-pointer transition-colors ${currentThemeId === t.id ? 'bg-primary/10 text-primary' : 'hover:bg-accent'}`}
                   >
