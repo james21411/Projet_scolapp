@@ -19,12 +19,20 @@ export function getPoolForDb(dbName: string): mysql.Pool {
         password: process.env.MYSQL_PASSWORD || 'Nuttertools2.0',
         database: dbName,
         waitForConnections: true,
-        connectionLimit: Number(process.env.MYSQL_CONNECTION_LIMIT) || 20,
-        queueLimit: 10,
+        // Limiter à 5 connexions par tenant pour éviter le "Too many connections"
+        // Avec 10 tenants, ça donne un max de 50 connexions simultanees
+        connectionLimit: Number(process.env.MYSQL_CONNECTION_LIMIT) || 5,
+        // File d'attente illimitée pour absorber les pics
+        queueLimit: 0,
+        // Recycler les connexions inactives après 60s pour libérer des slots
+        idleTimeout: 60000,
         multipleStatements: true,
         dateStrings: true,
         charset: 'utf8mb4',
-        connectTimeout: 60000,
+        connectTimeout: 30000,
+        // KeepAlive pour éviter les connexions zombies
+        enableKeepAlive: true,
+        keepAliveInitialDelay: 10000,
     });
 
     poolCache.set(dbName, pool);

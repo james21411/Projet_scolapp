@@ -59,7 +59,7 @@ export async function login(formData: { username: string, password: string, scho
     session.schoolSlug = slug;
     await session.save();
 
-    console.log(`✅ login: Session créée → user=${user.username}, db=${dbName}, slug=${slug}`);
+    console.log(` login: Session créée → user=${user.username}, db=${dbName}, slug=${slug}`);
 
     revalidatePath('/');
     return { success: true };

@@ -225,6 +225,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
+  let connection;
   try {
     const {
       studentId,
@@ -241,7 +242,8 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Paramètres manquants' });
     }
 
-    const connection = await pool.getConnection();
+    const pool = await getPoolFromRequest(req, res);
+    connection = await pool.getConnection();
 
     // Log des données reçues du frontend
     console.log('🎯 Données reçues du frontend:');
@@ -300,7 +302,7 @@ export default async function handler(req, res) {
 
     // Récupérer les appréciations sauvegardées pour cet élève
     console.log('📝 Récupération des appréciations sauvegardées...');
-    const [savedComments] = await pool.query(
+    const [savedComments] = await connection.query(
       'SELECT teacherComments, principalComments FROM report_cards WHERE studentId = ? AND evaluationPeriodId = ? AND schoolYear = ?',
       [studentId, evaluationPeriodId, schoolYear]
     );
@@ -1304,7 +1306,7 @@ export default async function handler(req, res) {
 
             if (sequences.length > 0) {
               // Récupérer les notes de la 1ère séquence
-              const [seq1Grades] = await pool.execute(`
+              const [seq1Grades] = await connection.execute(`
                 SELECT 
                   g.studentId,
                   g.score,
@@ -1318,7 +1320,7 @@ export default async function handler(req, res) {
               // Récupérer les notes de la 2ème séquence (si disponible)
               let seq2Grades = [];
               if (sequences.length > 1) {
-                const [seq2GradesResult] = await pool.execute(`
+                const [seq2GradesResult] = await connection.execute(`
                   SELECT 
                     g.studentId,
                     g.score,
@@ -1368,7 +1370,7 @@ export default async function handler(req, res) {
             }
           } else {
             // Pour les séquences, récupérer les notes directes
-            const [gradesResult] = await pool.execute(`
+            const [gradesResult] = await connection.execute(`
               SELECT 
                 g.studentId,
                 g.score,
@@ -1673,16 +1675,20 @@ export default async function handler(req, res) {
 
     // Finaliser le PDF
     doc.end();
-
-    // Fermer la connexion maintenant que tout est terminé
-    connection.release();
-    console.log('🔌 Connexion fermée après génération du PDF');
+    console.log('✅ PDF généré et envoyé avec succès');
 
   } catch (error) {
     console.error('Erreur lors de la génération du bulletin:', error);
-    return res.status(500).json({
-      error: 'Erreur lors de la génération du bulletin',
-      details: error.message
-    });
+    if (!res.headersSent) {
+      res.status(500).json({
+        error: 'Erreur lors de la génération du bulletin',
+        details: error.message
+      });
+    }
+  } finally {
+    if (connection) {
+      connection.release();
+      console.log('🔌 Connexion libérée (finally)');
+    }
   }
 }
