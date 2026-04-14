@@ -1,3 +1,5 @@
+"use server";
+
 import { getAllPayments, getPaymentById, addPayment, updatePayment } from '../db/services/paymentDb';
 import pool from '@/db/mysql';
 import { getAllFeeStructures, getFeeStructureByClassName, addFeeStructure, updateFeeStructure } from '../db/services/feeStructureDb';
@@ -173,7 +175,7 @@ export async function getStudentFinancialSummary(studentId: string, schoolYear: 
   }
   // Calculer les informations sur les frais d'inscription
   const registrationFeeSummary = await getRegistrationFeeSummary(studentId, schoolYear);
-  
+
   return {
     totalPaid,
     totalDue,
@@ -208,7 +210,7 @@ export async function recordPayment(payment: Omit<Payment, 'id' | 'date'>): Prom
     if (rows && rows[0]) {
       (newPayment as any).receiptNumber = rows[0].receiptNumber;
     }
-  } catch {}
+  } catch { }
 
   // Audit
   await logAction({ action: 'payment_recorded', details: `Paiement ${newPayment.id} de ${newPayment.amount} XAF pour élève ${newPayment.studentId} (${newPayment.schoolYear})`, userId: newPayment.cashierUsername, username: newPayment.cashierUsername });
@@ -250,14 +252,14 @@ export async function getOverallFinancialSummary(schoolYear: string): Promise<Ov
   const students = await getAllStudents() as any[];
   const payments = await getAllPayments() as any[];
   const feeStructures = await getAllFeeStructures() as any[];
-  
+
   // Récupérer la structure scolaire réelle depuis la base de données
   const { getSchoolStructure } = await import('../db/services/schoolStructureDb');
   const schoolStructure = await getSchoolStructure();
-  
+
   let totalPaid = 0, totalDue = 0;
   const byLevel: { [level: string]: { totalPaid: number; totalDue: number; outstanding: number } } = {};
-  
+
   // Initialiser les niveaux basés sur la structure réelle
   Object.keys(schoolStructure.levels).forEach(level => {
     byLevel[level] = {
@@ -266,35 +268,35 @@ export async function getOverallFinancialSummary(schoolYear: string): Promise<Ov
       outstanding: 0
     };
   });
-  
+
   // Créer un mapping des structures tarifaires pour un accès rapide
   const feeStructureMap = new Map();
   feeStructures.forEach(fee => {
     feeStructureMap.set(fee.className, fee);
   });
-  
+
   // Traiter chaque niveau et ses classes
   for (const [levelName, levelData] of Object.entries(schoolStructure.levels)) {
     const levelClasses = levelData.classes;
-    
+
     for (const className of levelClasses) {
       // Trouver tous les étudiants de cette classe pour l'année scolaire
-      const classStudents = students.filter((s: any) => 
+      const classStudents = students.filter((s: any) =>
         s.classe === className && s.anneeScolaire === schoolYear
       );
-      
+
       if (classStudents.length === 0) continue;
-      
+
       // Trouver la structure tarifaire pour cette classe
       const feeStructure = feeStructureMap.get(className);
       const classTotalDue = feeStructure ? classStudents.length * Number(feeStructure.total) : 0;
-      
+
       // Calculer les paiements pour cette classe
-      const classPayments = payments.filter((p: any) => 
-        p.schoolYear === schoolYear && 
+      const classPayments = payments.filter((p: any) =>
+        p.schoolYear === schoolYear &&
         classStudents.some((s: any) => s.id === p.studentId)
       );
-      
+
       // Calculer le total payé en excluant les frais d'inscription
       const classTotalPaid = classPayments.reduce((sum: number, p: any) => {
         // Exclure les paiements d'inscription du calcul du total payé
@@ -303,18 +305,18 @@ export async function getOverallFinancialSummary(schoolYear: string): Promise<Ov
         }
         return sum + Number(p.amount);
       }, 0);
-      
+
       // Ajouter aux totaux du niveau
       byLevel[levelName].totalPaid += classTotalPaid;
       byLevel[levelName].totalDue += classTotalDue;
       byLevel[levelName].outstanding += Math.max(0, classTotalDue - classTotalPaid);
-      
+
       // Ajouter aux totaux globaux
       totalPaid += classTotalPaid;
       totalDue += classTotalDue;
     }
   }
-  
+
   return {
     totals: {
       totalPaid,
@@ -417,7 +419,7 @@ export async function extendDueDate(studentId: string, installmentId: string, ne
     // Récupérer l'élève pour connaître sa classe
     const students = await getAllStudents() as any[];
     const student = students.find((s: any) => s.id === studentId);
-    
+
     if (!student) {
       throw new Error('Élève non trouvé');
     }
@@ -425,14 +427,14 @@ export async function extendDueDate(studentId: string, installmentId: string, ne
     // Récupérer la structure tarifaire de la classe
     const feeStructures = await getAllFeeStructures() as any[];
     const classFeeStructure = feeStructures.find((f: any) => f.className === student.classe);
-    
+
     if (!classFeeStructure) {
       throw new Error('Structure tarifaire non trouvée pour cette classe');
     }
 
     // Mettre à jour la date limite de la tranche spécifique
-    let installments = typeof classFeeStructure.installments === 'string' 
-      ? JSON.parse(classFeeStructure.installments) 
+    let installments = typeof classFeeStructure.installments === 'string'
+      ? JSON.parse(classFeeStructure.installments)
       : classFeeStructure.installments;
 
     const updatedInstallments = installments.map((inst: any) => {
@@ -493,10 +495,10 @@ export async function getStudentsWithBalance(schoolYear: string): Promise<Studen
   const payments = await getAllPayments() as any[];
   const feeStructures = await getAllFeeStructures() as any[];
   const result: StudentWithBalance[] = [];
-  
+
   for (const s of students) {
     if (s.anneeScolaire !== schoolYear) continue;
-    
+
     const feeRow = feeStructures.find((f: any) => f.className === s.classe);
     const totalDue = feeRow ? Number(feeRow.total) : 0;
     const studentPayments = payments.filter((p: any) => p.studentId === s.id && p.schoolYear === schoolYear);
@@ -559,22 +561,22 @@ export async function getStudentsWithBalance(schoolYear: string): Promise<Studen
       // Extraire les informations des parents
       let parentInfo = null;
       let parentInfo2 = null;
-      
+
       try {
         if (s.infoParent) {
-          parentInfo = typeof s.infoParent === 'string' 
-            ? JSON.parse(s.infoParent) 
+          parentInfo = typeof s.infoParent === 'string'
+            ? JSON.parse(s.infoParent)
             : s.infoParent;
         }
         if (s.infoParent2) {
-          parentInfo2 = typeof s.infoParent2 === 'string' 
-            ? JSON.parse(s.infoParent2) 
+          parentInfo2 = typeof s.infoParent2 === 'string'
+            ? JSON.parse(s.infoParent2)
             : s.infoParent2;
         }
       } catch (error) {
         console.error('Erreur lors du parsing des informations parent:', error);
       }
-      
+
       result.push({
         studentId: s.id,
         name: s.nom + ' ' + s.prenom,
@@ -588,7 +590,7 @@ export async function getStudentsWithBalance(schoolYear: string): Promise<Studen
       });
     }
   }
-  
+
   return result;
 }
 
@@ -600,7 +602,7 @@ export async function getMonthlyFinancialChartData(schoolYear: string): Promise<
   const filtered = payments.filter((p: any) => p.schoolYear === schoolYear);
   console.log('🔍 getMonthlyFinancialChartData: Filtered payments count:', filtered.length);
   const byMonth: { [month: string]: number } = {};
-  
+
   // Créer une séquence chronologique de septembre à août (année scolaire)
   const [year1, year2] = schoolYear.split('-');
   console.log('🔍 getMonthlyFinancialChartData: Year1:', year1, 'Year2:', year2);
@@ -618,55 +620,55 @@ export async function getMonthlyFinancialChartData(schoolYear: string): Promise<
     { month: 'juil.', year: year2 }, // Juillet de l'année de fin
     { month: 'août', year: year2 }   // Août de l'année de fin
   ];
-  
+
   // Initialiser tous les mois avec 0
   schoolYearMonths.forEach(({ month, year }) => {
     byMonth[`${month} ${year}`] = 0;
   });
-  
+
   // Ajouter les paiements réels
   for (const p of filtered) {
     const date = new Date(p.date);
     const monthIndex = date.getMonth();
     const year = date.getFullYear();
-    
+
     // Mapper l'index du mois vers notre format français
     const monthNames = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
     const monthName = monthNames[monthIndex];
-    
+
     // Déterminer l'année scolaire pour ce mois
     let schoolYearForMonth = year;
-    
+
     // Si c'est juillet ou août, ils appartiennent à l'année scolaire suivante
     if (monthIndex === 6 || monthIndex === 7) { // Juillet (6) et Août (7)
       schoolYearForMonth = parseInt(year2); // Utiliser l'année de fin
     }
-    
+
     const monthKey = `${monthName} ${schoolYearForMonth}`;
     byMonth[monthKey] = (byMonth[monthKey] || 0) + Number(p.amount);
     console.log(`🔍 getMonthlyFinancialChartData: Payment ${p.amount} for ${monthKey}, total now: ${byMonth[monthKey]}`);
   }
-  
+
   // Retourner dans l'ordre chronologique correct
   const result = schoolYearMonths.map(({ month, year }) => ({
     month: `${month} ${year}`,
     total: byMonth[`${month} ${year}`] || 0
   }));
-  
+
   console.log('🔍 getMonthlyFinancialChartData: Final result:', result);
   console.log('🔍 getMonthlyFinancialChartData: Result length:', result.length);
   console.log('🔍 getMonthlyFinancialChartData: Expected 12 months, got:', result.length);
-  
+
   // Vérifier que tous les mois sont présents
   const expectedMonths = [
-    'sept.', 'oct.', 'nov.', 'déc.', 'janv.', 'févr.', 
+    'sept.', 'oct.', 'nov.', 'déc.', 'janv.', 'févr.',
     'mars', 'avr.', 'mai', 'juin', 'juil.', 'août'
   ];
-  
+
   result.forEach((item, index) => {
     console.log(`🔍 getMonthlyFinancialChartData: Month ${index + 1}: ${item.month} = ${item.total}`);
   });
-  
+
   return result;
 }
 
@@ -714,13 +716,13 @@ export async function getRegistrationFeeSummary(studentId: string, schoolYear: s
 }> {
   const student = (await getAllStudents() as any[]).find(s => s.id === studentId);
   if (!student) return { totalRegistrationFee: 0, paidRegistrationFee: 0, outstandingRegistrationFee: 0 };
-  
+
   const feeRow = await getFeeStructureByClassName(student.classe);
   const totalRegistrationFee = feeRow ? Number(feeRow.registrationFee) : 0;
-  
+
   const registrationPayment = await findRegistrationPayment(studentId, schoolYear);
   const paidRegistrationFee = registrationPayment ? Number(registrationPayment.amount) : 0;
-  
+
   return {
     totalRegistrationFee,
     paidRegistrationFee,
@@ -764,11 +766,11 @@ export async function ensureAllClassesHaveFeeStructure(): Promise<void> {
     // Récupérer la structure scolaire
     const { getSchoolStructure } = await import('../db/services/schoolStructureDb');
     const schoolStructure = await getSchoolStructure();
-    
+
     // Récupérer toutes les structures tarifaires existantes
     const existingFeeStructures = await getAllFeeStructures();
     const existingClassNames = new Set(existingFeeStructures.map(fs => fs.className));
-    
+
     // Pour chaque niveau et classe
     for (const [levelName, levelData] of Object.entries(schoolStructure.levels)) {
       for (const className of levelData.classes) {
@@ -836,13 +838,13 @@ export async function updateStudentPayment(paymentId: string, fields: Partial<Pa
 
         let maxAdditional: number;
         if (isMigratedPayment) {
-            // Pour les paiements migrés, permettre le paiement selon la nouvelle structure
-            // sans être limité par les anciens paiements
-            maxAdditional = classTotal;
-            console.log(`💰 Paiement migré détecté pour ${current.studentId} - Autorisation de paiement selon nouvelle structure (${classTotal} XAF)`);
+          // Pour les paiements migrés, permettre le paiement selon la nouvelle structure
+          // sans être limité par les anciens paiements
+          maxAdditional = classTotal;
+          console.log(`💰 Paiement migré détecté pour ${current.studentId} - Autorisation de paiement selon nouvelle structure (${classTotal} XAF)`);
         } else {
-            // Plafond normal: ne pas dépasser le total de scolarité
-            maxAdditional = Math.max(0, classTotal - alreadyPaidTotal);
+          // Plafond normal: ne pas dépasser le total de scolarité
+          maxAdditional = Math.max(0, classTotal - alreadyPaidTotal);
         }
 
         const targetAmount = Math.min(Number(fields.amount), maxAdditional);
@@ -888,22 +890,22 @@ export async function updateStudentPayment(paymentId: string, fields: Partial<Pa
 export async function generatePaymentReceipt(payment: Payment): Promise<{ dataUrl: string; fileName: string }> {
   try {
     const doc = new jsPDF('p', 'mm', 'a4');
-    
+
     // En-tête du reçu de paiement (format différent du reçu de tranche)
     doc.setFontSize(20);
     doc.setTextColor(0, 0, 0);
     doc.text('REÇU DE PAIEMENT', 105, 30, { align: 'center' });
-    
+
     // Informations de l'établissement
     doc.setFontSize(12);
     doc.setTextColor(100, 100, 100);
     doc.text('ÉTABLISSEMENT SCOLAIRE', 105, 45, { align: 'center' });
     doc.text('Yaoundé, Cameroun', 105, 52, { align: 'center' });
-    
+
     // Séparateur
     doc.setDrawColor(200, 200, 200);
     doc.line(20, 60, 190, 60);
-    
+
     // Numéro de reçu
     doc.setFontSize(14);
     doc.setTextColor(0, 0, 0);
@@ -922,7 +924,7 @@ export async function generatePaymentReceipt(payment: Payment): Promise<{ dataUr
     const printDate = new Date();
     doc.setTextColor(100, 100, 100); // Gris pour la date d'impression
     doc.text(`Date d'impression: ${printDate.toLocaleDateString('fr-FR')} à ${printDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`, 20, 104);
-    
+
     // Informations de l'élève
     doc.text(`Élève ID: ${payment.studentId}`, 20, 115);
     doc.text(`Année scolaire: ${payment.schoolYear}`, 20, 125);
@@ -939,7 +941,7 @@ export async function generatePaymentReceipt(payment: Payment): Promise<{ dataUr
 
     // Informations du caissier
     doc.text(`Caissier: ${payment.cashierUsername || payment.cashier || '—'}`, 20, 185);
-    
+
     // Séparateur
     doc.line(20, 195, 190, 195);
 
@@ -954,15 +956,15 @@ export async function generatePaymentReceipt(payment: Payment): Promise<{ dataUr
     doc.setFontSize(8);
     doc.setTextColor(100, 100, 100);
     doc.text(`Code de vérification: ${verificationCode}`, 105, 225, { align: 'center' });
-    
+
     // Générer le nom de fichier
-    const fileName = `recu_paiement_${payment.studentId}_${paymentDateUTC.toISOString().slice(0,10)}.pdf`;
-    
+    const fileName = `recu_paiement_${payment.studentId}_${paymentDateUTC.toISOString().slice(0, 10)}.pdf`;
+
     // Retourner les données du PDF au lieu de le télécharger automatiquement
     const pdfDataUrl = doc.output('datauristring');
-    
+
     console.log('Reçu de paiement généré:', fileName);
-    
+
     return { dataUrl: pdfDataUrl, fileName };
   } catch (error) {
     console.error('Erreur lors de la génération du reçu de paiement:', error);

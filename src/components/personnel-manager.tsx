@@ -15,9 +15,9 @@ import { useToast } from '@/hooks/use-toast';
 import TeacherAssignments from './teacher-assignments';
 import MyClasses from './my-classes';
 import { AssignmentVisualization } from './assignment-visualization';
-import { 
-  PersonnelMember, 
-  TeacherAssignment, 
+import {
+  PersonnelMember,
+  TeacherAssignment,
   PersonnelContract,
   PersonnelType,
   PayrollRecord,
@@ -36,8 +36,9 @@ import {
   getSubjectsByClass
 } from '@/services/personnelService';
 import { PersonnelFile } from './personnel-file';
+import { ImageCropperDialog } from './image-cropper';
 
-async function getAllUsers(): Promise<{id:string, username:string, fullName:string, role:string}[]> {
+async function getAllUsers(): Promise<{ id: string, username: string, fullName: string, role: string }[]> {
   try {
     const res = await fetch('/api/security/users');
     if (!res.ok) return [];
@@ -45,7 +46,7 @@ async function getAllUsers(): Promise<{id:string, username:string, fullName:stri
   } catch { return []; }
 }
 
-async function createUserFromTeacher(teacher: any, role: string = 'Enseignant'): Promise<{success:boolean; password?:string; error?:string}> {
+async function createUserFromTeacher(teacher: any, role: string = 'Enseignant'): Promise<{ success: boolean; password?: string; error?: string }> {
   try {
     const password = Math.random().toString(36).slice(2, 10) + 'A!1';
     const res = await fetch('/api/security/users', {
@@ -64,7 +65,7 @@ async function createUserFromTeacher(teacher: any, role: string = 'Enseignant'):
       return { success: false, error: data?.error || 'Création utilisateur échouée' };
     }
     return { success: true, password };
-  } catch (e:any) {
+  } catch (e: any) {
     return { success: false, error: e?.message || 'Erreur réseau' };
   }
 }
@@ -80,8 +81,8 @@ export function PersonnelManager({ currentUser, role }: { currentUser?: User; ro
   const [availableClasses, setAvailableClasses] = useState<string[]>([]);
   const [currentSchoolYear, setCurrentSchoolYear] = useState<string>('');
   const [payrollRecords, setPayrollRecords] = useState<PayrollRecord[]>([]);
-  const [availableSubjects, setAvailableSubjects] = useState<{id: string, name: string, code: string, category?: string}[]>([]);
-  const [classSubjects, setClassSubjects] = useState<{id: string, name: string, code: string, category?: string}[]>([]);
+  const [availableSubjects, setAvailableSubjects] = useState<{ id: string, name: string, code: string, category?: string }[]>([]);
+  const [classSubjects, setClassSubjects] = useState<{ id: string, name: string, code: string, category?: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isAssignmentDialogOpen, setIsAssignmentDialogOpen] = useState(false);
@@ -90,10 +91,10 @@ export function PersonnelManager({ currentUser, role }: { currentUser?: User; ro
   const [selectedPersonnel, setSelectedPersonnel] = useState<PersonnelMember | null>(null);
   const [showPersonnelFile, setShowPersonnelFile] = useState(false);
   const [openEditOnMount, setOpenEditOnMount] = useState(false);
-  const [users, setUsers] = useState<{id:string, username:string, fullName:string, role:string}[]>([]);
+  const [users, setUsers] = useState<{ id: string, username: string, fullName: string, role: string }[]>([]);
   const usersByUsername = useMemo(() => {
-    const m = new Map<string, {id:string, username:string, fullName:string, role:string}>();
-    for (const u of users) m.set((u.username||'').toLowerCase(), u);
+    const m = new Map<string, { id: string, username: string, fullName: string, role: string }>();
+    for (const u of users) m.set((u.username || '').toLowerCase(), u);
     return m;
   }, [users]);
   const [showMyClassesFor, setShowMyClassesFor] = useState<string | null>(null);
@@ -104,7 +105,7 @@ export function PersonnelManager({ currentUser, role }: { currentUser?: User; ro
       setShowMyClassesFor(currentUser.id || null);
     }
   }, [currentUser, role]);
-  
+
   // États pour la recherche et pagination
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -117,11 +118,12 @@ export function PersonnelManager({ currentUser, role }: { currentUser?: User; ro
   const [teacherItemsPerPage, setTeacherItemsPerPage] = useState(10);
   const [showAllTeachers, setShowAllTeachers] = useState(false);
   const [filteredTeachers, setFilteredTeachers] = useState<PersonnelMember[]>([]);
-  
+
   // État pour l'upload de photo
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string>('');
-  
+  const [originalImageForCrop, setOriginalImageForCrop] = useState<string | null>(null);
+
   const { toast } = useToast();
 
   // État pour le formulaire d'affectation
@@ -215,9 +217,18 @@ export function PersonnelManager({ currentUser, role }: { currentUser?: User; ro
     if (file) {
       setPhotoFile(file);
       const base64 = await convertToBase64(file);
-      setPhotoPreview(base64);
-      setPersonnelForm(prev => ({ ...prev, photoUrl: base64 }));
+      setOriginalImageForCrop(base64);
     }
+  };
+
+  const handleCropComplete = (croppedImageBase64: string) => {
+    setPhotoPreview(croppedImageBase64);
+    setPersonnelForm(prev => ({ ...prev, photoUrl: croppedImageBase64 }));
+    setOriginalImageForCrop(null);
+  };
+
+  const handleCropCancel = () => {
+    setOriginalImageForCrop(null);
   };
 
   // Filtrer le personnel selon la recherche
@@ -278,7 +289,7 @@ export function PersonnelManager({ currentUser, role }: { currentUser?: User; ro
       const classesData = await getAvailableClasses().catch(() => []);
       const yearData = await getCurrentSchoolYear().catch(() => '2024-2025');
       const subjectsData = await getAvailableSubjects().catch(() => []);
-      
+
       setPersonnel(personnelData || []);
       setTeachers(teachersData || []);
       setPersonnelTypes(typesData || []);
@@ -315,7 +326,7 @@ export function PersonnelManager({ currentUser, role }: { currentUser?: User; ro
   // Charger les matières d'une classe
   const loadClassSubjects = async (className: string) => {
     if (!className || !currentSchoolYear) return;
-    
+
     try {
       const subjectsData = await getSubjectsByClass(className, currentSchoolYear);
       setClassSubjects(subjectsData);
@@ -344,7 +355,7 @@ export function PersonnelManager({ currentUser, role }: { currentUser?: User; ro
   // Ajouter une affectation
   const handleAddAssignment = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateAssignmentForm()) {
       return;
     }
@@ -355,12 +366,12 @@ export function PersonnelManager({ currentUser, role }: { currentUser?: User; ro
         subject: assignmentForm.subjectName, // Utiliser le nom de la matière pour l'affectation
         schoolYear: currentSchoolYear
       });
-      
+
       toast({
         title: "Succès",
         description: "Affectation ajoutée avec succès",
       });
-      
+
       setIsAssignmentDialogOpen(false);
       setAssignmentForm({
         teacherId: '',
@@ -374,7 +385,7 @@ export function PersonnelManager({ currentUser, role }: { currentUser?: User; ro
         isMainTeacher: false,
         semester: 'Premier semestre'
       });
-      
+
       if (selectedTeacher) {
         loadTeacherAssignments(selectedTeacher.id);
       }
@@ -388,14 +399,14 @@ export function PersonnelManager({ currentUser, role }: { currentUser?: User; ro
     }
   };
 
-    // Ajouter un nouveau personnel
+  // Ajouter un nouveau personnel
   const handleAddPersonnel = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     try {
       // Trouver le type de personnel sélectionné
       const selectedType = personnelTypes.find(type => type.id === personnelForm.personnelTypeId);
-      
+
       const personnelData = {
         username: personnelForm.username,
         fullName: personnelForm.fullName,
@@ -415,12 +426,12 @@ export function PersonnelManager({ currentUser, role }: { currentUser?: User; ro
       };
 
       await addPersonnel(personnelData);
-      
+
       toast({
         title: "Succès",
         description: "Personnel ajouté avec succès",
       });
-      
+
       setIsAddDialogOpen(false);
       setPersonnelForm({
         username: '',
@@ -437,11 +448,11 @@ export function PersonnelManager({ currentUser, role }: { currentUser?: User; ro
         diplome: '',
         experience: 0
       });
-      
+
       // Réinitialiser la photo
       setPhotoFile(null);
       setPhotoPreview('');
-      
+
       loadPersonnel();
     } catch (error) {
       console.error('Erreur:', error);
@@ -456,16 +467,16 @@ export function PersonnelManager({ currentUser, role }: { currentUser?: User; ro
   // Générer les fiches de paie
   const handleGeneratePayroll = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     try {
       const personnelType = payrollForm.personnelType === 'all' ? '' : payrollForm.personnelType;
       await generatePayrollRecords(payrollForm.month, payrollForm.year, personnelType);
-      
+
       toast({
         title: "Succès",
         description: "Fiches de paie générées avec succès",
       });
-      
+
       setIsPayrollDialogOpen(false);
       setPayrollForm({
         month: new Date().getMonth() + 1,
@@ -534,7 +545,7 @@ export function PersonnelManager({ currentUser, role }: { currentUser?: User; ro
   // Afficher le dossier personnel si sélectionné
   if (showPersonnelFile && selectedPersonnel) {
     return (
-      <PersonnelFile 
+      <PersonnelFile
         personnel={selectedPersonnel}
         onBack={handleBackFromFile}
         onPersonnelUpdate={handlePersonnelUpdate}
@@ -553,7 +564,7 @@ export function PersonnelManager({ currentUser, role }: { currentUser?: User; ro
         </div>
         <div className="flex space-x-2">
           <Button onClick={() => setIsAddDialogOpen(true)}>
-              <Plus className="w-4 h-4 mr-2" />
+            <Plus className="w-4 h-4 mr-2" />
             Ajouter un personnel
           </Button>
           {/* Bouton Fiches de paie masqué
@@ -562,9 +573,9 @@ export function PersonnelManager({ currentUser, role }: { currentUser?: User; ro
             Fiches de paie
             </Button>
           */}
-                </div>
-              </div>
-              
+        </div>
+      </div>
+
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="personnel" className="flex items-center gap-2">
@@ -639,7 +650,7 @@ export function PersonnelManager({ currentUser, role }: { currentUser?: User; ro
                               }}
                             />
                           ) : null}
-                          <div 
+                          <div
                             className={`w-10 h-10 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center border-2 border-gray-200 ${member.photoUrl ? 'hidden' : ''}`}
                             style={{ display: member.photoUrl ? 'none' : 'flex' }}
                           >
@@ -687,8 +698,8 @@ export function PersonnelManager({ currentUser, role }: { currentUser?: User; ro
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {member.dateEmbauche ? 
-                          new Date(member.dateEmbauche).toLocaleDateString('fr-FR') : 
+                        {member.dateEmbauche ?
+                          new Date(member.dateEmbauche).toLocaleDateString('fr-FR') :
                           'Non définie'
                         }
                       </TableCell>
@@ -733,7 +744,7 @@ export function PersonnelManager({ currentUser, role }: { currentUser?: User; ro
                   ))}
                 </TableBody>
               </Table>
-              
+
               {/* Message si aucun personnel trouvé */}
               {(!currentPersonnel || currentPersonnel.length === 0) && (
                 <div className="text-center py-8">
@@ -765,7 +776,7 @@ export function PersonnelManager({ currentUser, role }: { currentUser?: User; ro
                     <span className="text-gray-500">Aucun personnel trouvé</span>
                   )}
                 </div>
-                
+
                 {totalPages > 1 && (
                   <div className="flex items-center space-x-2">
                     <Button
@@ -777,7 +788,7 @@ export function PersonnelManager({ currentUser, role }: { currentUser?: User; ro
                     >
                       ← Précédent
                     </Button>
-                    
+
                     <div className="flex items-center space-x-1">
                       {/* Afficher seulement quelques pages pour éviter l'encombrement */}
                       {(() => {
@@ -785,11 +796,11 @@ export function PersonnelManager({ currentUser, role }: { currentUser?: User; ro
                         const maxVisiblePages = 5;
                         let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
                         let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-                        
+
                         if (endPage - startPage + 1 < maxVisiblePages) {
                           startPage = Math.max(1, endPage - maxVisiblePages + 1);
                         }
-                        
+
                         // Première page
                         if (startPage > 1) {
                           pages.push(
@@ -811,7 +822,7 @@ export function PersonnelManager({ currentUser, role }: { currentUser?: User; ro
                             );
                           }
                         }
-                        
+
                         // Pages visibles
                         for (let i = startPage; i <= endPage; i++) {
                           pages.push(
@@ -826,7 +837,7 @@ export function PersonnelManager({ currentUser, role }: { currentUser?: User; ro
                             </Button>
                           );
                         }
-                        
+
                         // Dernière page
                         if (endPage < totalPages) {
                           if (endPage < totalPages - 1) {
@@ -848,11 +859,11 @@ export function PersonnelManager({ currentUser, role }: { currentUser?: User; ro
                             </Button>
                           );
                         }
-                        
+
                         return pages;
                       })()}
                     </div>
-                    
+
                     <Button
                       variant="outline"
                       size="sm"
@@ -871,44 +882,44 @@ export function PersonnelManager({ currentUser, role }: { currentUser?: User; ro
 
         {/* Onglet Enseignants */}
         <TabsContent value="enseignants" className="space-y-4">
-           <Card>
-             <CardHeader>
-               <CardTitle>Enseignants</CardTitle>
-             </CardHeader>
-             <CardContent>
-               {/* Barre de recherche et contrôles pour les enseignants */}
-               <div className="mb-4 space-y-4">
-                 <div className="flex gap-4 items-end">
-                   <div className="flex-1">
-                     <div className="relative">
-                       <Input
-                         placeholder="Rechercher un enseignant..."
-                         value={teacherSearchTerm}
-                         onChange={(e) => setTeacherSearchTerm(e.target.value)}
-                         className="pl-10"
-                       />
-                       <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                     </div>
-                   </div>
-                   <div className="flex items-center gap-2">
-                     <input
-                       type="checkbox"
-                       id="showAllTeachers"
-                       checked={showAllTeachers}
-                       onChange={(e) => {
-                         setShowAllTeachers(e.target.checked);
-                         if (e.target.checked) {
-                           setTeacherCurrentPage(1);
-                         }
-                       }}
-                       className="rounded"
-                     />
-                     <Label htmlFor="showAllTeachers" className="text-sm">
-                       Afficher tous les enseignants
-                     </Label>
-                   </div>
-                 </div>
-               </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>Enseignants</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {/* Barre de recherche et contrôles pour les enseignants */}
+              <div className="mb-4 space-y-4">
+                <div className="flex gap-4 items-end">
+                  <div className="flex-1">
+                    <div className="relative">
+                      <Input
+                        placeholder="Rechercher un enseignant..."
+                        value={teacherSearchTerm}
+                        onChange={(e) => setTeacherSearchTerm(e.target.value)}
+                        className="pl-10"
+                      />
+                      <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="showAllTeachers"
+                      checked={showAllTeachers}
+                      onChange={(e) => {
+                        setShowAllTeachers(e.target.checked);
+                        if (e.target.checked) {
+                          setTeacherCurrentPage(1);
+                        }
+                      }}
+                      className="rounded"
+                    />
+                    <Label htmlFor="showAllTeachers" className="text-sm">
+                      Afficher tous les enseignants
+                    </Label>
+                  </div>
+                </div>
+              </div>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -924,85 +935,85 @@ export function PersonnelManager({ currentUser, role }: { currentUser?: User; ro
                 <TableBody>
                   {currentTeachers?.map((teacher) => (
                     <TableRow key={teacher.id}>
-                        <TableCell>
-                          <div className="flex items-center">
-                            {teacher.photoUrl ? (
-                              <img
-                                src={teacher.photoUrl}
-                                alt={teacher.fullName}
-                                className="w-10 h-10 rounded-full object-cover border-2 border-gray-200"
-                                onError={(e) => {
-                                  // En cas d'erreur de chargement, remplacer par l'avatar par défaut
-                                  const target = e.target as HTMLImageElement;
-                                  target.style.display = 'none';
-                                  const fallback = target.nextElementSibling as HTMLElement;
-                                  if (fallback) fallback.style.display = 'flex';
-                                }}
-                              />
-                            ) : null}
-                            <div 
-                              className={`w-10 h-10 rounded-full bg-gradient-to-br from-purple-100 to-purple-200 flex items-center justify-center border-2 border-gray-200 ${teacher.photoUrl ? 'hidden' : ''}`}
-                              style={{ display: teacher.photoUrl ? 'none' : 'flex' }}
-                            >
-                              <span className="text-sm font-semibold text-purple-600">
-                                {teacher.fullName?.charAt(0)?.toUpperCase() || 'E'}
-                              </span>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex flex-col">
-                            <span className="font-medium text-gray-900">{teacher.fullName}</span>
-                            <span className="text-sm text-gray-500">@{teacher.username}</span>
-                            {teacher.specialite && (
-                              <span className="text-xs text-purple-600 bg-purple-50 px-2 py-1 rounded-full inline-block mt-1">
-                                {teacher.specialite}
-                              </span>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>{teacher.specialite || 'Non définie'}</TableCell>
-                        <TableCell>{teacher.diplome || 'Non défini'}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center space-x-1">
-                            <Clock className="w-3 h-3 text-gray-500" />
-                            <span>{teacher.experience || 0} ans</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={getStatusBadgeColor(teacher.statut || 'Actif')}>
-                            {teacher.statut || 'Actif'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setSelectedPersonnel(teacher);
-                                setOpenEditOnMount(false);
-                                setShowPersonnelFile(true);
+                      <TableCell>
+                        <div className="flex items-center">
+                          {teacher.photoUrl ? (
+                            <img
+                              src={teacher.photoUrl}
+                              alt={teacher.fullName}
+                              className="w-10 h-10 rounded-full object-cover border-2 border-gray-200"
+                              onError={(e) => {
+                                // En cas d'erreur de chargement, remplacer par l'avatar par défaut
+                                const target = e.target as HTMLImageElement;
+                                target.style.display = 'none';
+                                const fallback = target.nextElementSibling as HTMLElement;
+                                if (fallback) fallback.style.display = 'flex';
                               }}
-                            >
-                              <User className="w-4 h-4" />
-                              Dossier
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setSelectedPersonnel(teacher);
-                                setOpenEditOnMount(true);
-                                setShowPersonnelFile(true);
-                              }}
-                            >
-                              <Edit className="w-4 h-4" />
-                              Modifier
-                            </Button>
-                            {users.some(u => u.username?.toLowerCase() === (teacher.username||'').toLowerCase()) ? (
-                              <Badge className="bg-green-100 text-green-800 border border-green-200">Compte existant</Badge>
-                            ) : (
+                            />
+                          ) : null}
+                          <div
+                            className={`w-10 h-10 rounded-full bg-gradient-to-br from-purple-100 to-purple-200 flex items-center justify-center border-2 border-gray-200 ${teacher.photoUrl ? 'hidden' : ''}`}
+                            style={{ display: teacher.photoUrl ? 'none' : 'flex' }}
+                          >
+                            <span className="text-sm font-semibold text-purple-600">
+                              {teacher.fullName?.charAt(0)?.toUpperCase() || 'E'}
+                            </span>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <span className="font-medium text-gray-900">{teacher.fullName}</span>
+                          <span className="text-sm text-gray-500">@{teacher.username}</span>
+                          {teacher.specialite && (
+                            <span className="text-xs text-purple-600 bg-purple-50 px-2 py-1 rounded-full inline-block mt-1">
+                              {teacher.specialite}
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>{teacher.specialite || 'Non définie'}</TableCell>
+                      <TableCell>{teacher.diplome || 'Non défini'}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center space-x-1">
+                          <Clock className="w-3 h-3 text-gray-500" />
+                          <span>{teacher.experience || 0} ans</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={getStatusBadgeColor(teacher.statut || 'Actif')}>
+                          {teacher.statut || 'Actif'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedPersonnel(teacher);
+                              setOpenEditOnMount(false);
+                              setShowPersonnelFile(true);
+                            }}
+                          >
+                            <User className="w-4 h-4" />
+                            Dossier
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedPersonnel(teacher);
+                              setOpenEditOnMount(true);
+                              setShowPersonnelFile(true);
+                            }}
+                          >
+                            <Edit className="w-4 h-4" />
+                            Modifier
+                          </Button>
+                          {users.some(u => u.username?.toLowerCase() === (teacher.username || '').toLowerCase()) ? (
+                            <Badge className="bg-green-100 text-green-800 border border-green-200">Compte existant</Badge>
+                          ) : (
                             <Button
                               variant="outline"
                               size="sm"
@@ -1010,7 +1021,7 @@ export function PersonnelManager({ currentUser, role }: { currentUser?: User; ro
                                 const result = await createUserFromTeacher(teacher);
                                 if (result.success) {
                                   toast({ title: 'Utilisateur créé', description: `Compte: @${teacher.username} · Mdp provisoire: ${result.password}` });
-                                  getAllUsers().then(setUsers).catch(() => {});
+                                  getAllUsers().then(setUsers).catch(() => { });
                                 } else {
                                   toast({ variant: 'destructive', title: 'Erreur', description: result.error || 'Création impossible' });
                                 }
@@ -1018,17 +1029,17 @@ export function PersonnelManager({ currentUser, role }: { currentUser?: User; ro
                             >
                               Créer utilisateur
                             </Button>)}
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setShowMyClassesFor(teacher.id)}
-                            >
-                              Classe
-                            </Button>
-                          </div>
-                        </TableCell>
-            </TableRow>
-          ))}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setShowMyClassesFor(teacher.id)}
+                          >
+                            Classe
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
                 </TableBody>
               </Table>
 
@@ -1328,8 +1339,8 @@ export function PersonnelManager({ currentUser, role }: { currentUser?: User; ro
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="teacherId">Enseignant</Label>
-                <Select 
-                  value={assignmentForm.teacherId} 
+                <Select
+                  value={assignmentForm.teacherId}
                   onValueChange={(value) => {
                     const teacher = teachers.find(t => t.id === value);
                     setAssignmentForm({
@@ -1353,10 +1364,10 @@ export function PersonnelManager({ currentUser, role }: { currentUser?: User; ro
               </div>
               <div>
                 <Label htmlFor="className">Classe</Label>
-                <Select 
-                  value={assignmentForm.className} 
+                <Select
+                  value={assignmentForm.className}
                   onValueChange={(value) => {
-                    setAssignmentForm({...assignmentForm, className: value, subject: ''});
+                    setAssignmentForm({ ...assignmentForm, className: value, subject: '' });
                     loadClassSubjects(value);
                   }}
                 >
@@ -1373,16 +1384,16 @@ export function PersonnelManager({ currentUser, role }: { currentUser?: User; ro
                 </Select>
               </div>
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="subject">Matière</Label>
-                <Select 
-                  value={assignmentForm.subject} 
+                <Select
+                  value={assignmentForm.subject}
                   onValueChange={(value) => {
                     const selectedSubject = [...classSubjects, ...availableSubjects].find(s => s.id === value);
                     setAssignmentForm({
-                      ...assignmentForm, 
+                      ...assignmentForm,
                       subject: value,
                       subjectName: selectedSubject?.name || ''
                     });
@@ -1418,7 +1429,7 @@ export function PersonnelManager({ currentUser, role }: { currentUser?: User; ro
                 />
               </div>
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="hoursPerWeek">Heures par semaine</Label>
@@ -1429,16 +1440,16 @@ export function PersonnelManager({ currentUser, role }: { currentUser?: User; ro
                   min="0"
                   max="40"
                   value={assignmentForm.hoursPerWeek}
-                  onChange={(e) => setAssignmentForm({...assignmentForm, hoursPerWeek: parseFloat(e.target.value) || 0})}
+                  onChange={(e) => setAssignmentForm({ ...assignmentForm, hoursPerWeek: parseFloat(e.target.value) || 0 })}
                   placeholder="Ex: 2.0"
                   required
                 />
               </div>
               <div>
                 <Label htmlFor="semester">Semestre</Label>
-                <Select 
-                  value={assignmentForm.semester} 
-                  onValueChange={(value) => setAssignmentForm({...assignmentForm, semester: value})}
+                <Select
+                  value={assignmentForm.semester}
+                  onValueChange={(value) => setAssignmentForm({ ...assignmentForm, semester: value })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Sélectionner un semestre" />
@@ -1451,17 +1462,17 @@ export function PersonnelManager({ currentUser, role }: { currentUser?: User; ro
                 </Select>
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-2">
               <input
                 type="checkbox"
                 id="isMainTeacher"
                 checked={assignmentForm.isMainTeacher}
-                onChange={(e) => setAssignmentForm({...assignmentForm, isMainTeacher: e.target.checked})}
+                onChange={(e) => setAssignmentForm({ ...assignmentForm, isMainTeacher: e.target.checked })}
               />
               <Label htmlFor="isMainTeacher">Professeur principal</Label>
             </div>
-            
+
             <div className="flex justify-end space-x-2">
               <Button type="button" variant="outline" onClick={() => setIsAssignmentDialogOpen(false)}>
                 Annuler
@@ -1514,7 +1525,7 @@ export function PersonnelManager({ currentUser, role }: { currentUser?: User; ro
                 <Input
                   id="fullName"
                   value={personnelForm.fullName}
-                  onChange={(e) => setPersonnelForm({...personnelForm, fullName: e.target.value})}
+                  onChange={(e) => setPersonnelForm({ ...personnelForm, fullName: e.target.value })}
                   required
                 />
               </div>
@@ -1523,12 +1534,12 @@ export function PersonnelManager({ currentUser, role }: { currentUser?: User; ro
                 <Input
                   id="username"
                   value={personnelForm.username}
-                  onChange={(e) => setPersonnelForm({...personnelForm, username: e.target.value})}
+                  onChange={(e) => setPersonnelForm({ ...personnelForm, username: e.target.value })}
                   required
                 />
               </div>
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="email">Email</Label>
@@ -1536,7 +1547,7 @@ export function PersonnelManager({ currentUser, role }: { currentUser?: User; ro
                   id="email"
                   type="email"
                   value={personnelForm.email}
-                  onChange={(e) => setPersonnelForm({...personnelForm, email: e.target.value})}
+                  onChange={(e) => setPersonnelForm({ ...personnelForm, email: e.target.value })}
                   required
                 />
               </div>
@@ -1545,28 +1556,28 @@ export function PersonnelManager({ currentUser, role }: { currentUser?: User; ro
                 <Input
                   id="phone"
                   value={personnelForm.phone}
-                  onChange={(e) => setPersonnelForm({...personnelForm, phone: e.target.value})}
+                  onChange={(e) => setPersonnelForm({ ...personnelForm, phone: e.target.value })}
                   required
                 />
               </div>
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="personnelTypeId">Type de personnel</Label>
-                <Select 
-                  value={personnelForm.personnelTypeId} 
-                  onValueChange={(value) => setPersonnelForm({...personnelForm, personnelTypeId: value})}
+                <Select
+                  value={personnelForm.personnelTypeId}
+                  onValueChange={(value) => setPersonnelForm({ ...personnelForm, personnelTypeId: value })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Sélectionner un type" />
                   </SelectTrigger>
                   <SelectContent>
-                                       {personnelTypes?.map((type) => (
-                     <SelectItem key={type.id} value={type.id}>
-                       {type.name}
-                     </SelectItem>
-                   ))}
+                    {personnelTypes?.map((type) => (
+                      <SelectItem key={type.id} value={type.id}>
+                        {type.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -1576,12 +1587,12 @@ export function PersonnelManager({ currentUser, role }: { currentUser?: User; ro
                   id="password"
                   type="password"
                   value={personnelForm.password}
-                  onChange={(e) => setPersonnelForm({...personnelForm, password: e.target.value})}
+                  onChange={(e) => setPersonnelForm({ ...personnelForm, password: e.target.value })}
                   required
                 />
               </div>
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="dateEmbauche">Date d'embauche</Label>
@@ -1589,14 +1600,14 @@ export function PersonnelManager({ currentUser, role }: { currentUser?: User; ro
                   id="dateEmbauche"
                   type="date"
                   value={personnelForm.dateEmbauche}
-                  onChange={(e) => setPersonnelForm({...personnelForm, dateEmbauche: e.target.value})}
+                  onChange={(e) => setPersonnelForm({ ...personnelForm, dateEmbauche: e.target.value })}
                 />
               </div>
               <div>
                 <Label htmlFor="typeContrat">Type de contrat</Label>
-                <Select 
-                  value={personnelForm.typeContrat} 
-                  onValueChange={(value) => setPersonnelForm({...personnelForm, typeContrat: value})}
+                <Select
+                  value={personnelForm.typeContrat}
+                  onValueChange={(value) => setPersonnelForm({ ...personnelForm, typeContrat: value })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Sélectionner un type" />
@@ -1610,7 +1621,7 @@ export function PersonnelManager({ currentUser, role }: { currentUser?: User; ro
                 </Select>
               </div>
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="salaire">Salaire de base</Label>
@@ -1618,7 +1629,7 @@ export function PersonnelManager({ currentUser, role }: { currentUser?: User; ro
                   id="salaire"
                   type="number"
                   value={personnelForm.salaire}
-                  onChange={(e) => setPersonnelForm({...personnelForm, salaire: parseInt(e.target.value)})}
+                  onChange={(e) => setPersonnelForm({ ...personnelForm, salaire: parseInt(e.target.value) })}
                 />
               </div>
               <div>
@@ -1627,18 +1638,18 @@ export function PersonnelManager({ currentUser, role }: { currentUser?: User; ro
                   id="experience"
                   type="number"
                   value={personnelForm.experience}
-                  onChange={(e) => setPersonnelForm({...personnelForm, experience: parseInt(e.target.value)})}
+                  onChange={(e) => setPersonnelForm({ ...personnelForm, experience: parseInt(e.target.value) })}
                 />
               </div>
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="specialite">Spécialité</Label>
                 <Input
                   id="specialite"
                   value={personnelForm.specialite}
-                  onChange={(e) => setPersonnelForm({...personnelForm, specialite: e.target.value})}
+                  onChange={(e) => setPersonnelForm({ ...personnelForm, specialite: e.target.value })}
                 />
               </div>
               <div>
@@ -1646,11 +1657,11 @@ export function PersonnelManager({ currentUser, role }: { currentUser?: User; ro
                 <Input
                   id="diplome"
                   value={personnelForm.diplome}
-                  onChange={(e) => setPersonnelForm({...personnelForm, diplome: e.target.value})}
+                  onChange={(e) => setPersonnelForm({ ...personnelForm, diplome: e.target.value })}
                 />
               </div>
             </div>
-            
+
             <div className="flex justify-end space-x-2">
               <Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)}>
                 Annuler
@@ -1673,9 +1684,9 @@ export function PersonnelManager({ currentUser, role }: { currentUser?: User; ro
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="month">Mois</Label>
-                <Select 
-                  value={payrollForm.month.toString()} 
-                  onValueChange={(value) => setPayrollForm({...payrollForm, month: parseInt(value)})}
+                <Select
+                  value={payrollForm.month.toString()}
+                  onValueChange={(value) => setPayrollForm({ ...payrollForm, month: parseInt(value) })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Sélectionner un mois" />
@@ -1702,32 +1713,32 @@ export function PersonnelManager({ currentUser, role }: { currentUser?: User; ro
                   id="year"
                   type="number"
                   value={payrollForm.year}
-                  onChange={(e) => setPayrollForm({...payrollForm, year: parseInt(e.target.value)})}
+                  onChange={(e) => setPayrollForm({ ...payrollForm, year: parseInt(e.target.value) })}
                   required
                 />
               </div>
             </div>
-            
+
             <div>
               <Label htmlFor="personnelType">Type de personnel (optionnel)</Label>
-              <Select 
-                value={payrollForm.personnelType} 
-                onValueChange={(value) => setPayrollForm({...payrollForm, personnelType: value})}
+              <Select
+                value={payrollForm.personnelType}
+                onValueChange={(value) => setPayrollForm({ ...payrollForm, personnelType: value })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Tous les types" />
                 </SelectTrigger>
-                                 <SelectContent>
-                   <SelectItem value="all">Tous les types</SelectItem>
-                   {personnelTypes?.map((type) => (
-                     <SelectItem key={type.id} value={type.id}>
-                       {type.name}
-                     </SelectItem>
-                   ))}
-                 </SelectContent>
+                <SelectContent>
+                  <SelectItem value="all">Tous les types</SelectItem>
+                  {personnelTypes?.map((type) => (
+                    <SelectItem key={type.id} value={type.id}>
+                      {type.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
               </Select>
             </div>
-            
+
             <div className="flex justify-end space-x-2">
               <Button type="button" variant="outline" onClick={() => setIsPayrollDialogOpen(false)}>
                 Annuler
@@ -1739,6 +1750,14 @@ export function PersonnelManager({ currentUser, role }: { currentUser?: User; ro
           </form>
         </DialogContent>
       </Dialog>
-     </div>
-   );
+      {originalImageForCrop && (
+        <ImageCropperDialog
+          imageSrc={originalImageForCrop}
+          onCropComplete={handleCropComplete}
+          onCancel={handleCropCancel}
+          aspectRatio={1}
+        />
+      )}
+    </div>
+  );
 }

@@ -1,4 +1,4 @@
-import pool from '../../../db/mysql-pool';
+import { getPoolFromRequest } from '@/lib/pool-from-request';
 import PDFDocument from 'pdfkit';
 import JSZip from 'jszip';
 import { PDFDocument as PDFMerger } from 'pdf-lib';
@@ -14,14 +14,14 @@ function formatRank(rank) {
 // Fonction pour dessiner l'emblème officiel (même que dans generate.js)
 function drawOfficialEmblem(doc, x, y, size) {
   // Cercle extérieur
-  doc.circle(x + size/2, y + size/2, size/2).stroke('#1e40af', 2);
-  
+  doc.circle(x + size / 2, y + size / 2, size / 2).stroke('#1e40af', 2);
+
   // Cercle intérieur
-  doc.circle(x + size/2, y + size/2, size/3).stroke('#1e40af', 1);
-  
+  doc.circle(x + size / 2, y + size / 2, size / 3).stroke('#1e40af', 1);
+
   // Étoile au centre
-  doc.fontSize(size/4).font('Helvetica-Bold').fillColor('#1e40af')
-     .text('★', x + size/2 - 8, y + size/2 - 8);
+  doc.fontSize(size / 4).font('Helvetica-Bold').fillColor('#1e40af')
+    .text('★', x + size / 2 - 8, y + size / 2 - 8);
 }
 
 // Fonction pour calculer la mention par matière pour les trimestres
@@ -63,6 +63,7 @@ export default async function handler(req, res) {
     console.log('🚀 === GÉNÉRATION DE TOUS LES BULLETINS ===');
     console.log(`🏫 Classe: ${classId}, Période: ${evaluationPeriodId}, Année: ${schoolYear}`);
 
+    const pool = await getPoolFromRequest(req, res);
     connection = await pool.getConnection();
 
     // Récupérer tous les élèves de la classe et le nom de la classe
@@ -83,7 +84,7 @@ export default async function handler(req, res) {
       'SELECT name FROM school_classes WHERE id = ?',
       [classId]
     );
-    
+
     const className = classInfo.length > 0 ? classInfo[0].name : classId;
 
     // Récupérer les matières (class_subjects) de la classe pour l'année afin d'ajouter
@@ -100,17 +101,17 @@ export default async function handler(req, res) {
     console.log(`👥 ${students.length} élèves trouvés pour la classe`);
 
     // Récupérer les informations de la période
-        const [periods] = await connection.query(
-          'SELECT * FROM evaluation_periods WHERE id = ?',
-          [evaluationPeriodId]
-        );
+    const [periods] = await connection.query(
+      'SELECT * FROM evaluation_periods WHERE id = ?',
+      [evaluationPeriodId]
+    );
 
-        const period = periods[0];
-        
-        // Vérifier si c'est un trimestre
-        const isTrimester = period && period.name && (period.name.toLowerCase().includes('trim') || period.name.toLowerCase().includes('trimester'));
-        
-        console.log(`📝 Type de période: ${isTrimester ? 'TRIMESTRE' : 'SÉQUENCE'}`);
+    const period = periods[0];
+
+    // Vérifier si c'est un trimestre
+    const isTrimester = period && period.name && (period.name.toLowerCase().includes('trim') || period.name.toLowerCase().includes('trimester'));
+
+    console.log(`📝 Type de période: ${isTrimester ? 'TRIMESTRE' : 'SÉQUENCE'}`);
 
     // Récupérer les informations de l'école
     const [schoolInfo] = await connection.query('SELECT * FROM school_info LIMIT 1');
@@ -124,17 +125,17 @@ export default async function handler(req, res) {
     for (let i = 0; i < students.length; i++) {
       const student = students[i];
       console.log(`📝 Génération du bulletin ${i + 1}/${students.length} pour ${student.nom} ${student.prenom}...`);
-      
+
       try {
         // Récupérer les appréciations sauvegardées pour cet élève
         const [savedComments] = await connection.query(
           'SELECT teacherComments, principalComments FROM report_cards WHERE studentId = ? AND evaluationPeriodId = ? AND schoolYear = ?',
           [student.id, evaluationPeriodId, schoolYear]
         );
-        
+
         let teacherComments = '';
         let principalComments = '';
-        
+
         if (savedComments.length > 0) {
           teacherComments = savedComments[0].teacherComments || '';
           principalComments = savedComments[0].principalComments || '';
@@ -146,16 +147,16 @@ export default async function handler(req, res) {
         // Récupérer la photo de l'élève depuis la table students
         const studentPhotoUrl = student.photoUrl;
 
-              // Récupérer les notes de l'élève
+        // Récupérer les notes de l'élève
         let grades = [];
-        
+
         if (isTrimester) {
           // Pour les trimestres, récupérer les notes des séquences correspondantes selon le trimestre
           console.log(`🎯 Trimestre détecté: ${period.name}`);
-          
+
           // Déterminer quelles séquences charger selon le trimestre
           let targetSequences = [];
-          
+
           if (period.name.toLowerCase().includes('1er') || period.name.toLowerCase().includes('1st')) {
             // 1er trimestre : séquences 1 et 2
             const [sequences] = await connection.query(`
@@ -193,9 +194,9 @@ export default async function handler(req, res) {
             `, [schoolYear]);
             targetSequences = sequences;
           }
-          
+
           console.log(`📚 Séquences cibles trouvées: ${targetSequences.map(s => s.name).join(', ')}`);
-          
+
           // Récupérer les notes de la 1ère séquence
           const [seq1Grades] = await connection.query(`
             SELECT 
@@ -209,7 +210,7 @@ export default async function handler(req, res) {
             LEFT JOIN evaluation_periods ep ON g.evaluationPeriodId = ep.id
             WHERE g.studentId = ? AND g.evaluationPeriodId = ? AND g.schoolYear = ?
           `, [student.id, targetSequences[0]?.id, schoolYear]);
-          
+
           // Récupérer les notes de la 2ème séquence (si disponible)
           let seq2Grades = [];
           if (targetSequences.length > 1) {
@@ -227,10 +228,10 @@ export default async function handler(req, res) {
             `, [student.id, targetSequences[1].id, schoolYear]);
             seq2Grades = seq2GradesResult;
           }
-          
+
           // Combiner les notes des deux séquences
           const gradesBySubject = new Map();
-          
+
           // Ajouter les notes de la 1ère séquence
           seq1Grades.forEach(grade => {
             gradesBySubject.set(grade.subjectId, {
@@ -239,7 +240,7 @@ export default async function handler(req, res) {
               seq1MaxScore: parseFloat(grade.maxScore) || 20
             });
           });
-          
+
           // Ajouter ou mettre à jour avec les notes de la 2ème séquence
           seq2Grades.forEach(grade => {
             if (gradesBySubject.has(grade.subjectId)) {
@@ -256,26 +257,26 @@ export default async function handler(req, res) {
               });
             }
           });
-          
+
           // Convertir en tableau
           grades = Array.from(gradesBySubject.values());
 
-            // Ajouter des placeholders pour les matières sans note (score = 0)
-            if (classSubjects && classSubjects.length > 0) {
-              const existingSubjectIds = new Set(grades.map(g => g.subjectId));
-              classSubjects.forEach(subj => {
-                if (!existingSubjectIds.has(subj.subjectId)) {
-                  grades.push({
-                    subjectId: subj.subjectId,
-                    subjectName: subj.subjectName,
-                    score: 0,
-                    maxScore: subj.maxScore || 20,
-                    coefficient: subj.coefficient || 1
-                  });
-                }
-              });
-            }
-          
+          // Ajouter des placeholders pour les matières sans note (score = 0)
+          if (classSubjects && classSubjects.length > 0) {
+            const existingSubjectIds = new Set(grades.map(g => g.subjectId));
+            classSubjects.forEach(subj => {
+              if (!existingSubjectIds.has(subj.subjectId)) {
+                grades.push({
+                  subjectId: subj.subjectId,
+                  subjectName: subj.subjectName,
+                  score: 0,
+                  maxScore: subj.maxScore || 20,
+                  coefficient: subj.coefficient || 1
+                });
+              }
+            });
+          }
+
         } else {
           // Pour les séquences, récupérer les notes directes
           const [gradesResult] = await connection.query(`
@@ -290,18 +291,18 @@ export default async function handler(req, res) {
             LEFT JOIN evaluation_periods ep ON g.evaluationPeriodId = ep.id
             WHERE g.studentId = ? AND g.evaluationPeriodId = ? AND g.schoolYear = ?
           `, [student.id, evaluationPeriodId, schoolYear]);
-          
+
           grades = gradesResult;
         }
 
-                // Calculer la moyenne et le total
+        // Calculer la moyenne et le total
         let totalWeightedScore = 0;
         let totalCoefficient = 0;
-        
+
         grades.forEach(grade => {
           let score = 0;
           let maxScore = 20;
-          
+
           if (isTrimester) {
             // Pour les trimestres, calculer la moyenne des 2 séquences
             const seq1Score = grade.seq1Score || 0;
@@ -313,7 +314,7 @@ export default async function handler(req, res) {
             score = parseFloat(grade.score) || 0;
             maxScore = parseFloat(grade.maxScore) || 20;
           }
-          
+
           const coef = parseFloat(grade.coefficient) || 1;
           totalWeightedScore += score * coef;
           totalCoefficient += coef;
@@ -328,7 +329,7 @@ export default async function handler(req, res) {
             students.map(async (s) => {
               let totalWeighted = 0;
               let totalCoeff = 0;
-              
+
               if (isTrimester) {
                 // Pour les trimestres, calculer sur les moyennes des 2 séquences
                 const [sequences] = await connection.query(`
@@ -337,7 +338,7 @@ export default async function handler(req, res) {
                   ORDER BY name
                   LIMIT 2
                 `, [schoolYear]);
-                
+
                 if (sequences.length > 0) {
                   // Récupérer les notes de la 1ère séquence
                   const [seq1Grades] = await connection.query(`
@@ -347,7 +348,7 @@ export default async function handler(req, res) {
                     FROM grades g
                     WHERE g.studentId = ? AND g.evaluationPeriodId = ? AND g.schoolYear = ?
                   `, [s.id, sequences[0].id, schoolYear]);
-                  
+
                   // Récupérer les notes de la 2ème séquence (si disponible)
                   let seq2Grades = [];
                   if (sequences.length > 1) {
@@ -360,10 +361,10 @@ export default async function handler(req, res) {
                     `, [s.id, sequences[1].id, schoolYear]);
                     seq2Grades = seq2GradesResult;
                   }
-                  
+
                   // Combiner les notes des deux séquences pour calculer les moyennes
                   const gradesBySubject = new Map();
-                  
+
                   // Ajouter les notes de la 1ère séquence
                   seq1Grades.forEach(grade => {
                     gradesBySubject.set(grade.subjectId, {
@@ -371,7 +372,7 @@ export default async function handler(req, res) {
                       coef: parseFloat(grade.coefficient) || 1
                     });
                   });
-                  
+
                   // Ajouter ou mettre à jour avec les notes de la 2ème séquence
                   seq2Grades.forEach(grade => {
                     if (gradesBySubject.has(grade.subjectId)) {
@@ -385,14 +386,14 @@ export default async function handler(req, res) {
                       });
                     }
                   });
-                  
+
                   // Calculer les moyennes pondérées pour chaque matière
                   gradesBySubject.forEach((grades, subjectId) => {
                     const seq1Score = grades.seq1Score || 0;
                     const seq2Score = grades.seq2Score || 0;
                     const average = (seq1Score + seq2Score) / 2; // Moyenne des 2 séquences
                     const coef = grades.coef;
-                    
+
                     totalWeighted += average * coef;
                     totalCoeff += coef;
                   });
@@ -414,16 +415,16 @@ export default async function handler(req, res) {
                   totalCoeff += coef;
                 });
               }
-              
+
               return {
                 studentId: s.id,
                 average: totalCoeff > 0 ? totalWeighted / totalCoeff : 0
               };
             })
           );
-          
-          classGeneralAverage = studentAverages.length > 0 
-            ? studentAverages.reduce((sum, s) => sum + s.average, 0) / studentAverages.length 
+
+          classGeneralAverage = studentAverages.length > 0
+            ? studentAverages.reduce((sum, s) => sum + s.average, 0) / studentAverages.length
             : 0;
         }
 
@@ -432,7 +433,7 @@ export default async function handler(req, res) {
           students.map(async (s) => {
             let totalWeighted = 0;
             let totalCoeff = 0;
-            
+
             if (isTrimester) {
               // Pour les trimestres, calculer sur les moyennes des 2 séquences
               const [sequences] = await connection.query(`
@@ -441,7 +442,7 @@ export default async function handler(req, res) {
                 ORDER BY name
                 LIMIT 2
               `, [schoolYear]);
-              
+
               if (sequences.length > 0) {
                 // Récupérer les notes de la 1ère séquence
                 const [seq1Grades] = await connection.query(`
@@ -451,7 +452,7 @@ export default async function handler(req, res) {
                   FROM grades g
                   WHERE g.studentId = ? AND g.evaluationPeriodId = ? AND g.schoolYear = ?
                 `, [s.id, sequences[0].id, schoolYear]);
-                
+
                 // Récupérer les notes de la 2ème séquence (si disponible)
                 let seq2Grades = [];
                 if (sequences.length > 1) {
@@ -464,10 +465,10 @@ export default async function handler(req, res) {
                   `, [s.id, sequences[1].id, schoolYear]);
                   seq2Grades = seq2GradesResult;
                 }
-                
+
                 // Combiner les notes des deux séquences pour calculer les moyennes
                 const gradesBySubject = new Map();
-                
+
                 // Ajouter les notes de la 1ère séquence
                 seq1Grades.forEach(grade => {
                   gradesBySubject.set(grade.subjectId, {
@@ -475,7 +476,7 @@ export default async function handler(req, res) {
                     coef: parseFloat(grade.coefficient) || 1
                   });
                 });
-                
+
                 // Ajouter ou mettre à jour avec les notes de la 2ème séquence
                 seq2Grades.forEach(grade => {
                   if (gradesBySubject.has(grade.subjectId)) {
@@ -489,14 +490,14 @@ export default async function handler(req, res) {
                     });
                   }
                 });
-                
+
                 // Calculer les moyennes pondérées pour chaque matière
                 gradesBySubject.forEach((grades, subjectId) => {
                   const seq1Score = grades.seq1Score || 0;
                   const seq2Score = grades.seq2Score || 0;
                   const average = (seq1Score + seq2Score) / 2; // Moyenne des 2 séquences
                   const coef = grades.coef;
-                  
+
                   totalWeighted += average * coef;
                   totalCoeff += coef;
                 });
@@ -518,7 +519,7 @@ export default async function handler(req, res) {
                 totalCoeff += coef;
               });
             }
-            
+
             return {
               studentId: s.id,
               average: totalCoeff > 0 ? totalWeighted / totalCoeff : 0
@@ -534,7 +535,7 @@ export default async function handler(req, res) {
         for (const grade of grades) {
           if (grade.subjectId) {
             let subjectGrades = [];
-            
+
             if (isTrimester) {
               // Pour les trimestres, calculer les rangs sur les moyennes des 2 séquences
               const [sequences] = await connection.query(`
@@ -543,7 +544,7 @@ export default async function handler(req, res) {
                 ORDER BY name
                 LIMIT 2
               `, [schoolYear]);
-              
+
               if (sequences.length > 0) {
                 // Récupérer toutes les notes de la 1ère séquence pour cette matière
                 const [seq1Grades] = await connection.query(`
@@ -555,7 +556,7 @@ export default async function handler(req, res) {
                   WHERE g.subjectId = ? AND g.evaluationPeriodId = ? AND g.schoolYear = ?
                   AND g.score IS NOT NULL AND g.score != ''
                 `, [grade.subjectId, sequences[0].id, schoolYear]);
-                
+
                 // Récupérer toutes les notes de la 2ème séquence pour cette matière
                 let seq2Grades = [];
                 if (sequences.length > 1) {
@@ -570,10 +571,10 @@ export default async function handler(req, res) {
                   `, [grade.subjectId, sequences[1].id, schoolYear]);
                   seq2Grades = seq2GradesResult;
                 }
-                
+
                 // Combiner les notes des deux séquences pour calculer les moyennes
                 const gradesByStudent = new Map();
-                
+
                 // Ajouter les notes de la 1ère séquence
                 seq1Grades.forEach(g => {
                   gradesByStudent.set(g.studentId, {
@@ -581,7 +582,7 @@ export default async function handler(req, res) {
                     maxScore: parseFloat(g.maxScore) || 20
                   });
                 });
-                
+
                 // Ajouter ou mettre à jour avec les notes de la 2ème séquence
                 seq2Grades.forEach(g => {
                   if (gradesByStudent.has(g.studentId)) {
@@ -595,7 +596,7 @@ export default async function handler(req, res) {
                     });
                   }
                 });
-                
+
                 // Convertir en tableau avec les moyennes calculées
                 subjectGrades = Array.from(gradesByStudent.entries()).map(([studentId, grades]) => ({
                   studentId,
@@ -614,7 +615,7 @@ export default async function handler(req, res) {
                 WHERE g.subjectId = ? AND g.evaluationPeriodId = ? AND g.schoolYear = ?
                 AND g.score IS NOT NULL AND g.score != ''
               `, [grade.subjectId, evaluationPeriodId, schoolYear]);
-              
+
               subjectGrades = subjectGradesResult;
             }
 
@@ -634,43 +635,43 @@ export default async function handler(req, res) {
           }
         }
 
-      // Déterminer la mention
-      const getMention = (avg) => {
-        if (avg >= 18) return 'Excellent';
-        if (avg >= 16) return 'Très Bien';
-        if (avg >= 14) return 'Bien';
-        if (avg >= 12) return 'Assez Bien';
-        if (avg >= 10) return 'Passable';
-        return 'Insuffisant';
-      };
+        // Déterminer la mention
+        const getMention = (avg) => {
+          if (avg >= 18) return 'Excellent';
+          if (avg >= 16) return 'Très Bien';
+          if (avg >= 14) return 'Bien';
+          if (avg >= 12) return 'Assez Bien';
+          if (avg >= 10) return 'Passable';
+          return 'Insuffisant';
+        };
 
-          const mention = getMention(average);
+        const mention = getMention(average);
 
         // Générer le PDF pour cet élève (même format que l'API individuelle)
-      const doc = new PDFDocument({
-        size: 'A4',
-        margins: {
+        const doc = new PDFDocument({
+          size: 'A4',
+          margins: {
             top: 20,
             bottom: 20,
             left: 15,
             right: 15
-        }
-      });
-
-      const chunks = [];
-      doc.on('data', chunk => chunks.push(chunk));
-      const endPromise = new Promise(resolve => {
-        doc.on('end', () => {
-          const pdfBuffer = Buffer.concat(chunks);
-          const fileName = `bulletin_${student.nom}_${student.prenom}_${evaluationPeriodId}.pdf`;
-          // Ajouter le fichier individuel au ZIP
-          zip.file(fileName, pdfBuffer);
-          // Conserver l'ordre pour la compilation all.pdf
-          individualPdfBuffers.push({ fileName, buffer: pdfBuffer });
-          resolve();
+          }
         });
-      });
-      pdfTasks.push(endPromise);
+
+        const chunks = [];
+        doc.on('data', chunk => chunks.push(chunk));
+        const endPromise = new Promise(resolve => {
+          doc.on('end', () => {
+            const pdfBuffer = Buffer.concat(chunks);
+            const fileName = `bulletin_${student.nom}_${student.prenom}_${evaluationPeriodId}.pdf`;
+            // Ajouter le fichier individuel au ZIP
+            zip.file(fileName, pdfBuffer);
+            // Conserver l'ordre pour la compilation all.pdf
+            individualPdfBuffers.push({ fileName, buffer: pdfBuffer });
+            resolve();
+          });
+        });
+        pdfTasks.push(endPromise);
 
         // ===== EN-TÊTE DU BULLETIN (même format que generate.js) =====
         const ministryFrench = 'MINISTÈRE DE L\'ENSEIGNEMENT SECONDAIRE';
@@ -680,47 +681,47 @@ export default async function handler(req, res) {
 
         // Section gauche (français)
         doc.fontSize(9).font('Helvetica-Bold').fillColor('#1e40af')
-           .text('RÉPUBLIQUE DU CAMEROUN', 10, 10);
-        
+          .text('RÉPUBLIQUE DU CAMEROUN', 10, 10);
+
         doc.fontSize(7).fillColor('#374151')
-           .text('Paix - Travail - Patrie', 10, 20);
-        
+          .text('Paix - Travail - Patrie', 10, 20);
+
         doc.fontSize(8).font('Helvetica-Bold').fillColor('#1e40af')
-           .text(ministryFrench, 10, 30);
-        
+          .text(ministryFrench, 10, 30);
+
         doc.fontSize(7).fillColor('#374151')
-           .text(schoolTypeFrench, 10, 40);
-        
+          .text(schoolTypeFrench, 10, 40);
+
         doc.fontSize(7).fillColor('#374151')
-           .text(`BP: ${schoolInfo && schoolInfo[0] && schoolInfo[0].address ? schoolInfo[0].address.split(',')[0] : 'Yaoundé'}`, 10, 50);
-        
+          .text(`BP: ${schoolInfo && schoolInfo[0] && schoolInfo[0].address ? schoolInfo[0].address.split(',')[0] : 'Yaoundé'}`, 10, 50);
+
         doc.fontSize(7).fillColor('#374151')
-           .text(`e-mail: ${schoolInfo && schoolInfo[0] && schoolInfo[0].email ? schoolInfo[0].email : 'contact@ecole.cm'}`, 10, 60);
+          .text(`e-mail: ${schoolInfo && schoolInfo[0] && schoolInfo[0].email ? schoolInfo[0].email : 'contact@ecole.cm'}`, 10, 60);
 
         // Section droite (anglais)
         doc.fontSize(9).font('Helvetica-Bold').fillColor('#1e40af')
-           .text('REPUBLIC OF CAMEROON', 400, 10);
-        
+          .text('REPUBLIC OF CAMEROON', 400, 10);
+
         doc.fontSize(7).fillColor('#374151')
-           .text('Peace - Work - Fatherland', 400, 20);
-        
+          .text('Peace - Work - Fatherland', 400, 20);
+
         doc.fontSize(8).font('Helvetica-Bold').fillColor('#1e40af')
-           .text(ministryEnglish, 400, 30);
-        
+          .text(ministryEnglish, 400, 30);
+
         doc.fontSize(7).fillColor('#374151')
-           .text(schoolTypeEnglish, 400, 40);
-        
+          .text(schoolTypeEnglish, 400, 40);
+
         doc.fontSize(7).fillColor('#374151')
-           .text(`P.O BOX ${schoolInfo && schoolInfo[0] && schoolInfo[0].address ? schoolInfo[0].address.split(',')[0] : 'Yaoundé'}`, 400, 50);
-        
+          .text(`P.O BOX ${schoolInfo && schoolInfo[0] && schoolInfo[0].address ? schoolInfo[0].address.split(',')[0] : 'Yaoundé'}`, 400, 50);
+
         doc.fontSize(7).fillColor('#374151')
-           .text(`e-mail: ${schoolInfo && schoolInfo[0] && schoolInfo[0].email ? schoolInfo[0].email : 'contact@ecole.cm'}`, 400, 60);
+          .text(`e-mail: ${schoolInfo && schoolInfo[0] && schoolInfo[0].email ? schoolInfo[0].email : 'contact@ecole.cm'}`, 400, 60);
 
         // Logo de l'école au centre
         const logoX = 250;
         const logoY = 15;
         const logoSize = 40;
-        
+
         if (schoolInfo && schoolInfo[0] && schoolInfo[0].logoUrl) {
           try {
             doc.image(schoolInfo[0].logoUrl, logoX, logoY, { width: logoSize, height: logoSize });
@@ -733,21 +734,21 @@ export default async function handler(req, res) {
 
         // Titre principal du bulletin
         doc.fontSize(12).font('Helvetica-Bold').fillColor('#1e40af')
-           .text('RELEVÉ DE NOTES', 40, 80, { align: 'center', width: 515 })
-           .fontSize(9).fillColor('#374151')
-           .text('STUDENT REPORT CARD', 40, 95, { align: 'center', width: 515 });
+          .text('RELEVÉ DE NOTES', 40, 80, { align: 'center', width: 515 })
+          .fontSize(9).fillColor('#374151')
+          .text('STUDENT REPORT CARD', 40, 95, { align: 'center', width: 515 });
 
         // Période et année scolaire
         doc.fontSize(10).font('Helvetica-Bold').fillColor('#1e40af')
-           .text(`Période: ${period?.name || 'Non définie'}`, 15, 110)
-           .text(`Année scolaire: ${schoolYear}`, 300, 110);
+          .text(`Période: ${period?.name || 'Non définie'}`, 15, 110)
+          .text(`Année scolaire: ${schoolYear}`, 300, 110);
 
         // Ligne de séparation
         doc.moveTo(15, 125).lineTo(580, 125).stroke('#e5e7eb', 2);
 
         // ===== INFORMATIONS DE LA CLASSE =====
         doc.fontSize(9).font('Helvetica-Bold').fillColor('#1e40af')
-           .text('INFORMATIONS DE LA CLASSE / CLASS INFORMATION', 15, 140);
+          .text('INFORMATIONS DE LA CLASSE / CLASS INFORMATION', 15, 140);
 
         doc.fontSize(8).font('Helvetica').fillColor('#374151');
         doc.text(`Classe / Class: ${student.classe || 'N/A'}`, 15, 150);
@@ -759,13 +760,13 @@ export default async function handler(req, res) {
 
         // ===== INFORMATIONS DE L'ÉLÈVE =====
         doc.fontSize(9).font('Helvetica-Bold').fillColor('#1e40af')
-           .text('INFORMATIONS DE L\'ÉLÈVE / STUDENT INFORMATION', 15, 170);
+          .text('INFORMATIONS DE L\'ÉLÈVE / STUDENT INFORMATION', 15, 170);
 
         // Photo de l'élève (position ajustée pour éviter le chevauchement)
         const photoX = 15;
         const photoY = 185; // Ajusté pour éviter le chevauchement avec le titre
         const photoSize = 60;
-        
+
         if (studentPhotoUrl) {
           try {
             // Si c'est une data URI ou URL
@@ -779,32 +780,32 @@ export default async function handler(req, res) {
           } catch (error) {
             console.log(`⚠️ Erreur photo pour ${student.nom}, utilisation de l'avatar par défaut`);
             // Avatar par défaut plus professionnel
-            const avatarCenterX = photoX + photoSize/2;
-            const avatarCenterY = photoY + photoSize/2;
-            
+            const avatarCenterX = photoX + photoSize / 2;
+            const avatarCenterY = photoY + photoSize / 2;
+
             // Cercle de fond
-            doc.circle(avatarCenterX, avatarCenterY, photoSize/2).fill('#e5e7eb');
-            doc.circle(avatarCenterX, avatarCenterY, photoSize/2).stroke('#9ca3af', 1);
-            
+            doc.circle(avatarCenterX, avatarCenterY, photoSize / 2).fill('#e5e7eb');
+            doc.circle(avatarCenterX, avatarCenterY, photoSize / 2).stroke('#9ca3af', 1);
+
             // Initiales de l'élève
             const initials = `${student.prenom ? student.prenom.charAt(0) : ''}${student.nom ? student.nom.charAt(0) : ''}`.toUpperCase();
-            doc.fontSize(photoSize/3).font('Helvetica-Bold').fillColor('#6b7280')
-               .text(initials, avatarCenterX, avatarCenterY + photoSize/6, { align: 'center' });
+            doc.fontSize(photoSize / 3).font('Helvetica-Bold').fillColor('#6b7280')
+              .text(initials, avatarCenterX, avatarCenterY + photoSize / 6, { align: 'center' });
           }
         } else {
           console.log(`⚠️ Aucune photo trouvée pour ${student.nom}, utilisation de l'avatar par défaut`);
           // Avatar par défaut plus professionnel
-          const avatarCenterX = photoX + photoSize/2;
-          const avatarCenterY = photoY + photoSize/2;
-          
+          const avatarCenterX = photoX + photoSize / 2;
+          const avatarCenterY = photoY + photoSize / 2;
+
           // Cercle de fond
-          doc.circle(avatarCenterX, avatarCenterY, photoSize/2).fill('#e5e7eb');
-          doc.circle(avatarCenterX, avatarCenterY, photoSize/2).stroke('#9ca3af', 1);
-          
+          doc.circle(avatarCenterX, avatarCenterY, photoSize / 2).fill('#e5e7eb');
+          doc.circle(avatarCenterX, avatarCenterY, photoSize / 2).stroke('#9ca3af', 1);
+
           // Initiales de l'élève
           const initials = `${student.prenom ? student.prenom.charAt(0) : ''}${student.nom ? student.nom.charAt(0) : ''}`.toUpperCase();
-          doc.fontSize(photoSize/3).font('Helvetica-Bold').fillColor('#6b7280')
-             .text(initials, avatarCenterX, avatarCenterY + photoSize/6, { align: 'center' });
+          doc.fontSize(photoSize / 3).font('Helvetica-Bold').fillColor('#6b7280')
+            .text(initials, avatarCenterX, avatarCenterY + photoSize / 6, { align: 'center' });
         }
 
         // Informations de l'élève à côté de la photo (position ajustée)
@@ -818,7 +819,7 @@ export default async function handler(req, res) {
         const qrSize = photoSize; // Même taille que la photo
         const qrX = 580 - qrSize; // Position à l'extrémité droite (580 - 60 = 520)
         const qrY = photoY; // Même ligne que la photo
-        
+
         // Données complètes pour le code QR (toutes les informations du bulletin)
         const qrData = {
           // Informations de l'établissement
@@ -884,18 +885,18 @@ export default async function handler(req, res) {
             teacher: teacherComments,
             principal: principalComments
           },
-                  // Métadonnées
-        generatedAt: new Date().toISOString(),
-        totalStudents: students.length
+          // Métadonnées
+          generatedAt: new Date().toISOString(),
+          totalStudents: students.length
         };
-        
+
         try {
           // Convertir en JSON pour le code QR
           const qrJsonString = JSON.stringify(qrData, null, 2);
-          
+
           // Générer le code QR avec la bibliothèque qrcode
           const QRCode = require('qrcode');
-          
+
           // Créer un buffer pour le code QR
           const qrBuffer = await QRCode.toBuffer(qrJsonString, {
             errorCorrectionLevel: 'M',
@@ -908,19 +909,19 @@ export default async function handler(req, res) {
               light: '#ffffff'
             }
           });
-          
+
           // Ajouter le code QR au PDF
           doc.image(qrBuffer, qrX, qrY, { width: qrSize, height: qrSize });
-          
+
           // Bordure autour du code QR
           doc.rect(qrX, qrY, qrSize, qrSize).stroke('#1e40af', 1);
-          
+
           console.log(`📱 Code QR généré pour ${student.nom} à la position (${qrX}, ${qrY})`);
           console.log(`📊 Données du code QR: ${qrJsonString.length} caractères`);
-          
+
         } catch (error) {
           console.log(`⚠️ Erreur lors de la génération du code QR pour ${student.nom}:`, error);
-          
+
           // Fallback : code QR simple avec les données essentielles
           try {
             const QRCode = require('qrcode');
@@ -932,24 +933,24 @@ export default async function handler(req, res) {
               rank: formatRank(rank),
               mention: mention
             });
-            
+
             const qrBuffer = await QRCode.toBuffer(simpleData, {
               errorCorrectionLevel: 'L',
               type: 'image/png',
               width: qrSize
             });
-            
+
             doc.image(qrBuffer, qrX, qrY, { width: qrSize, height: qrSize });
             doc.rect(qrX, qrY, qrSize, qrSize).stroke('#1e40af', 1);
-            
+
             console.log(`📱 Code QR de fallback généré pour ${student.nom}`);
-            
+
           } catch (fallbackError) {
             console.log(`❌ Échec du fallback QR pour ${student.nom}:`, fallbackError);
             // Dernier recours : rectangle avec texte
             doc.rect(qrX, qrY, qrSize, qrSize).stroke('#9ca3af', 1);
             doc.fontSize(6).font('Helvetica').fillColor('#9ca3af')
-               .text('QR ERROR', qrX + qrSize/2 - 25, qrY + qrSize/2);
+              .text('QR ERROR', qrX + qrSize / 2 - 25, qrY + qrSize / 2);
           }
         }
 
@@ -958,26 +959,26 @@ export default async function handler(req, res) {
 
         // Suppression de la section dupliquée - les informations sont déjà affichées plus haut avec la photo
 
-                // ===== TABLEAU DES NOTES =====
+        // ===== TABLEAU DES NOTES =====
         const gradesTableTop = photoY + photoSize + 32; // Exactement comme dans generate.js
-        
+
         // Titre du tableau des notes
         const titleText = isTrimester ? 'NOTES DU TRIMESTRE / TRIMESTER GRADES' : 'NOTES PAR MATIÈRE / SUBJECT GRADES';
         doc.fontSize(9).font('Helvetica-Bold').fillColor('#1e40af')
-           .text(titleText, 15, photoY + photoSize + 20);
-        
+          .text(titleText, 15, photoY + photoSize + 20);
+
         // Fond gris pour les en-têtes (comme dans l'API individuelle)
         doc.rect(15, gradesTableTop, 565, 14).fill('#f3f4f6');
-        
+
         // En-têtes du tableau
         doc.fontSize(7).font('Helvetica-Bold').fillColor('#000000'); // Taille et couleur exactes de l'API individuelle
-        
+
         if (isTrimester) {
           // En-têtes pour trimestre (2 séquences + moyenne) - coordonnées exactes de l'API individuelle
           // Déterminer les labels dynamiques selon le trimestre
           let seq1Label = 'Seq1';
           let seq2Label = 'Seq2';
-          
+
           if (period.name.toLowerCase().includes('2ème') || period.name.toLowerCase().includes('2eme') || period.name.toLowerCase().includes('2nd')) {
             seq1Label = 'Seq3';
             seq2Label = 'Seq4';
@@ -985,9 +986,9 @@ export default async function handler(req, res) {
             seq1Label = 'Seq5';
             seq2Label = 'Seq6';
           }
-          
+
           console.log(`🏷️ Labels dynamiques pour ${period.name}: ${seq1Label}, ${seq2Label}`);
-          
+
           doc.text('Matière', 20, gradesTableTop + 4);
           doc.text(seq1Label, 120, gradesTableTop + 4);
           doc.text(seq2Label, 150, gradesTableTop + 4);
@@ -1007,10 +1008,10 @@ export default async function handler(req, res) {
           doc.text('Mention', 320, gradesTableTop + 4);
         }
 
-      // Ligne de séparation
+        // Ligne de séparation
         doc.moveTo(15, gradesTableTop + 10).lineTo(580, gradesTableTop + 10).stroke('#e5e7eb', 1);
 
-      // Contenu du tableau
+        // Contenu du tableau
         let currentY = gradesTableTop + 20;
         doc.fontSize(8).font('Helvetica').fillColor('#374151');
 
@@ -1030,7 +1031,7 @@ export default async function handler(req, res) {
           doc.fontSize(7).font('Helvetica-Bold').fillColor('#1e40af');
           doc.text(category.toUpperCase(), 20, currentY);
           currentY += 12;
-          
+
           // Notes de cette catégorie
           categoryGrades.forEach((grade, index) => {
             // Ligne avec alternance de couleurs
@@ -1042,30 +1043,30 @@ export default async function handler(req, res) {
             const maxScore = parseFloat(grade.maxScore) || 20;
             const coef = parseFloat(grade.coefficient) || 1;
             const total = score * coef;
-            
+
             // Mention par matière
             const subjectMention = getSubjectMention(score, maxScore);
 
             doc.fontSize(7).font('Helvetica').fillColor('#000000');
             doc.text(grade.subjectName.substring(0, 18), 20, currentY);
-            
+
             if (isTrimester) {
               // Affichage pour trimestre - coordonnées exactes de l'API individuelle
               const seq1Score = grade.seq1Score || 0;
               const seq2Score = grade.seq2Score || 0;
               const moyScore = (seq1Score + seq2Score) / 2;
               const total = moyScore * coef;
-              
+
               doc.text(seq1Score.toString(), 120, currentY);
               doc.text(seq2Score.toString(), 150, currentY);
               doc.text(moyScore.toFixed(2), 180, currentY);
               doc.text(coef.toString(), 210, currentY);
               doc.text(total.toFixed(2), 240, currentY);
-              
+
               // Utiliser le vrai rang par matière calculé
               const realSubjectRank = subjectRanks.get(grade.subjectId) || 1;
               doc.text(formatRank(realSubjectRank), 290, currentY);
-              
+
               // Mention par matière pour trimestre - basée sur la MOYENNE des 2 séquences
               const subjectMentionForTrimester = getSubjectMentionForTrimester(moyScore);
               doc.text(subjectMentionForTrimester, 340, currentY);
@@ -1075,16 +1076,16 @@ export default async function handler(req, res) {
               doc.text(maxScore.toString(), 170, currentY);
               doc.text(coef.toString(), 200, currentY);
               doc.text(total.toFixed(2), 230, currentY);
-              
+
               // Utiliser le vrai rang par matière calculé
               const realSubjectRank = subjectRanks.get(grade.subjectId) || 1;
               doc.text(formatRank(realSubjectRank), 280, currentY);
               doc.text(subjectMention, 320, currentY);
             }
-            
+
             currentY += 12; // Hauteur de ligne réduite (comme dans l'API individuelle)
           });
-          
+
           currentY += 5;
         });
 
@@ -1093,12 +1094,12 @@ export default async function handler(req, res) {
 
         // ===== RÉSULTATS GÉNÉRAUX =====
         const resultsTop = currentY + 8;
-        
+
         // Section des résultats avec fond gris
         doc.rect(15, resultsTop, 565, 45).fill('#f3f4f6').stroke('#d1d5db', 1);
-        
+
         doc.fontSize(10).font('Helvetica-Bold').fillColor('#1e40af')
-           .text('RÉSULTATS GÉNÉRAUX / GENERAL RESULTS', 20, resultsTop + 5);
+          .text('RÉSULTATS GÉNÉRAUX / GENERAL RESULTS', 20, resultsTop + 5);
 
         // Première ligne des résultats
         doc.fontSize(8).font('Helvetica-Bold').fillColor('#374151');
@@ -1120,25 +1121,25 @@ export default async function handler(req, res) {
 
         // ===== APPRÉCIATIONS =====
         const appreciationsTop = resultsTop + 60;
-        
+
         // Section des appréciations avec fond gris clair (taille réduite pour libérer de l'espace)
         doc.rect(15, appreciationsTop, 565, 60).fill('#f9fafb').stroke('#d1d5db', 1);
-        
+
         doc.fontSize(10).font('Helvetica-Bold').fillColor('#1e40af')
-           .text('APPRÉCIATIONS / COMMENTS', 20, appreciationsTop + 5);
-        
+          .text('APPRÉCIATIONS / COMMENTS', 20, appreciationsTop + 5);
+
         // Appréciation du professeur titulaire
         doc.fontSize(8).font('Helvetica-Bold').fillColor('#374151');
         doc.text('Appréciation du Professeur Titulaire / Class Teacher Comments:', 20, appreciationsTop + 20);
-        
+
         // Zone de texte pour l'appréciation du professeur
         doc.fontSize(8).font('Helvetica').fillColor('#111827');
         doc.text(teacherComments || 'Aucune appréciation disponible', 20, appreciationsTop + 32, { width: 250 });
-        
+
         // Appréciation du chef d'établissement
         doc.fontSize(8).font('Helvetica-Bold').fillColor('#374151');
         doc.text('Appréciation du Chef d\'Établissement / Principal Comments:', 300, appreciationsTop + 20);
-        
+
         // Zone de texte pour l'appréciation du chef d'établissement
         doc.fontSize(8).font('Helvetica').fillColor('#111827');
         doc.text(principalComments || 'Aucune appréciation disponible', 300, appreciationsTop + 32, { width: 250 });
@@ -1146,35 +1147,35 @@ export default async function handler(req, res) {
         // ===== PIED DE PAGE =====
         const pageHeight = 842;
         const footerTop = pageHeight - 120;
-        
+
         // Ligne de séparation
         doc.moveTo(15, footerTop).lineTo(580, footerTop).stroke('#e5e7eb', 1);
 
         // Signatures
         doc.fontSize(8).font('Helvetica').fillColor('#6b7280');
-        
+
         // Signature du parent
         doc.text('Signature du Parent / Parent Signature:', 15, footerTop + 10);
         doc.rect(15, footerTop + 18, 100, 30).stroke('#9ca3af', 1);
-        
+
         // Date et lieu
         doc.text(`Yaoundé, le ${new Date().toLocaleDateString('fr-FR')}`, 130, footerTop + 25);
-        
+
         // Signature du directeur
         doc.text('Cachet et signature du Directeur / Director Stamp & Signature:', 300, footerTop + 10);
         doc.rect(400, footerTop + 18, 100, 30).stroke('#9ca3af', 1);
 
-      // Finaliser le PDF
-      doc.end();
-        
+        // Finaliser le PDF
+        doc.end();
+
         console.log(`✅ Bulletin généré pour ${student.nom} ${student.prenom}`);
-        
+
       } catch (error) {
         console.error(`❌ Erreur lors de la génération du bulletin pour ${student.nom}:`, error);
         // Continuer avec les autres élèves
       }
     }
-    
+
     console.log(`🎯 === FIN DE LA GÉNÉRATION ===`);
     console.log(`📊 Résumé: ${students.length} élèves traités`);
 
@@ -1208,7 +1209,7 @@ export default async function handler(req, res) {
     res.setHeader('Content-Type', 'application/zip');
     res.setHeader('Content-Disposition', `attachment; filename="bulletins_${className}_${evaluationPeriodId}.zip"`);
     res.send(zipBuffer);
-    
+
     console.log('✅ ZIP généré avec succès');
 
   } catch (error) {

@@ -43,82 +43,84 @@ import { Dialog, DialogContent } from "./ui/dialog";
 // Ancien composant d'attestation supprimé
 import { RecuPaiement } from "./recu-paiement";
 
+import { ImageCropperDialog } from "./image-cropper";
+
 type InscriptionFormValues = z.infer<typeof InscriptionInputSchema>;
 
 const professions = [
-    "Enseignant(e)", "Médecin", "Ingénieur(e)", "Commerçant(e)", "Fonctionnaire", 
-    "Agriculteur(rice)", "Artisan(e)", "Infirmier(ère)", "Avocat(e)", "Architecte",
-    "Journaliste", "Militaire", "Policier(ère)", "Sans emploi", "Retraité(e)", "Autre"
+  "Enseignant(e)", "Médecin", "Ingénieur(e)", "Commerçant(e)", "Fonctionnaire",
+  "Agriculteur(rice)", "Artisan(e)", "Infirmier(ère)", "Avocat(e)", "Architecte",
+  "Journaliste", "Militaire", "Policier(ère)", "Sans emploi", "Retraité(e)", "Autre"
 ];
 
 
 // Helper to convert file to data URI
 const toBase64 = (file: File): Promise<string> => new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = error => reject(error);
+  const reader = new FileReader();
+  reader.readAsDataURL(file);
+  reader.onload = () => resolve(reader.result as string);
+  reader.onerror = error => reject(error);
 });
 
 interface InscriptionFormProps {
-    isEditing?: boolean;
-    studentData?: Student;
-    onSuccess: (result: InscriptionOutput | { success: true, message: string }) => void;
-    onCancel: () => void;
+  isEditing?: boolean;
+  studentData?: Student;
+  onSuccess: (result: InscriptionOutput | { success: true, message: string }) => void;
+  onCancel: () => void;
 }
 
 const ProfessionInput = ({ form, fieldName, label }: { form: any, fieldName: `parentProfession` | `parent2Profession`, label: string }) => {
-    const [open, setOpen] = useState(false);
-    
-    return (
-        <FormField
-            control={form.control}
-            name={fieldName}
-            render={({ field }) => (
-                <FormItem>
-                    <FormLabel>{label}</FormLabel>
-                    <Popover open={open} onOpenChange={setOpen}>
-                        <PopoverTrigger asChild>
-                            <FormControl>
-                                <div className="relative">
-                                    <Input
-                                        placeholder="Sélectionner ou saisir..."
-                                        {...field}
-                                    />
-                                    <ChevronsUpDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50" />
-                                </div>
-                            </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                            <Command>
-                                <CommandInput 
-                                    placeholder="Rechercher une profession..."
-                                />
-                                <CommandList>
-                                    <CommandEmpty>Aucune profession trouvée.</CommandEmpty>
-                                    <CommandGroup>
-                                        {professions.map((prof) => (
-                                            <CommandItem
-                                                key={prof}
-                                                value={prof}
-                                                onSelect={() => {
-                                                    form.setValue(fieldName, prof, { shouldValidate: true });
-                                                    setOpen(false);
-                                                }}
-                                            >
-                                                {prof}
-                                            </CommandItem>
-                                        ))}
-                                    </CommandGroup>
-                                </CommandList>
-                            </Command>
-                        </PopoverContent>
-                    </Popover>
-                    <FormMessage />
-                </FormItem>
-            )}
-        />
-    );
+  const [open, setOpen] = useState(false);
+
+  return (
+    <FormField
+      control={form.control}
+      name={fieldName}
+      render={({ field }) => (
+        <FormItem>
+          <FormLabel>{label}</FormLabel>
+          <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+              <FormControl>
+                <div className="relative">
+                  <Input
+                    placeholder="Sélectionner ou saisir..."
+                    {...field}
+                  />
+                  <ChevronsUpDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50" />
+                </div>
+              </FormControl>
+            </PopoverTrigger>
+            <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+              <Command>
+                <CommandInput
+                  placeholder="Rechercher une profession..."
+                />
+                <CommandList>
+                  <CommandEmpty>Aucune profession trouvée.</CommandEmpty>
+                  <CommandGroup>
+                    {professions.map((prof) => (
+                      <CommandItem
+                        key={prof}
+                        value={prof}
+                        onSelect={() => {
+                          form.setValue(fieldName, prof, { shouldValidate: true });
+                          setOpen(false);
+                        }}
+                      >
+                        {prof}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
+          <FormMessage />
+        </FormItem>
+      )}
+    />
+  );
 };
 
 
@@ -128,6 +130,7 @@ export function InscriptionForm({ isEditing = false, studentData, onSuccess, onC
   const [schoolStructure, setSchoolStructure] = useState<SchoolStructure | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(studentData?.photoUrl || null);
   const [isPhotoLoading, setIsPhotoLoading] = useState(false);
+  const [originalImageForCrop, setOriginalImageForCrop] = useState<string | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<InscriptionFormValues>({
@@ -156,7 +159,7 @@ export function InscriptionForm({ isEditing = false, studentData, onSuccess, onC
     },
     mode: "onChange",
   });
-  
+
   // Forcer en MAJUSCULE en temps réel
   useEffect(() => {
     const subscription = form.watch((value, { name }) => {
@@ -209,7 +212,7 @@ export function InscriptionForm({ isEditing = false, studentData, onSuccess, onC
         const res = await fetch('/api/school/structure');
         if (!res.ok) throw new Error('Erreur lors du chargement de la structure');
         const structure = await res.json();
-      setSchoolStructure(structure);
+        setSchoolStructure(structure);
       } catch (e) {
         setSchoolStructure(null);
       }
@@ -225,7 +228,7 @@ export function InscriptionForm({ isEditing = false, studentData, onSuccess, onC
   const classes = useMemo(() => {
     const niveauSelectionne = form.watch("niveau");
     if (!schoolStructure || !niveauSelectionne) return [];
-    
+
     const level = schoolStructure.levels?.[niveauSelectionne];
     return level?.classes || [];
   }, [schoolStructure, form.watch("niveau")]);
@@ -233,11 +236,11 @@ export function InscriptionForm({ isEditing = false, studentData, onSuccess, onC
   useEffect(() => {
     const niveauSelectionne = form.getValues("niveau");
     const classeActuelle = form.getValues("classe");
-    
+
     if (!schoolStructure || !niveauSelectionne) return;
-    
+
     const classesDisponibles = schoolStructure.levels?.[niveauSelectionne]?.classes || [];
-    
+
     if (classeActuelle && !classesDisponibles.includes(classeActuelle)) {
       form.setValue("classe", "");
     }
@@ -250,8 +253,7 @@ export function InscriptionForm({ isEditing = false, studentData, onSuccess, onC
 
     try {
       const base64 = await toBase64(file);
-      form.setValue("photoUrl", base64, { shouldValidate: true });
-      setPhotoPreview(base64);
+      setOriginalImageForCrop(base64);
     } catch (error) {
       console.error("Erreur lors de la conversion de l'image :", error);
       toast({
@@ -262,6 +264,16 @@ export function InscriptionForm({ isEditing = false, studentData, onSuccess, onC
     } finally {
       setIsPhotoLoading(false);
     }
+  };
+
+  const handleCropComplete = (croppedImageBase64: string) => {
+    form.setValue("photoUrl", croppedImageBase64, { shouldValidate: true });
+    setPhotoPreview(croppedImageBase64);
+    setOriginalImageForCrop(null);
+  };
+
+  const handleCropCancel = () => {
+    setOriginalImageForCrop(null);
   };
 
   const handlePhotoClick = () => {
@@ -297,9 +309,9 @@ export function InscriptionForm({ isEditing = false, studentData, onSuccess, onC
             profession: values.parent2Profession || '',
             telephone: values.parent2Telephone || '',
             email: values.parent2Email || '',
-          }: undefined,
+          } : undefined,
         };
-        
+
         await updateStudent(studentData.id, updatedStudentData);
         result = { success: true, message: "Informations de l'élève mises à jour avec succès." };
         onSuccess(result);
@@ -333,38 +345,38 @@ export function InscriptionForm({ isEditing = false, studentData, onSuccess, onC
 
   return (
     <div className="flex flex-col h-full">
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 flex-grow">
-            <ScrollArea className="h-[70vh] p-4">
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 flex-grow">
+          <ScrollArea className="h-[70vh] p-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-6">
 
               {/* Colonne 1: Infos Élève */}
               <div className="space-y-4">
                 <h3 className="font-semibold text-lg border-b pb-2">Informations de l'Élève</h3>
                 <div className="flex gap-4 items-center">
-                    <FormField control={form.control} name="photoUrl" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="sr-only">Photo</FormLabel>
-                        <FormControl>
-                          <div className="flex flex-col items-center gap-2">
-                            <Avatar className="h-24 w-24 relative" onClick={handlePhotoClick}>
-                              {isPhotoLoading ? <Loader2 className="absolute inset-0 m-auto h-6 w-6 animate-spin" /> : photoPreview ? <AvatarImage src={photoPreview} alt="Photo de profil"/> : <AvatarFallback><User className="h-8 w-8" /></AvatarFallback>}
-                            </Avatar>
-                            <Button type="button" variant="ghost" size="sm" onClick={photoPreview ? handleRemovePhoto : handlePhotoClick}>
-                              {photoPreview ? <Trash2 className="mr-2 h-4 w-4"/> : <Upload className="mr-2 h-4 w-4"/>}
-                              {photoPreview ? "Supprimer" : "Importer"}
-                            </Button>
-                            <input type="file" accept="image/*" onChange={handlePhotoChange} className="hidden" ref={photoInputRef} />
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                    <div className="w-full space-y-4">
-                      <FormField control={form.control} name="nom" render={({ field }) => (<FormItem><FormLabel>Nom</FormLabel><FormControl><Input placeholder="Nom de l'élève" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                      <FormField control={form.control} name="prenom" render={({ field }) => (<FormItem><FormLabel>Prénom(s)</FormLabel><FormControl><Input placeholder="Prénom(s) de l'élève" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                    </div>
+                  <FormField control={form.control} name="photoUrl" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="sr-only">Photo</FormLabel>
+                      <FormControl>
+                        <div className="flex flex-col items-center gap-2">
+                          <Avatar className="h-24 w-24 relative" onClick={handlePhotoClick}>
+                            {isPhotoLoading ? <Loader2 className="absolute inset-0 m-auto h-6 w-6 animate-spin" /> : photoPreview ? <AvatarImage src={photoPreview} alt="Photo de profil" /> : <AvatarFallback><User className="h-8 w-8" /></AvatarFallback>}
+                          </Avatar>
+                          <Button type="button" variant="ghost" size="sm" onClick={photoPreview ? handleRemovePhoto : handlePhotoClick}>
+                            {photoPreview ? <Trash2 className="mr-2 h-4 w-4" /> : <Upload className="mr-2 h-4 w-4" />}
+                            {photoPreview ? "Supprimer" : "Importer"}
+                          </Button>
+                          <input type="file" accept="image/*" onChange={handlePhotoChange} className="hidden" ref={photoInputRef} />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <div className="w-full space-y-4">
+                    <FormField control={form.control} name="nom" render={({ field }) => (<FormItem><FormLabel>Nom</FormLabel><FormControl><Input placeholder="Nom de l'élève" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={form.control} name="prenom" render={({ field }) => (<FormItem><FormLabel>Prénom(s)</FormLabel><FormControl><Input placeholder="Prénom(s) de l'élève" {...field} /></FormControl><FormMessage /></FormItem>)} />
                   </div>
+                </div>
                 <FormField control={form.control} name="sexe" render={({ field }) => (
                   <FormItem className="space-y-3"><FormLabel>Sexe</FormLabel><FormControl>
                     <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex gap-4">
@@ -382,26 +394,26 @@ export function InscriptionForm({ isEditing = false, studentData, onSuccess, onC
                 <Separator />
                 <h3 className="font-semibold text-lg border-b pb-2">Classe</h3>
                 <div className="grid grid-cols-2 gap-4">
-                    <FormField control={form.control} name="niveau" render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Niveau</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl><SelectTrigger><SelectValue placeholder="Sélectionner..." /></SelectTrigger></FormControl>
-                            <SelectContent>{niveaux.map((niveau) => <SelectItem key={niveau} value={niveau}>{niveau.charAt(0).toUpperCase() + niveau.slice(1)}</SelectItem>)}</SelectContent>
-                        </Select>
-                        <FormMessage />
-                        </FormItem>
-                    )} />
-                    <FormField control={form.control} name="classe" render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Classe</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!form.watch("niveau")}>
-                            <FormControl><SelectTrigger><SelectValue placeholder="Sélectionner..." /></SelectTrigger></FormControl>
-                            <SelectContent>{classes.map((classe) => <SelectItem key={classe} value={classe}>{classe}</SelectItem>)}</SelectContent>
-                        </Select>
-                        <FormMessage />
-                        </FormItem>
-                    )} />
+                  <FormField control={form.control} name="niveau" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Niveau</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl><SelectTrigger><SelectValue placeholder="Sélectionner..." /></SelectTrigger></FormControl>
+                        <SelectContent>{niveaux.map((niveau) => <SelectItem key={niveau} value={niveau}>{niveau.charAt(0).toUpperCase() + niveau.slice(1)}</SelectItem>)}</SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="classe" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Classe</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!form.watch("niveau")}>
+                        <FormControl><SelectTrigger><SelectValue placeholder="Sélectionner..." /></SelectTrigger></FormControl>
+                        <SelectContent>{classes.map((classe) => <SelectItem key={classe} value={classe}>{classe}</SelectItem>)}</SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
                 </div>
               </div>
 
@@ -426,17 +438,25 @@ export function InscriptionForm({ isEditing = false, studentData, onSuccess, onC
               </div>
 
             </div>
-            </ScrollArea>
-            <Separator className="my-4"/>
-            <div className="flex justify-end gap-2 p-4 pt-0">
-              <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>Annuler</Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isEditing ? "Enregistrer les modifications" : "Inscrire l'élève"}
-              </Button>
-            </div>
-          </form>
-        </Form>
+          </ScrollArea>
+          <Separator className="my-4" />
+          <div className="flex justify-end gap-2 p-4 pt-0">
+            <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>Annuler</Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isEditing ? "Enregistrer les modifications" : "Inscrire l'élève"}
+            </Button>
+          </div>
+        </form>
+      </Form>
+      {originalImageForCrop && (
+        <ImageCropperDialog
+          imageSrc={originalImageForCrop}
+          onCropComplete={handleCropComplete}
+          onCancel={handleCropCancel}
+          aspectRatio={1}
+        />
+      )}
     </div>
   );
 }

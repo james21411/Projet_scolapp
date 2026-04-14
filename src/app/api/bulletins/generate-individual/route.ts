@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import pool from '../../../../db/mysql-pool';
+import pool from '@/db/mysql';
 
 // Fonction pour formater les rangs en français
 function formatRank(rank: number): string {

@@ -1,17 +1,18 @@
-import pool from '../../../db/mysql-pool';
+import { getPoolFromRequest } from '@/lib/pool-from-request';
 
 export default async function handler(req, res) {
   const { method } = req;
   let connection;
 
   try {
+    const pool = await getPoolFromRequest(req, res);
     connection = await pool.getConnection();
 
     switch (method) {
       case 'GET':
         // Récupérer les bulletins avec filtres
         const { classId, evaluationPeriodId, schoolYear, studentId } = req.query;
-        
+
         let query = `
           SELECT 
             b.*,
@@ -25,37 +26,37 @@ export default async function handler(req, res) {
           WHERE 1=1
         `;
         const params = [];
-        
+
         if (classId) {
           query += ' AND b.classId = ?';
           params.push(classId);
         }
-        
+
         if (evaluationPeriodId) {
           query += ' AND b.evaluationPeriodId = ?';
           params.push(evaluationPeriodId);
         }
-        
+
         if (schoolYear) {
           query += ' AND b.schoolYear = ?';
           params.push(schoolYear);
         }
-        
+
         if (studentId) {
           query += ' AND b.studentId = ?';
           params.push(studentId);
         }
-        
+
         query += ' ORDER BY b.issuedAt DESC';
-        
+
         const [bulletins] = await connection.query(query, params);
         return res.status(200).json(bulletins);
 
       case 'POST':
         // Créer un nouveau bulletin
-        const { 
-          studentId: newStudentId, 
-          classId: newClassId, 
+        const {
+          studentId: newStudentId,
+          classId: newClassId,
           schoolYear: newSchoolYear,
           evaluationPeriodId: newEvaluationPeriodId,
           averageScore,
@@ -83,7 +84,7 @@ export default async function handler(req, res) {
           averageScore, totalCoefficient, rank, totalStudents,
           teacherComments, principalComments, mention, issuedBy
         ]);
-        return res.status(201).json({ 
+        return res.status(201).json({
           id: bulletinId,
           message: 'Bulletin créé avec succès'
         });

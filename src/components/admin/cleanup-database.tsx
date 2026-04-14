@@ -8,15 +8,14 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from '@/hooks/use-toast';
 import { AlertTriangle, Database, Shield, Trash2, CheckCircle } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './ui/dialog';
-
 export function CleanupDatabase() {
     const [password, setPassword] = useState('');
     const [confirm, setConfirm] = useState(false);
     const [loading, setLoading] = useState(false);
     const [showDialog, setShowDialog] = useState(false);
-    const [results, setResults] = useState(null);
+    const [results, setResults] = useState<any>(null);
     const { toast } = useToast();
 
     const handleCleanup = async () => {
@@ -31,7 +30,7 @@ export function CleanupDatabase() {
 
         if (!confirm) {
             toast({
-                title: "Erreur", 
+                title: "Erreur",
                 description: "Veuillez confirmer l'opération",
                 variant: "destructive"
             });
@@ -130,7 +129,7 @@ export function CleanupDatabase() {
                             <Checkbox
                                 id="confirm"
                                 checked={confirm}
-                                onCheckedChange={(checked) => setConfirm(checked)}
+                                onCheckedChange={(checked) => setConfirm(checked === true)}
                             />
                             <Label htmlFor="confirm" className="text-sm font-medium">
                                 Je confirme vouloir supprimer toutes les données de test
@@ -184,7 +183,7 @@ export function CleanupDatabase() {
                             La base de données a été nettoyée avec succès
                         </DialogDescription>
                     </DialogHeader>
-                    
+
                     {results && (
                         <div className="space-y-4">
                             <div className="bg-green-50 border border-green-200 rounded-lg p-4">
@@ -202,7 +201,7 @@ export function CleanupDatabase() {
                                     {Object.entries(results.details).map(([table, count]) => (
                                         <div key={table} className="flex justify-between">
                                             <span className="capitalize">{table}:</span>
-                                            <span className="font-medium">{count}</span>
+                                            <span className="font-medium">{count as React.ReactNode}</span>
                                         </div>
                                     ))}
                                 </div>
@@ -214,7 +213,7 @@ export function CleanupDatabase() {
                                 </h4>
                                 <ul className="text-sm text-blue-700 space-y-1">
                                     {Object.entries(results.preserved).map(([key, value]) => (
-                                        <li key={key}>• {value}</li>
+                                        <li key={key}>• {value as React.ReactNode}</li>
                                     ))}
                                 </ul>
                             </div>

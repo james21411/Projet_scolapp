@@ -1,3 +1,5 @@
+"use server";
+
 import { getSchoolInfo as getSchoolInfoDb, updateSchoolInfo as updateSchoolInfoDb, createSchoolInfo as createSchoolInfoDb, deleteSchoolInfo as deleteSchoolInfoDb, resetSchoolInfo as resetSchoolInfoDb } from '../db/services/schoolDb';
 import { getSchoolStructure as getSchoolStructureDb, addClass as addClassDb, updateClass as updateClassDb, deleteClass as deleteClassDb } from '../db/services/schoolStructureDb';
 import type { SchoolInfo } from './schoolInfoService';

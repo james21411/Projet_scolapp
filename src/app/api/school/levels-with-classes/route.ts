@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import pool from '../../../../db/mysql-pool';
+import pool from '@/db/mysql';
 
 export async function GET(request: NextRequest) {
   try {
@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     const [rows] = await pool.execute(query);
     // Organiser les données par niveau
     const levelsMap = new Map();
-    
+
     (rows as any[]).forEach((row: any) => {
       if (!levelsMap.has(row.levelId)) {
         levelsMap.set(row.levelId, {
@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
           classes: []
         });
       }
-      
+
       if (row.classId) {
         levelsMap.get(row.levelId).classes.push({
           id: row.classId,

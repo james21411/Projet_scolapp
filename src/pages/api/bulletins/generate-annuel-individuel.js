@@ -1,4 +1,4 @@
-import pool from '../../../db/mysql-pool';
+import { getPoolFromRequest } from '@/lib/pool-from-request';
 import PDFDocument from 'pdfkit';
 
 // Fonction pour formater les rangs en français
@@ -12,14 +12,14 @@ function formatRank(rank) {
 // Fonction pour dessiner l'emblème officiel
 function drawOfficialEmblem(doc, x, y, size) {
   // Cercle extérieur
-  doc.circle(x + size/2, y + size/2, size/2).stroke('#1e40af', 2);
-  
+  doc.circle(x + size / 2, y + size / 2, size / 2).stroke('#1e40af', 2);
+
   // Cercle intérieur
-  doc.circle(x + size/2, y + size/2, size/3).stroke('#1e40af', 1);
-  
+  doc.circle(x + size / 2, y + size / 2, size / 3).stroke('#1e40af', 1);
+
   // Étoile au centre
-  doc.fontSize(size/4).font('Helvetica-Bold').fillColor('#1e40af')
-     .text('★', x + size/2 - 8, y + size/2 - 8);
+  doc.fontSize(size / 4).font('Helvetica-Bold').fillColor('#1e40af')
+    .text('★', x + size / 2 - 8, y + size / 2 - 8);
 }
 
 export default async function handler(req, res) {
@@ -28,6 +28,7 @@ export default async function handler(req, res) {
   }
 
   try {
+    const pool = await getPoolFromRequest(req, res);
     const { studentId, classId, schoolYear } = req.body;
 
     if (!studentId || !classId || !schoolYear) {
@@ -36,16 +37,15 @@ export default async function handler(req, res) {
 
     console.log('🚀 === GÉNÉRATION BULLETIN ANNUEL INDIVIDUEL ===');
     console.log(`👤 Élève: ${studentId}, Classe: ${classId}, Année: ${schoolYear}`);
-
-    const connection = ;
-
+    const connection = pool;
     // Récupérer l'élève
     const [students] = await connection.query(`
       SELECT * FROM students 
       WHERE id = ? AND anneeScolaire = ?
     `, [studentId, schoolYear]);
 
-    if (students.length === 0) {      return res.status(404).json({ error: 'Élève non trouvé' });
+    if (students.length === 0) {
+      return res.status(404).json({ error: 'Élève non trouvé' });
     }
 
     const student = students[0];
@@ -56,7 +56,7 @@ export default async function handler(req, res) {
       'SELECT name FROM school_classes WHERE id = ?',
       [classId]
     );
-    
+
     const className = classInfo.length > 0 ? classInfo[0].name : classId;
 
     // Récupérer les informations de l'école
@@ -82,8 +82,9 @@ export default async function handler(req, res) {
 
     console.log(`📊 Résultats trimestres trouvés:`, trimesterResults);
 
-    if (trimesterResults.length < 3) {      return res.status(400).json({ 
-        error: `Données incomplètes. ${trimesterResults.length}/3 trimestres disponibles.` 
+    if (trimesterResults.length < 3) {
+      return res.status(400).json({
+        error: `Données incomplètes. ${trimesterResults.length}/3 trimestres disponibles.`
       });
     }
 
@@ -121,19 +122,19 @@ export default async function handler(req, res) {
     const schoolName = schoolInfo && schoolInfo[0] ? schoolInfo[0].name : 'École Secondaire';
     const schoolAddress = schoolInfo && schoolInfo[0] ? schoolInfo[0].address : 'Yaoundé';
     const schoolEmail = schoolInfo && schoolInfo[0] ? schoolInfo[0].email : 'contact@ecole.cm';
-    
+
     doc.fontSize(16).font('Helvetica-Bold').fillColor('#1e40af')
-       .text(schoolName, 40, 20, { align: 'center', width: 515 });
-    
+      .text(schoolName, 40, 20, { align: 'center', width: 515 });
+
     doc.fontSize(10).font('Helvetica').fillColor('#374151')
-       .text(schoolAddress, 40, 40, { align: 'center', width: 515 })
-       .text(schoolEmail, 40, 55, { align: 'center', width: 515 });
+      .text(schoolAddress, 40, 40, { align: 'center', width: 515 })
+      .text(schoolEmail, 40, 55, { align: 'center', width: 515 });
 
     // Logo de l'école
     const logoX = 250;
     const logoY = 15;
     const logoSize = 40;
-    
+
     if (schoolInfo && schoolInfo[0] && schoolInfo[0].logoUrl) {
       try {
         doc.image(schoolInfo[0].logoUrl, logoX, logoY, { width: logoSize, height: logoSize });
@@ -146,13 +147,13 @@ export default async function handler(req, res) {
 
     // Titre principal
     doc.fontSize(18).font('Helvetica-Bold').fillColor('#1e40af')
-       .text('BULLETIN ANNUEL', 40, 80, { align: 'center', width: 515 })
-       .fontSize(14).fillColor('#374151')
-       .text('ANNUAL REPORT CARD', 40, 100, { align: 'center', width: 515 });
+      .text('BULLETIN ANNUEL', 40, 80, { align: 'center', width: 515 })
+      .fontSize(14).fillColor('#374151')
+      .text('ANNUAL REPORT CARD', 40, 100, { align: 'center', width: 515 });
 
     // Informations de l'élève
     doc.fontSize(12).font('Helvetica-Bold').fillColor('#1e40af')
-       .text('INFORMATIONS DE L\'ÉLÈVE / STUDENT INFORMATION', 15, 130);
+      .text('INFORMATIONS DE L\'ÉLÈVE / STUDENT INFORMATION', 15, 130);
 
     doc.fontSize(10).font('Helvetica').fillColor('#374151');
     doc.text(`Nom / Last Name: ${student.nom || 'N/A'}`, 15, 150);
@@ -162,7 +163,7 @@ export default async function handler(req, res) {
 
     // Résultats par trimestre
     doc.fontSize(12).font('Helvetica-Bold').fillColor('#1e40af')
-       .text('RÉSULTATS PAR TRIMESTRE / TRIMESTER RESULTS', 15, 250);
+      .text('RÉSULTATS PAR TRIMESTRE / TRIMESTER RESULTS', 15, 250);
 
     let currentY = 270;
     trimesterResults.forEach((trimester, index) => {
@@ -173,54 +174,55 @@ export default async function handler(req, res) {
       const mention = trimester.mention || 'N/A';
 
       doc.fontSize(10).font('Helvetica-Bold').fillColor('#1e40af')
-         .text(`${trimesterNumber}ème Trimestre / ${trimesterNumber}nd Trimester`, 15, currentY);
-      
+        .text(`${trimesterNumber}ème Trimestre / ${trimesterNumber}nd Trimester`, 15, currentY);
+
       currentY += 20;
-      
+
       doc.fontSize(9).font('Helvetica').fillColor('#374151');
       doc.text(`Moyenne / Average: ${average.toFixed(2)}/20`, 25, currentY);
       doc.text(`Rang / Rank: ${formatRank(rank)}/${totalStudents}`, 25, currentY + 15);
       doc.text(`Mention: ${mention}`, 25, currentY + 30);
-      
+
       currentY += 50;
     });
 
     // Résultat annuel
     doc.fontSize(14).font('Helvetica-Bold').fillColor('#1e40af')
-       .text('RÉSULTAT ANNUEL / ANNUAL RESULT', 15, currentY);
+      .text('RÉSULTAT ANNUEL / ANNUAL RESULT', 15, currentY);
 
     currentY += 25;
-    
+
     doc.fontSize(12).font('Helvetica-Bold').fillColor('#1e40af')
-       .text(`Moyenne Annuelle / Annual Average: ${annualAverage.toFixed(2)}/20`, 25, currentY);
-    
+      .text(`Moyenne Annuelle / Annual Average: ${annualAverage.toFixed(2)}/20`, 25, currentY);
+
     currentY += 25;
-    
+
     doc.fontSize(12).font('Helvetica-Bold').fillColor('#1e40af')
-       .text(`Décision Finale / Final Decision: ${finalDecision}`, 25, currentY);
+      .text(`Décision Finale / Final Decision: ${finalDecision}`, 25, currentY);
 
     // Signature et cachet
     currentY += 50;
     doc.fontSize(10).font('Helvetica').fillColor('#6b7280');
     doc.text('Signature du Directeur / Director Signature:', 15, currentY);
     doc.rect(15, currentY + 10, 150, 40).stroke('#9ca3af', 1);
-    
+
     doc.text('Cachet de l\'établissement / School Stamp:', 200, currentY);
     doc.rect(200, currentY + 10, 150, 40).stroke('#9ca3af', 1);
-    
+
     doc.text('Date:', 400, currentY);
     doc.text(new Date().toLocaleDateString('fr-FR'), 400, currentY + 20);
 
     // Finaliser le PDF
     doc.end();
-    
+
     console.log(`✅ Bulletin annuel généré pour ${student.nom} ${student.prenom}`);
-    
-    // Fermer la connexion    console.log('🔌 Connexion fermée');
+
+    // Fermer la connexion
+    console.log('🔌 Connexion fermée');
 
   } catch (error) {
     console.error('❌ Erreur lors de la génération du bulletin annuel:', error);
-    return res.status(500).json({ 
+    return res.status(500).json({
       error: 'Erreur lors de la génération du bulletin annuel',
       details: error.message
     });

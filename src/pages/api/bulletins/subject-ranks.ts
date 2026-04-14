@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import pool from '../../../db/mysql-pool';
+import { getPoolFromRequest } from '@/lib/pool-from-request';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -15,8 +15,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: 'Paramètres manquants' });
     }
 
+    const pool = await getPoolFromRequest(req, res);
     connection = await pool.getConnection();
-    
+
     console.log('🔍 Récupération des rangs par matière pour:', {
       classId,
       evaluationPeriodId,
@@ -47,7 +48,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
     const period = periods[0];
     const isTrimester = period.name.toLowerCase().includes('trim') || period.name.toLowerCase().includes('trimester');
-    
+
     console.log('📅 Période:', period.name, 'Type:', isTrimester ? 'TRIMESTRE' : 'SÉQUENCE');
 
     // Récupérer tous les élèves de la classe
@@ -74,11 +75,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log('📚 Matières de la classe:', classSubjects.length);
 
     // Calculer les rangs par matière
-    const ranksBySubject: {[subjectId: string]: {rank: number, totalStudents: number}} = {};
+    const ranksBySubject: { [subjectId: string]: { rank: number, totalStudents: number } } = {};
 
     for (const subject of classSubjects) {
       console.log(`🔍 Calcul du rang pour la matière: ${subject.name}`);
-      
+
       // Récupérer les notes de tous les élèves pour cette matière
       const studentsWithGrades = [];
 
@@ -164,10 +165,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       // Trier par moyenne décroissante et calculer le rang
       studentsWithGrades.sort((a, b) => b.average - a.average);
-      
+
       // Trouver le rang de l'élève demandé
       const studentRank = studentsWithGrades.findIndex(s => s.studentId === parseInt(studentId)) + 1;
-      
+
       ranksBySubject[subject.id] = {
         rank: studentRank > 0 ? studentRank : 1,
         totalStudents: studentsWithGrades.length

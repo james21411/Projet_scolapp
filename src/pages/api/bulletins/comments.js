@@ -1,4 +1,4 @@
-import pool from '../../../db/mysql-pool';
+import { getPoolFromRequest } from '@/lib/pool-from-request';
 
 export default async function handler(req, res) {
   if (req.method === 'POST') {
@@ -9,9 +9,7 @@ export default async function handler(req, res) {
       if (!studentId || !evaluationPeriodId || !schoolYear || !classId || !issuedBy) {
         return res.status(400).json({ error: 'Paramètres manquants: studentId, evaluationPeriodId, schoolYear, classId, issuedBy' });
       }
-
-      const connection = ;
-
+      const connection = pool;
       // Vérifier si un bulletin existe déjà
       const [existingBulletins] = await connection.query(
         'SELECT id FROM report_cards WHERE studentId = ? AND evaluationPeriodId = ? AND schoolYear = ?',
@@ -36,15 +34,15 @@ export default async function handler(req, res) {
           ) VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
           [bulletinId, studentId, classId, evaluationPeriodId, schoolYear, teacherComments, principalComments, issuedBy]
         );
-      }      return res.status(200).json({ 
-        message: 'Commentaires sauvegardés avec succès' 
+      } return res.status(200).json({
+        message: 'Commentaires sauvegardés avec succès'
       });
 
     } catch (error) {
       console.error('Erreur API bulletins/comments POST:', error);
-      return res.status(500).json({ 
+      return res.status(500).json({
         error: 'Erreur serveur interne',
-        details: error.message 
+        details: error.message
       });
     }
   } else if (req.method === 'GET') {
@@ -55,13 +53,11 @@ export default async function handler(req, res) {
       if (!studentId || !evaluationPeriodId || !schoolYear) {
         return res.status(400).json({ error: 'Paramètres manquants: studentId, evaluationPeriodId, schoolYear' });
       }
-
-      const connection = ;
-
+      const connection = pool;
       const [comments] = await connection.query(
         'SELECT teacherComments, principalComments FROM report_cards WHERE studentId = ? AND evaluationPeriodId = ? AND schoolYear = ?',
         [studentId, evaluationPeriodId, schoolYear]
-      );      if (comments.length > 0) {
+      ); if (comments.length > 0) {
         return res.status(200).json(comments[0]);
       } else {
         return res.status(200).json({ teacherComments: '', principalComments: '' });
@@ -69,9 +65,9 @@ export default async function handler(req, res) {
 
     } catch (error) {
       console.error('Erreur API bulletins/comments GET:', error);
-      return res.status(500).json({ 
+      return res.status(500).json({
         error: 'Erreur serveur interne',
-        details: error.message 
+        details: error.message
       });
     }
   } else {

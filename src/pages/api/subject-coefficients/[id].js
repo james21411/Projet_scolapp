@@ -1,23 +1,24 @@
-import pool from '../../../db/mysql-pool';
+import { getPoolFromRequest } from '@/lib/pool-from-request';
 
 export default async function handler(req, res) {
   const { method } = req;
   const { id } = req.query;
 
   try {
+    const pool = await getPoolFromRequest(req, res);
     switch (method) {
       case 'PUT':
         // Mettre à jour un sujet
         const { code, name, category, coefficient, maxScore, isActive, classId, schoolYear } = req.body;
-        
+
         await pool.execute(
           `UPDATE subjects 
            SET code = ?, name = ?, category = ?, coefficient = ?, maxScore = ?, isActive = ?, classId = ?, schoolYear = ?, updatedAt = NOW()
            WHERE id = ?`,
           [code || '', name || '', category || '', coefficient || 1, maxScore || 20, isActive !== undefined ? isActive : 1, classId || null, schoolYear || null, id]
         );
-        
-        return res.status(200).json({ 
+
+        return res.status(200).json({
           id,
           code,
           name,
@@ -35,7 +36,7 @@ export default async function handler(req, res) {
           'DELETE FROM subjects WHERE id = ?',
           [id]
         );
-        
+
         return res.status(200).json({ message: 'Sujet supprimé définitivement' });
 
       default:

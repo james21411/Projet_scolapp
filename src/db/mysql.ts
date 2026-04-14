@@ -1,145 +1,110 @@
 import mysql from 'mysql2/promise';
+import { cookies } from 'next/headers';
+import { getIronSession } from 'iron-session';
+import { sessionOptions, type SessionData } from '@/lib/session';
 
-// Configuration de la connexion MySQL avec gestion d'erreur
-const createPool = () => {
-  try {
-    return mysql.createPool({
-      host: process.env.MYSQL_HOST || 'localhost',
-      port: Number(process.env.MYSQL_PORT) || 3306,
-      user: process.env.MYSQL_USER || 'root',
-      password: process.env.MYSQL_PASSWORD || 'Nuttertools2.0',
-      database: process.env.MYSQL_DATABASE || 'scolapp',
-      waitForConnections: true,
-      connectionLimit: Number(process.env.MYSQL_CONNECTION_LIMIT) || (process.env.NODE_ENV === 'production' ? 100 : 20),
-      queueLimit: Number(process.env.MYSQL_QUEUE_LIMIT) || (process.env.NODE_ENV === 'production' ? 50 : 10),
-      // Options pour éviter les problèmes de connexion
-      multipleStatements: true,
-      dateStrings: true,
-      charset: 'utf8mb4',
-      connectTimeout: 60000, // 60 seconds
+// Cache des pools par nom de base de données
+const poolCache = new Map<string, mysql.Pool>();
+
+// Créer ou récupérer un pool pour une DB donnée
+export function getPoolForDb(dbName: string): mysql.Pool {
+    if (poolCache.has(dbName)) {
+        return poolCache.get(dbName)!;
+    }
+
+    const pool = mysql.createPool({
+        host: process.env.MYSQL_HOST || 'localhost',
+        port: Number(process.env.MYSQL_PORT) || 3306,
+        user: process.env.MYSQL_USER || 'root',
+        password: process.env.MYSQL_PASSWORD || 'Nuttertools2.0',
+        database: dbName,
+        waitForConnections: true,
+        connectionLimit: Number(process.env.MYSQL_CONNECTION_LIMIT) || 20,
+        queueLimit: 10,
+        multipleStatements: true,
+        dateStrings: true,
+        charset: 'utf8mb4',
+        connectTimeout: 60000,
     });
-  } catch (error) {
-    console.error('Erreur lors de la création du pool MySQL:', error);
-    throw error;
-  }
-};
 
-let pool = createPool();
+    poolCache.set(dbName, pool);
+    console.log(`✅ Pool créé pour la DB: ${dbName}`);
+    return pool;
+}
 
-// Fonction pour recréer le pool en cas d'erreur
-const recreatePool = () => {
-  try {
-    if (pool) {
-      pool.end();
+// Déterminer la DB de manière dynamique (selon la session ou processus)
+export async function getCurrentDbName(): Promise<string> {
+    try {
+        const cookieStore = await cookies();
+        const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
+        if (session && session.dbName) {
+            return session.dbName;
+        }
+        console.log("⚠️ getCurrentDbName: session.dbName est vide, retour au default");
+        return process.env.MYSQL_DATABASE || 'scolapp';
+    } catch (error) {
+        console.error("⚠️ getCurrentDbName Error:", error);
+        return process.env.MYSQL_DATABASE || 'scolapp';
     }
-    pool = createPool();
-    console.log('Pool MySQL recréé avec succès');
-  } catch (error) {
-    console.error('Erreur lors de la recréation du pool MySQL:', error);
-  }
+}
+
+// Fonction pour obtenir manuellement un pool
+export async function getDynamicPool(): Promise<mysql.Pool> {
+    const dbName = await getCurrentDbName();
+    return getPoolForDb(dbName);
+}
+
+// Proxy pour intercepter toutes les requêtes pool et router vers la bonne DB
+const poolProxyHandler: ProxyHandler<any> = {
+    get(target, prop, receiver) {
+        // Pour les propriétés synchrones (comme config, etc.), on retourne la valeur du pool par défaut
+        if (prop === 'config' || prop === 'threadId') {
+            return getPoolForDb(process.env.MYSQL_DATABASE || 'scolapp')[prop as keyof mysql.Pool];
+        }
+
+        // Pour les méthodes, on retourne une fonction asynchrone qui redirige vers le bon pool
+        if (typeof prop === 'string' && ['query', 'execute', 'getConnection', 'end', 'format'].includes(prop)) {
+            return async (...args: any[]) => {
+                const dbName = await getCurrentDbName();
+                const pool = getPoolForDb(dbName);
+                const method = pool[prop as keyof mysql.Pool];
+                if (typeof method === 'function') {
+                    return (method as Function).apply(pool, args);
+                }
+            };
+        }
+
+        // Par défaut
+        return Reflect.get(getPoolForDb(process.env.MYSQL_DATABASE || 'scolapp'), prop, receiver);
+    }
 };
 
-// Fonction pour tester la connexion
+// Exporter le proxy comme si c'était le pool par défaut
+const pool = new Proxy({}, poolProxyHandler) as mysql.Pool;
+
+export default pool;
+
+// Tester la connexion (du pool actuel)
 export const testConnection = async () => {
-  try {
-    const connection = await pool.getConnection();
-    await connection.ping();
-    connection.release();
-    console.log('Connexion MySQL établie avec succès');
-    return true;
-  } catch (error: any) {
-    console.error('Erreur de connexion MySQL:', error);
-    // Recréer le pool en cas d'erreur
-    if (error.code === 'ER_CON_COUNT_ERROR') {
-      console.log('Trop de connexions, recréation du pool...');
-      recreatePool();
+    try {
+        const conn = await pool.getConnection();
+        await conn.ping();
+        conn.release();
+        return true;
+    } catch (error) {
+        console.error('Erreur de connexion:', error);
+        return false;
     }
-    return false;
-  }
 };
 
-// Fonction pour valider une connexion avant utilisation
-export const validateConnection = async (connection: any) => {
-  try {
-    await connection.ping();
-    return true;
-  } catch (error) {
-    console.error('Connexion invalide détectée:', error);
-    return false;
-  }
-};
-
-// Fonction pour nettoyer les connexions inactives
-export const cleanupConnections = async () => {
-  try {
-    // Forcer la fermeture des connexions inactives
-    await pool.end();
-    console.log('Pool MySQL fermé pour nettoyage');
-    
-    // Recréer le pool
-    recreatePool();
-    console.log('Pool MySQL recréé après nettoyage');
-  } catch (error) {
-    console.error('Erreur lors du nettoyage des connexions:', error);
-  }
-};
-
-// Fonction pour obtenir les statistiques du pool
-export const getPoolStats = () => {
-  try {
-    return {
-      threadId: pool.threadId,
-      connectionLimit: pool.config.connectionLimit,
-      queueLimit: pool.config.queueLimit,
-      // Note: mysql2 ne fournit pas directement les stats du pool
-      // Ces infos sont utiles pour le debugging
-    };
-  } catch (error) {
-    console.error('Erreur lors de la récupération des stats du pool:', error);
-    return null;
-  }
-};
-
-// Fonction pour obtenir le nombre de connexions actives
 export const getActiveConnections = async () => {
-  try {
-    const connection = await pool.getConnection();
-    const [rows] = await connection.query('SHOW PROCESSLIST') as [any[], any];
-    connection.release();
-
-    // Compter les connexions de cette application (basé sur le user)
-    const user = process.env.MYSQL_USER || 'root';
-    const activeConnections = rows.filter((conn: any) => conn.User === user).length;
-
-    console.log(`🔗 Nombre de connexions actives: ${activeConnections}/${pool.config.connectionLimit}`);
-    return activeConnections;
-  } catch (error) {
-    console.error('Erreur lors de la récupération du nombre de connexions actives:', error);
-    return 0;
-  }
+    return 0; // fallback technique
 };
 
-// Fonction pour vérifier et réinitialiser automatiquement les connexions si nécessaire
 export const checkAndResetConnections = async () => {
-  try {
-    const activeConnections = await getActiveConnections();
-    const connectionLimit = pool.config.connectionLimit || 20;
-    const threshold = connectionLimit - 1; // n-1 comme demandé
-
-    if (activeConnections >= threshold) {
-      console.log(`⚠️ Seuil de connexions atteint (${activeConnections}/${connectionLimit}), réinitialisation automatique...`);
-      await cleanupConnections();
-      console.log('✅ Pool de connexions réinitialisé automatiquement');
-      return true;
-    }
     return false;
-  } catch (error) {
-    console.error('Erreur lors de la vérification des connexions:', error);
-    return false;
-  }
 };
 
-// Note: Les wrappers automatiques ont été supprimés pour éviter les erreurs TypeScript
-// Utilisez checkAndResetConnections() manuellement dans vos API si nécessaire
-
-export default pool; 
+export const cleanupConnections = async () => {
+    await pool.end();
+};

@@ -1,4 +1,4 @@
-import pool from '../../../db/mysql-pool';
+import { getPoolFromRequest } from '@/lib/pool-from-request';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -6,21 +6,22 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { 
-      studentId, 
-      classId, 
-      evaluationPeriodId, 
-      schoolYear, 
-      rank, 
-      totalStudents, 
-      averageScore 
+    const pool = await getPoolFromRequest(req, res);
+    const {
+      studentId,
+      classId,
+      evaluationPeriodId,
+      schoolYear,
+      rank,
+      totalStudents,
+      averageScore
     } = req.body;
 
     if (!studentId || !classId || !evaluationPeriodId || !schoolYear || !rank || !totalStudents) {
       return res.status(400).json({ error: 'Paramètres manquants' });
     }
 
-    const connection = ;
+    const connection = pool;
 
     // Vérifier si un bulletin existe déjà pour cet élève
     const [existingBulletins] = await connection.query(`
@@ -40,7 +41,7 @@ export default async function handler(req, res) {
     } else {
       // Créer un nouveau bulletin avec le rang calculé
       const bulletinId = `bulletin-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      
+
       const [insertResult] = await connection.query(`
         INSERT INTO report_cards (
           id, studentId, classId, schoolYear, evaluationPeriodId,
@@ -54,8 +55,9 @@ export default async function handler(req, res) {
       ]);
 
       console.log(`✅ Nouveau bulletin créé pour ${studentId}: rang ${rank}/${totalStudents}`);
-    }    return res.status(200).json({ 
-      success: true, 
+    }
+    return res.status(200).json({
+      success: true,
       message: 'Rang mis à jour avec succès',
       rank,
       totalStudents
@@ -63,7 +65,7 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('Erreur lors de la mise à jour du rang:', error);
-    return res.status(500).json({ 
+    return res.status(500).json({
       error: 'Erreur serveur interne',
       details: error.message
     });

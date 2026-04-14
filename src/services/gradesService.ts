@@ -1,3 +1,5 @@
+"use server";
+
 import { getAllGrades, getGradesByStudent, getGradesByClassAndSubject, addGrade, updateGrade, deleteGrade } from '../db/services/gradesDb';
 import { getAllClassSubjects, addClassSubject, deleteClassSubject, getAllSubjects, deleteAllClassSubjectsForClassYear, addGlobalSubject } from '../db/services/classSubjectDb';
 import { getFilteredStudents } from './studentService';

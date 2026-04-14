@@ -1,3 +1,5 @@
+"use server";
+
 import { getAllUsers, getUserById, addUser as addUserDb, updateUser as updateUserDb, deleteUser as deleteUserDb, getUserByUsername, updateUserPassword, getUsersPaginated } from '../db/services/userDb';
 import bcrypt from 'bcryptjs';
 import { validatePassword, generateStrongPassword } from './passwordValidationService';
@@ -36,18 +38,18 @@ async function generateUserIdByRole(role: UserRole): Promise<string> {
   // Récupérer tous les utilisateurs existants avec ce rôle
   const allUsers = await getUsers();
   const usersWithRole = allUsers.filter((u: User) => u.role === role);
-  
+
   // Trouver le prochain numéro séquentiel
   let nextNumber = 1;
   const existingNumbers = usersWithRole.map((u: User) => {
     const match = u.id.match(new RegExp(`^${getRolePrefix(role)}_(\\d+)$`));
     return match ? parseInt(match[1]) : 0;
   });
-  
+
   if (existingNumbers.length > 0) {
     nextNumber = Math.max(...existingNumbers) + 1;
   }
-  
+
   const prefix = getRolePrefix(role);
   return `${prefix}_${nextNumber.toString().padStart(3, '0')}`;
 }
@@ -57,18 +59,18 @@ async function generateUsernameByRole(fullName: string, role: UserRole): Promise
   // Récupérer tous les utilisateurs existants avec ce rôle
   const allUsers = await getUsers();
   const usersWithRole = allUsers.filter((u: User) => u.role === role);
-  
+
   // Trouver le prochain numéro séquentiel
   let nextNumber = 1;
   const existingNumbers = usersWithRole.map((u: User) => {
     const match = u.username.match(new RegExp(`^${getRolePrefix(role)}_(\\d+)$`));
     return match ? parseInt(match[1]) : 0;
   });
-  
+
   if (existingNumbers.length > 0) {
     nextNumber = Math.max(...existingNumbers) + 1;
   }
-  
+
   const prefix = getRolePrefix(role);
   return `${prefix}_${nextNumber.toString().padStart(3, '0')}`;
 }
@@ -83,7 +85,7 @@ function getRolePrefix(role: UserRole): string {
     'Parent': 'PARENT',
     'Élève': 'ELEVE'
   };
-  
+
   return rolePrefix[role] || 'USER';
 }
 
@@ -96,11 +98,11 @@ export async function addUserService(user: Omit<User, 'createdAt'>, password: st
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
-  const userWithId = { 
-    ...user, 
+  const userWithId = {
+    ...user,
     id: user.id || await generateUserIdByRole(user.role as UserRole),
     username: user.username || await generateUsernameByRole(user.fullName, user.role as UserRole),
-    passwordHash 
+    passwordHash
   };
   const newUser = await addUserDb(userWithId);
   return newUser as User;
@@ -142,7 +144,7 @@ export async function verifyPassword(password: string, hash: string) {
 }
 
 // Vérifier si un utilisateur a un rôle donné (ou un des rôles)
-export function hasRole(user: User, roles: UserRole | UserRole[]): boolean {
+export async function hasRole(user: User, roles: UserRole | UserRole[]): Promise<boolean> {
   if (Array.isArray(roles)) return roles.includes(user.role as UserRole);
   return user.role === roles;
 }
@@ -171,6 +173,6 @@ export async function getUsersPaginatedService(page: number, pageSize: number): 
 }
 
 // Générer un mot de passe fort selon la politique
-export function generateSecurePassword(): string {
+export async function generateSecurePassword(): Promise<string> {
   return generateStrongPassword();
 }

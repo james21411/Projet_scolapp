@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import pool from '@/db/mysql-pool';
+import pool from '@/db/mysql';
 
 export async function POST(request: NextRequest) {
   try {

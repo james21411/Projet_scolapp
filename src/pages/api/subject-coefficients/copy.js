@@ -1,4 +1,4 @@
-import pool from '../../../db/mysql-pool';
+import { getPoolFromRequest } from '@/lib/pool-from-request';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -6,10 +6,11 @@ export default async function handler(req, res) {
   }
 
   try {
+    const pool = await getPoolFromRequest(req, res);
     const { sourceClassId, targetClassId, sourceSchoolYear, targetSchoolYear, selectedSubjects } = req.body;
-    
+
     console.log('Données reçues:', { sourceClassId, targetClassId, sourceSchoolYear, targetSchoolYear, selectedSubjects });
-    
+
     if (!sourceClassId || !targetClassId || !sourceSchoolYear || !targetSchoolYear) {
       return res.status(400).json({ error: 'Paramètres manquants' });
     }
@@ -61,11 +62,11 @@ export default async function handler(req, res) {
         updatedCount++;
       }
     }
-    
+
     const message = `Opération terminée: ${copiedCount} matière(s) copiée(s), ${updatedCount} matière(s) mise(s) à jour`;
     console.log(message);
-    
-    return res.status(200).json({ 
+
+    return res.status(200).json({
       message,
       copiedCount,
       updatedCount,

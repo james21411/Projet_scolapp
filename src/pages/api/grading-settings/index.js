@@ -1,11 +1,11 @@
-import { NextApiRequest, NextApiResponse } from 'next';
-import pool from '../../../db/mysql-pool';
+import { getPoolFromRequest } from '@/lib/pool-from-request';
 
 export default async function handler(req, res) {
   const { method } = req;
 
   try {
-    const connection = ;
+    const pool = await getPoolFromRequest(req, res);
+    const connection = pool;
 
     switch (method) {
       case 'GET':
@@ -13,7 +13,7 @@ export default async function handler(req, res) {
         const [settings] = await pool.execute(
           'SELECT * FROM grading_settings WHERE isActive = true ORDER BY category, settingKey'
         );
-        
+
         // Organiser par catégorie avec traductions
         const organizedSettings = {};
         const translations = {
@@ -28,7 +28,7 @@ export default async function handler(req, res) {
           'grade_scale': 'Échelle de notation par lettres',
           'grade_validation': 'Validation stricte des notes'
         };
-        
+
         settings.forEach(row => {
           if (!organizedSettings[row.category]) {
             organizedSettings[row.category] = {};
@@ -37,19 +37,22 @@ export default async function handler(req, res) {
             value: row.settingValue,
             description: translations[row.settingKey] || row.description
           };
-        });        return res.status(200).json(organizedSettings);
+        });
+        return res.status(200).json(organizedSettings);
 
       case 'POST':
         // Ajouter un nouveau paramètre
         const { settingKey, settingValue, description, category } = req.body;
-        
+
         const [result] = await pool.execute(
           `INSERT INTO grading_settings (settingKey, settingValue, description, category) 
            VALUES (?, ?, ?, ?)`,
           [settingKey, settingValue, description, category]
-        );        return res.status(201).json({ settingKey, settingValue, description, category });
+        );
+        return res.status(201).json({ settingKey, settingValue, description, category });
 
-      default:        res.setHeader('Allow', ['GET', 'POST']);
+      default:
+        res.setHeader('Allow', ['GET', 'POST']);
         return res.status(405).json({ error: `Method ${method} Not Allowed` });
     }
   } catch (error) {

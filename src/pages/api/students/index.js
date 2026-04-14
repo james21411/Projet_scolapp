@@ -1,9 +1,11 @@
-import pool from '../../../db/mysql-pool';
+import { getPoolFromRequest } from '@/lib/pool-from-request';
 
 export default async function handler(req, res) {
   const { method } = req;
 
   try {
+    const pool = await getPoolFromRequest(req, res);
+
     switch (method) {
       case 'GET':
         // Récupérer les étudiants avec filtres
@@ -23,11 +25,9 @@ export default async function handler(req, res) {
         const params = [];
 
         if (classId) {
-          // Vérifier si classId est un UUID (ID de classe) ou un nom de classe
           const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(classId);
 
           if (isUUID) {
-            // Si c'est un UUID, faire une jointure avec school_classes
             query = `
               SELECT
                 s.*,
@@ -43,7 +43,6 @@ export default async function handler(req, res) {
             `;
             params.push(classId);
           } else {
-            // Si c'est un nom de classe, filtrer directement
             query += ' WHERE s.classe = ?';
             params.push(classId);
           }

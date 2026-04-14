@@ -1,4 +1,4 @@
-import pool from '../../../db/mysql-pool';
+import { getPoolFromRequest } from '@/lib/pool-from-request';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -14,9 +14,8 @@ export default async function handler(req, res) {
 
     console.log('🔍 === DEBUG TRIMESTRE ===');
     console.log(`🏫 Classe: ${classId}, Période: ${evaluationPeriodId}, Année: ${schoolYear}`);
-
-    const connection = ;
-
+    const pool = await getPoolFromRequest(req, res);
+    const connection = pool;
     // Récupérer les informations de la période
     const [periods] = await connection.query(
       'SELECT * FROM evaluation_periods WHERE id = ?',
@@ -28,8 +27,9 @@ export default async function handler(req, res) {
 
     // Vérifier si c'est un trimestre
     const isTrimester = period && period.name && (period.name.toLowerCase().includes('trim') || period.name.toLowerCase().includes('trimestre'));
-    
-    if (!isTrimester) {      return res.status(400).json({ error: 'Cette API est uniquement pour les bulletins de trimestre' });
+
+    if (!isTrimester) {
+      return res.status(400).json({ error: 'Cette API est uniquement pour les bulletins de trimestre' });
     }
 
     // Récupérer tous les élèves de la classe
@@ -60,7 +60,7 @@ export default async function handler(req, res) {
 
         // Récupérer les notes de la 1ère séquence
         if (sequences.length > 0) {
-                                  const [seq1Grades] = await connection.query(`
+          const [seq1Grades] = await connection.query(`
                SELECT 
                  g.score,
                  g.subjectId,
@@ -72,10 +72,10 @@ export default async function handler(req, res) {
                WHERE g.studentId = ? AND g.evaluationPeriodId = ? AND g.schoolYear = ?
              `, [student.id, sequences[0].id, schoolYear]);
 
-                                // Récupérer les notes de la 2ème séquence
-           let seq2Grades = [];
-           if (sequences.length > 1) {
-             const [seq2GradesResult] = await connection.query(`
+          // Récupérer les notes de la 2ème séquence
+          let seq2Grades = [];
+          if (sequences.length > 1) {
+            const [seq2GradesResult] = await connection.query(`
                SELECT 
                  g.score,
                  g.subjectId,
@@ -86,12 +86,12 @@ export default async function handler(req, res) {
                LEFT JOIN subjects s ON g.subjectId = s.id
                WHERE g.studentId = ? AND g.evaluationPeriodId = ? AND g.schoolYear = ?
              `, [student.id, sequences[1].id, schoolYear]);
-             seq2Grades = seq2GradesResult;
-           }
+            seq2Grades = seq2GradesResult;
+          }
 
           // Combiner les notes des deux séquences
           const gradesBySubject = new Map();
-          
+
           seq1Grades.forEach(grade => {
             gradesBySubject.set(grade.subjectId, {
               ...grade,
@@ -99,7 +99,7 @@ export default async function handler(req, res) {
               coef: parseFloat(grade.coefficient) || 1
             });
           });
-          
+
           seq2Grades.forEach(grade => {
             if (gradesBySubject.has(grade.subjectId)) {
               const existing = gradesBySubject.get(grade.subjectId);
@@ -120,7 +120,7 @@ export default async function handler(req, res) {
             const seq2Score = grades.seq2Score || 0;
             const average = (seq1Score + seq2Score) / 2;
             const coef = grades.coef;
-            
+
             totalWeighted += average * coef;
             totalCoeff += coef;
 
@@ -181,11 +181,12 @@ export default async function handler(req, res) {
       studentsGrades: studentsGrades
     };
 
-    console.log('✅ Données de débogage générées:', debugData);    res.status(200).json(debugData);
+    console.log('✅ Données de débogage générées:', debugData);
+    res.status(200).json(debugData);
 
   } catch (error) {
     console.error('❌ Erreur lors du débogage:', error);
-    return res.status(500).json({ 
+    return res.status(500).json({
       error: 'Erreur lors du débogage',
       details: error.message
     });
