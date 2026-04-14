@@ -1,5 +1,6 @@
-import pool from '@/db/mysql';
-import bcrypt from 'bcryptjs';
+import { getPoolForDb } from '@/db/mysql';
+import { getIronSession } from 'iron-session';
+import { sessionOptions } from '@/lib/session';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -7,6 +8,10 @@ export default async function handler(req, res) {
   }
 
   try {
+    const session = await getIronSession(req, res, sessionOptions);
+    const dbName = session?.dbName || process.env.MYSQL_DATABASE || 'scolapp';
+    const pool = getPoolForDb(dbName);
+
     const {
       username,
       fullName,
@@ -49,8 +54,8 @@ export default async function handler(req, res) {
       diplome, experience, photoUrl, personnelTypeId
     ]);
 
-    return res.status(200).json({ 
-      success: true, 
+    return res.status(200).json({
+      success: true,
       message: 'Personnel ajouté avec succès',
       data: { id }
     });

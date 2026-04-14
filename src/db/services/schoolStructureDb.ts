@@ -149,6 +149,11 @@ export async function updateClass(levelName: string, oldClassName: string, newCl
       [newClassName, levelId, oldClassName]
     );
 
+    // Mettre à jour en cascade dans les autres tables
+    await executeQuery('UPDATE students SET classe = ? WHERE classe = ?', [newClassName, oldClassName]);
+    await executeQuery('UPDATE teacher_assignments SET className = ? WHERE className = ?', [newClassName, oldClassName]);
+    await executeQuery('UPDATE class_subjects SET className = ? WHERE className = ?', [newClassName, oldClassName]);
+
     // Log de l'action
     await logActionWithUser(
       'settings_updated',

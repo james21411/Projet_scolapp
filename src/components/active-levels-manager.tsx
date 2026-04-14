@@ -6,228 +6,174 @@ import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
-import { Loader2, Save, CheckCircle, XCircle } from 'lucide-react';
+import { Loader2, Save, Plus, Edit2, Trash2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 
 interface Level {
   id: string;
   name: string;
   order: number;
   isActive: boolean;
-  created_at: string;
-  updated_at: string;
 }
 
 export function ActiveLevelsManager() {
   const [levels, setLevels] = useState<Level[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [hasChanges, setHasChanges] = useState(false);
 
-  // Charger les niveaux
+  // States for Editing/Adding
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editOrder, setEditOrder] = useState(0);
+
+  const [isAdding, setIsAdding] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newOrder, setNewOrder] = useState(0);
+
   const loadLevels = async () => {
     try {
       setLoading(true);
       const response = await fetch('/api/school/levels?fromSettings=true');
       const result = await response.json();
-      
       if (result.success) {
         setLevels(result.levels);
-      } else {
-        toast({
-          title: "Erreur",
-          description: "Impossible de charger les niveaux",
-          variant: "destructive",
-        });
+        setNewOrder((result.levels.length || 0) + 1);
       }
     } catch (error) {
-      console.error('Erreur lors du chargement des niveaux:', error);
-      toast({
-        title: "Erreur",
-        description: "Erreur lors du chargement des niveaux",
-        variant: "destructive",
-      });
+      toast({ title: 'Erreur', description: 'Erreur au chargement', variant: 'destructive' });
     } finally {
       setLoading(false);
     }
   };
 
-  // Sauvegarder les changements
-  const saveChanges = async () => {
+  const handleUpdate = async (updatedLevels: Level[]) => {
     try {
       setSaving(true);
-      const response = await fetch('/api/school/levels', {
+      const res = await fetch('/api/school/levels', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ levels }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ levels: updatedLevels }),
       });
-      
-      const result = await response.json();
-      
-      if (result.success) {
-        toast({
-          title: "Succès",
-          description: result.message,
-        });
-        setHasChanges(false);
+      const data = await res.json();
+      if (data.success) {
+        toast({ title: 'Succès', description: 'Niveaux mis à jour' });
+        loadLevels();
       } else {
-        toast({
-          title: "Erreur",
-          description: result.error,
-          variant: "destructive",
-        });
+        toast({ title: 'Erreur', description: data.error, variant: 'destructive' });
       }
-    } catch (error) {
-      console.error('Erreur lors de la sauvegarde:', error);
-      toast({
-        title: "Erreur",
-        description: "Erreur lors de la sauvegarde",
-        variant: "destructive",
-      });
     } finally {
       setSaving(false);
     }
   };
 
-  // Toggle le statut d'un niveau
-  const toggleLevel = (levelId: string) => {
-    setLevels(prevLevels => 
-      prevLevels.map(level => 
-        level.id === levelId 
-          ? { ...level, isActive: !level.isActive }
-          : level
-      )
-    );
-    setHasChanges(true);
+  const startEdit = (level: Level) => {
+    setEditingId(level.id);
+    setEditName(level.name);
+    setEditOrder(level.order);
   };
 
-  useEffect(() => {
-    loadLevels();
-  }, []);
+  const handleToggle = (id: string, currentStatus: boolean) => {
+    handleUpdate(levels.map(l => l.id === id ? { ...l, isActive: !currentStatus } : l));
+  };
 
-  if (loading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Loader2 className="h-5 w-5 animate-spin" />
-            Chargement des niveaux...
-          </CardTitle>
-        </CardHeader>
-      </Card>
-    );
-  }
+  const saveEdit = () => {
+    if (!editName.trim()) return;
+    handleUpdate(levels.map(l => l.id === editingId ? { ...l, name: editName, order: editOrder } : l));
+    setEditingId(null);
+  };
 
-  // Vérifier que levels existe avant de filtrer
-  if (!levels || levels.length === 0) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Aucun niveau trouvé</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground">Aucun niveau n'a été trouvé dans le système.</p>
-        </CardContent>
-      </Card>
-    );
-  }
+  const handleDelete = async (id: string) => {
+    if (!window.confirm("Êtes-vous sûr de vouloir supprimer ce niveau ?")) return;
+    try {
+      setSaving(true);
+      const res = await fetch(`/api/school/levels?id=${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        toast({ title: 'Succès', description: 'Niveau supprimé' });
+        loadLevels();
+      } else {
+        toast({ title: 'Erreur', description: data.error, variant: 'destructive' });
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
 
-  const activeLevels = (levels || []).filter(level => level.isActive);
-  const inactiveLevels = (levels || []).filter(level => !level.isActive);
+  const handleAdd = async () => {
+    if (!newName.trim()) return;
+    try {
+      setSaving(true);
+      const res = await fetch('/api/school/levels', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newName, order: newOrder, isActive: true }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast({ title: 'Succès', description: 'Niveau ajouté' });
+        setIsAdding(false);
+        setNewName('');
+        loadLevels();
+      } else {
+        toast({ title: 'Erreur', description: data.error, variant: 'destructive' });
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  useEffect(() => { loadLevels(); }, []);
+
+  if (loading) return <div>Chargement...</div>;
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <span>Gestion des Niveaux Actifs</span>
-          <div className="flex items-center gap-2">
-            {hasChanges && (
-              <Badge variant="secondary" className="text-xs">
-                Modifications non sauvegardées
-              </Badge>
-            )}
-            <Button 
-              onClick={saveChanges} 
-              disabled={!hasChanges || saving}
-              size="sm"
-            >
-              {saving ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : (
-                <Save className="h-4 w-4 mr-2" />
-              )}
-              Sauvegarder
-            </Button>
-          </div>
+        <CardTitle className="flex justify-between items-center">
+          <span>Gestion des Niveaux d'Enseignement</span>
+          <Button onClick={() => setIsAdding(!isAdding)} size="sm" variant="outline">
+            <Plus className="w-4 h-4 mr-2" /> Ajouter un niveau
+          </Button>
         </CardTitle>
       </CardHeader>
-      <CardContent>
-        <div className="space-y-6">
-          {/* Niveaux Actifs */}
-          <div>
-            <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-              <CheckCircle className="h-5 w-5 text-green-600" />
-              Niveaux Actifs ({activeLevels.length})
-            </h3>
-            <div className="grid gap-3">
-              {activeLevels.map((level) => (
-                <div
-                  key={level.id}
-                  className="flex items-center justify-between p-3 border rounded-lg bg-green-50"
-                >
-                  <div>
-                    <span className="font-medium">{level.name}</span>
-                    <Badge variant="outline" className="ml-2">
-                      Ordre: {level.order}
-                    </Badge>
-                  </div>
-                  <Switch
-                    checked={level.isActive}
-                    onCheckedChange={() => toggleLevel(level.id)}
-                  />
-                </div>
-              ))}
-            </div>
+      <CardContent className="space-y-4">
+        {isAdding && (
+          <div className="flex items-center gap-2 border p-3 rounded bg-gray-50">
+            <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Nom du niveau" autoFocus />
+            <Input type="number" value={newOrder} onChange={e => setNewOrder(Number(e.target.value))} placeholder="Ordre" className="w-24" />
+            <Button onClick={handleAdd} size="sm" disabled={saving}>Enregistrer</Button>
+            <Button onClick={() => setIsAdding(false)} size="sm" variant="ghost">Annuler</Button>
           </div>
+        )}
 
-          {/* Niveaux Inactifs */}
-          <div>
-            <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-              <XCircle className="h-5 w-5 text-red-600" />
-              Niveaux Inactifs ({inactiveLevels.length})
-            </h3>
-            <div className="grid gap-3">
-              {inactiveLevels.map((level) => (
-                <div
-                  key={level.id}
-                  className="flex items-center justify-between p-3 border rounded-lg bg-red-50"
-                >
-                  <div>
-                    <span className="font-medium text-gray-600">{level.name}</span>
-                    <Badge variant="outline" className="ml-2">
-                      Ordre: {level.order}
-                    </Badge>
-                  </div>
-                  <Switch
-                    checked={level.isActive}
-                    onCheckedChange={() => toggleLevel(level.id)}
-                  />
+        <div className="space-y-2">
+          {levels.map(level => (
+            <div key={level.id} className={`flex items-center justify-between p-3 border rounded-lg ${level.isActive ? 'bg-white' : 'bg-gray-100 opacity-60'}`}>
+              {editingId === level.id ? (
+                <div className="flex items-center gap-2 flex-1">
+                  <Input value={editName} onChange={e => setEditName(e.target.value)} />
+                  <Input type="number" value={editOrder} onChange={e => setEditOrder(Number(e.target.value))} className="w-24" />
+                  <Button onClick={saveEdit} size="sm">Sauver</Button>
+                  <Button onClick={() => setEditingId(null)} size="sm" variant="ghost">Annuler</Button>
                 </div>
-              ))}
+              ) : (
+                <>
+                  <div className="flex items-center gap-4">
+                    <span className="font-semibold">{level.name}</span>
+                    <Badge variant="outline">Ordre: {level.order}</Badge>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm">Actif</span>
+                      <Switch checked={level.isActive} onCheckedChange={() => handleToggle(level.id, level.isActive)} />
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={() => startEdit(level)}><Edit2 className="w-4 h-4 text-blue-500" /></Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleDelete(level.id)}><Trash2 className="w-4 h-4 text-red-500" /></Button>
+                  </div>
+                </>
+              )}
             </div>
-          </div>
-
-          {/* Informations */}
-          <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-            <h4 className="font-semibold text-blue-900 mb-2">Informations</h4>
-            <ul className="text-sm text-blue-800 space-y-1">
-              <li>• Les niveaux inactifs ne seront pas visibles dans le système</li>
-              <li>• Les classes des niveaux inactifs ne seront pas accessibles</li>
-              <li>• Vous pouvez réactiver un niveau à tout moment</li>
-              <li>• Les données existantes sont préservées</li>
-            </ul>
-          </div>
+          ))}
         </div>
       </CardContent>
     </Card>
