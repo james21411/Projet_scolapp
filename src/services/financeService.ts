@@ -248,10 +248,18 @@ export async function getStudentPayments(studentId: string, schoolYear: string):
 }
 
 // Synthèse globale
-export async function getOverallFinancialSummary(schoolYear: string): Promise<OverallFinancialSummary> {
-  const students = await getAllStudents() as any[];
+export async function getOverallFinancialSummary(
+  schoolYear: string,
+  filters?: { level?: string; className?: string; financeType?: string }
+): Promise<OverallFinancialSummary> {
+  let students = await getAllStudents() as any[];
   const payments = await getAllPayments() as any[];
   const feeStructures = await getAllFeeStructures() as any[];
+
+  // Apply student filters initially
+  if (filters?.className && filters.className !== 'all') {
+    students = students.filter(s => s.classe === filters.className);
+  }
 
   // Récupérer la structure scolaire réelle depuis la base de données
   const { getSchoolStructure } = await import('../db/services/schoolStructureDb');
@@ -275,11 +283,22 @@ export async function getOverallFinancialSummary(schoolYear: string): Promise<Ov
     feeStructureMap.set(fee.className, fee);
   });
 
+  // Allowed Finance Types logic
+  const isFinanceAll = !filters?.financeType || filters.financeType === 'all';
+  const isScolarite = isFinanceAll || filters.financeType === 'scolarite';
+  const isInscription = isFinanceAll || filters.financeType === 'inscription';
+  const isServicesOnly = filters?.financeType === 'services';
+
   // Traiter chaque niveau et ses classes
   for (const [levelName, levelData] of Object.entries(schoolStructure.levels)) {
+    // If level filter is active, skip other levels
+    if (filters?.level && filters.level !== 'all' && levelName !== filters.level) continue;
+
     const levelClasses = levelData.classes;
 
     for (const className of levelClasses) {
+      if (filters?.className && filters.className !== 'all' && className !== filters.className) continue;
+
       // Trouver tous les étudiants de cette classe pour l'année scolaire
       const classStudents = students.filter((s: any) =>
         s.classe === className && s.anneeScolaire === schoolYear
@@ -289,7 +308,17 @@ export async function getOverallFinancialSummary(schoolYear: string): Promise<Ov
 
       // Trouver la structure tarifaire pour cette classe
       const feeStructure = feeStructureMap.get(className);
-      const classTotalDue = feeStructure ? classStudents.length * Number(feeStructure.total) : 0;
+
+      // Calcul du dû total
+      let classTotalDue = 0;
+      if (!isServicesOnly && feeStructure) {
+        if (isScolarite) {
+          classTotalDue += classStudents.length * Number(feeStructure.total || 0);
+        }
+        if (isInscription) {
+          classTotalDue += classStudents.length * Number(feeStructure.registrationFee || 0);
+        }
+      }
 
       // Calculer les paiements pour cette classe
       const classPayments = payments.filter((p: any) =>
@@ -297,19 +326,32 @@ export async function getOverallFinancialSummary(schoolYear: string): Promise<Ov
         classStudents.some((s: any) => s.id === p.studentId)
       );
 
-      // Calculer le total payé en excluant les frais d'inscription
+      // Calculer le total payé en fonction des filtres finance
       const classTotalPaid = classPayments.reduce((sum: number, p: any) => {
-        // Exclure les paiements d'inscription du calcul du total payé
-        if (p.reason && p.reason.toLowerCase().includes('inscription')) {
-          return sum; // Ne pas inclure les frais d'inscription
+        const isPaymentInscription = p.reason && p.reason.toLowerCase().includes('inscription');
+
+        if (isServicesOnly) {
+          // Les services financiers purs ne sont pas dans "payments", mais dans financial_transactions.
+          return sum;
         }
-        return sum + Number(p.amount);
+
+        if (isFinanceAll) {
+          return sum + Number(p.amount);
+        } else if (isScolarite && !isPaymentInscription) {
+          return sum + Number(p.amount);
+        } else if (isInscription && isPaymentInscription) {
+          return sum + Number(p.amount);
+        }
+
+        return sum;
       }, 0);
 
       // Ajouter aux totaux du niveau
-      byLevel[levelName].totalPaid += classTotalPaid;
-      byLevel[levelName].totalDue += classTotalDue;
-      byLevel[levelName].outstanding += Math.max(0, classTotalDue - classTotalPaid);
+      if (byLevel[levelName]) {
+        byLevel[levelName].totalPaid += classTotalPaid;
+        byLevel[levelName].totalDue += classTotalDue;
+        byLevel[levelName].outstanding += Math.max(0, classTotalDue - classTotalPaid);
+      }
 
       // Ajouter aux totaux globaux
       totalPaid += classTotalPaid;
@@ -594,12 +636,52 @@ export async function getStudentsWithBalance(schoolYear: string): Promise<Studen
   return result;
 }
 
-// Données pour graphiques mensuels
-export async function getMonthlyFinancialChartData(schoolYear: string): Promise<any[]> {
+export async function getMonthlyFinancialChartData(
+  schoolYear: string,
+  filters?: { level?: string; className?: string; financeType?: string }
+): Promise<any[]> {
   console.log('🔍 getMonthlyFinancialChartData: Starting with schoolYear:', schoolYear);
   const payments = await getAllPayments() as any[];
+  const students = await getAllStudents() as any[];
   console.log('🔍 getMonthlyFinancialChartData: All payments count:', payments.length);
-  const filtered = payments.filter((p: any) => p.schoolYear === schoolYear);
+
+  // Appliquer les filtres
+  let filtered = payments.filter((p: any) => p.schoolYear === schoolYear);
+
+  if (filters?.className && filters.className !== 'all') {
+    filtered = filtered.filter((p: any) => {
+      const student = students.find((s: any) => s.id === p.studentId);
+      return student && student.classe === filters.className;
+    });
+  } else if (filters?.level && filters.level !== 'all') {
+    // Si seulement le niveau est filtré, plus complexe, on importe le db
+    const { getSchoolStructure } = await import('../db/services/schoolStructureDb');
+    const structure = await getSchoolStructure();
+    const levelClasses = structure.levels[filters.level]?.classes || [];
+    filtered = filtered.filter((p: any) => {
+      const student = students.find((s: any) => s.id === p.studentId);
+      return student && levelClasses.includes(student.classe);
+    });
+  }
+
+  // Filtrer par financeType
+  const isFinanceAll = !filters?.financeType || filters.financeType === 'all';
+  const isScolarite = isFinanceAll || filters.financeType === 'scolarite';
+  const isInscription = isFinanceAll || filters.financeType === 'inscription';
+  const isServicesOnly = filters?.financeType === 'services';
+
+  if (isServicesOnly) {
+    // Si services uniquement, la charte sera vide au niveau de scolarité
+    filtered = [];
+  } else if (!isFinanceAll) {
+    filtered = filtered.filter((p: any) => {
+      const isPaymentInscription = p.reason && p.reason.toLowerCase().includes('inscription');
+      if (isScolarite && !isPaymentInscription) return true;
+      if (isInscription && isPaymentInscription) return true;
+      return false;
+    });
+  }
+
   console.log('🔍 getMonthlyFinancialChartData: Filtered payments count:', filtered.length);
   const byMonth: { [month: string]: number } = {};
 

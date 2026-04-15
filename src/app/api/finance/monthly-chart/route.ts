@@ -9,8 +9,11 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const schoolYear = searchParams.get('schoolYear');
+    const level = searchParams.get('level') || undefined;
+    const className = searchParams.get('className') || undefined;
+    const financeType = searchParams.get('financeType') || undefined;
     console.log('🔍 API monthly-chart: School year:', schoolYear);
-    
+
     if (!schoolYear) {
       console.log('❌ API monthly-chart: No school year provided');
       return NextResponse.json(
@@ -20,7 +23,7 @@ export async function GET(request: NextRequest) {
     }
 
     console.log('🔍 API monthly-chart: Calling getMonthlyFinancialChartData');
-    const chartData = await getMonthlyFinancialChartData(schoolYear);
+    const chartData = await getMonthlyFinancialChartData(schoolYear, { level, className, financeType });
 
     // S'assurer que la table existe
     await pool.execute(`
@@ -45,28 +48,47 @@ export async function GET(request: NextRequest) {
       )
     `);
 
-    // Charger les revenus d'autres services par mois
-    const [rows] = await pool.execute(
-      `SELECT DATE_FORMAT(date, '%Y-%m') as ym, SUM(amount) as total
-       FROM financial_transactions
-       WHERE schoolYear = ?
-       GROUP BY ym`,
-      [schoolYear]
-    ) as any;
-
     const otherByMonth: Record<string, number> = {};
-    for (const r of (rows as any[])) {
-      otherByMonth[r.ym] = Number(r.total || 0);
+
+    // Charger les revenus d'autres services par mois seulement si pertinent
+    if (!financeType || financeType === 'all' || financeType === 'services') {
+      let queryStr = `
+        SELECT DATE_FORMAT(date, '%Y-%m') as ym, SUM(amount) as total
+        FROM financial_transactions
+        WHERE schoolYear = ?
+      `;
+      const queryParams: any[] = [schoolYear];
+
+      if ((level && level !== 'all') || (className && className !== 'all')) {
+        queryStr = `
+          SELECT DATE_FORMAT(ft.date, '%Y-%m') as ym, SUM(ft.amount) as total
+          FROM financial_transactions ft
+          JOIN students s ON ft.studentId = s.id
+          WHERE ft.schoolYear = ?
+        `;
+        if (className && className !== 'all') {
+          queryStr += ' AND s.classe = ?';
+          queryParams.push(className);
+        }
+      }
+
+      queryStr += ' GROUP BY ym';
+
+      const [rows] = await pool.execute(queryStr, queryParams) as any;
+
+      for (const r of (rows as any[])) {
+        otherByMonth[r.ym] = Number(r.total || 0);
+      }
     }
 
     // Fusionner avec les 12 mois académiques
     const [startYear, endYear] = schoolYear.split('-');
-    const months = [8,9,10,11,0,1,2,3,4,5,6,7]; // sept..août
-    const monthLabels = ['sept.','oct.','nov.','déc.','janv.','févr.','mars','avr.','mai','juin','juil.','août'];
+    const months = [8, 9, 10, 11, 0, 1, 2, 3, 4, 5, 6, 7]; // sept..août
+    const monthLabels = ['sept.', 'oct.', 'nov.', 'déc.', 'janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août'];
     const merged = chartData.map((item, idx) => {
       const jsMonth = months[idx];
       const year = idx < 4 ? startYear : endYear; // sept-déc -> startYear; janv-août -> endYear
-      const ym = `${year}-${String(jsMonth+1).padStart(2,'0')}`;
+      const ym = `${year}-${String(jsMonth + 1).padStart(2, '0')}`;
       const add = otherByMonth[ym] || 0;
       return { ...item, total: (item.total || 0) + add };
     });

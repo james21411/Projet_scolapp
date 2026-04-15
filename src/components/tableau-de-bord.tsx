@@ -147,6 +147,7 @@ import {
   DropdownMenuPortal,
 } from "@/components/ui/dropdown-menu";
 import IDCardManager from "./id-card-manager";
+import { DashboardFilters, FilterOptions } from "./dashboard-filters";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -399,6 +400,14 @@ function DashboardTab() {
   const [currentSchoolYear, setCurrentSchoolYear] = useState('');
   const [financialChartData, setFinancialChartData] = useState<{ month: string; total: number }[]>([]);
   const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([]);
+  const [schoolStructure, setSchoolStructure] = useState<SchoolStructure | null>(null);
+
+  const [filters, setFilters] = useState<FilterOptions>({
+    selectedYear: 'all',
+    selectedLevel: 'all',
+    selectedClass: 'all',
+    financeType: 'all',
+  });
 
   useEffect(() => {
     async function fetchData() {
@@ -407,24 +416,45 @@ function DashboardTab() {
       try {
         const schoolResponse = await fetch('/api/school/info');
         const schoolInfo = await schoolResponse.json();
-        const year = schoolInfo.currentSchoolYear;
-        console.log('🔍 DashboardTab: School year:', year);
-        setCurrentSchoolYear(year);
+
+        // Si l'utilisateur n'a pas encore choisi d'année, on utilise l'année actuelle par défaut
+        const yearToFetch = filters.selectedYear !== 'all' ? filters.selectedYear : schoolInfo.currentSchoolYear;
+        console.log('🔍 DashboardTab: School year:', yearToFetch);
+        setCurrentSchoolYear(yearToFetch);
 
         console.log('🔍 DashboardTab: Fetching API data...');
-        const [summaryResponse, studentsResponse, chartResponse, activitiesResponse] = await Promise.all([
-          fetch(`/api/finance/overview?schoolYear=${year}`),
+
+        // Construire les paramètres pour les appels aux statistiques
+        const queryParams = new URLSearchParams();
+        queryParams.append('schoolYear', yearToFetch);
+
+        if (filters.selectedLevel && filters.selectedLevel !== 'all') {
+          queryParams.append('level', filters.selectedLevel);
+        }
+        if (filters.selectedClass && filters.selectedClass !== 'all') {
+          queryParams.append('className', filters.selectedClass);
+        }
+        if (filters.financeType && filters.financeType !== 'all') {
+          queryParams.append('financeType', filters.financeType);
+        }
+
+        const queryString = queryParams.toString();
+
+        const [summaryResponse, studentsResponse, chartResponse, activitiesResponse, structureResponse] = await Promise.all([
+          fetch(`/api/finance/overview?${queryString}`),
           fetch('/api/students'),
-          fetch(`/api/finance/monthly-chart?schoolYear=${year}`),
-          fetch('/api/finance/recent-activities')
+          fetch(`/api/finance/monthly-chart?${queryString}`),
+          fetch('/api/finance/recent-activities'),
+          fetch('/api/school/structure')
         ]);
 
         console.log('🔍 DashboardTab: API responses received');
-        const [summary, studentData, chartData, activities] = await Promise.all([
+        const [summary, studentData, chartData, activities, structureData] = await Promise.all([
           summaryResponse.json(),
           studentsResponse.json(),
           chartResponse.json(),
-          activitiesResponse.json()
+          activitiesResponse.json(),
+          structureResponse.json()
         ]);
 
         console.log('🔍 DashboardTab: Parsed data:', {
@@ -449,6 +479,7 @@ function DashboardTab() {
 
         setFinancialSummary(summary);
         setStudents(studentData || []);
+        setSchoolStructure(structureData);
         console.log('🔍 DashboardTab: Setting financialChartData:', chartData);
         // S'assurer que les données du graphique sont correctement formatées
         const formattedChartData = Array.isArray(chartData) && chartData.length > 0
@@ -475,18 +506,29 @@ function DashboardTab() {
 
     // Charger les données immédiatement
     fetchData();
-  }, []);
+  }, [filters]);
+
+  // Filtrer les étudiants localement pour les graphiques de distribution
+  const filteredStudents = useMemo(() => {
+    if (!Array.isArray(students)) return [];
+    return students.filter(student => {
+      const matchLevel = filters.selectedLevel === 'all' || student.niveau === filters.selectedLevel;
+      const matchClass = filters.selectedClass === 'all' || student.classe === filters.selectedClass;
+      const matchYear = student.anneeScolaire === currentSchoolYear;
+      return matchLevel && matchClass && matchYear;
+    });
+  }, [students, filters, currentSchoolYear]);
 
   const studentDistributionData = useMemo(() => {
-    console.log('🔍 DashboardTab: Computing studentDistributionData, students:', students?.length || 0);
-    if (!Array.isArray(students) || students.length === 0) {
+    console.log('🔍 DashboardTab: Computing studentDistributionData, filteredStudents:', filteredStudents.length);
+    if (filteredStudents.length === 0) {
       console.log('🔍 DashboardTab: No students or invalid data, returning empty array');
       return [];
     }
-    const distribution = students.reduce((acc, student) => {
+    const distribution = filteredStudents.reduce((acc, student) => {
       if (student.statut !== 'Actif') return acc;
-      const level = student.niveau || 'inconnu';
-      acc[level] = (acc[level] || 0) + 1;
+      const key = filters.selectedLevel !== 'all' ? (student.classe || 'Inconnu') : (student.niveau || 'inconnu');
+      acc[key] = (acc[key] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
 
@@ -537,9 +579,9 @@ function DashboardTab() {
 
     console.log('🔍 DashboardTab: studentDistributionData computed:', result);
     return result;
-  }, [students]);
+  }, [filteredStudents]);
 
-  const totalStudents = Array.isArray(students) ? students.filter(s => s.statut === 'Actif').length : 0;
+  const totalStudents = filteredStudents.filter(s => s.statut === 'Actif').length;
 
   console.log('🔍 DashboardTab: financialChartData:', financialChartData);
   console.log('🔍 DashboardTab: financialChartData type:', typeof financialChartData);
@@ -563,8 +605,16 @@ function DashboardTab() {
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-4">
-      <div className="lg:col-span-2 space-y-6">
+    <div className="space-y-6 pt-4">
+      <DashboardFilters 
+        onFiltersChange={setFilters}
+        loading={isLoading}
+        schoolStructure={schoolStructure}
+        students={students}
+      />
+      
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-6">
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card className="card-glow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -702,7 +752,8 @@ function DashboardTab() {
         </Card>
       </div>
     </div>
-  );
+  </div>
+);
 }
 function StudentPaymentsTab({ student }: { student: Student }) {
   const [payments, setPayments] = useState<Payment[]>([]);
