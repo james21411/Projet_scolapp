@@ -4,6 +4,9 @@ import { createSequencesForYear } from '@/db/services/evaluationDb';
 import { copySchoolDataToNewYear, checkDataExistsForYear } from '@/db/services/copySchoolDataService';
 import { getSchoolBySlug } from '@/db/registry';
 import { getPoolForDb } from '@/db/mysql';
+import { cookies } from 'next/headers';
+import { getIronSession } from 'iron-session';
+import { sessionOptions, type SessionData } from '@/lib/session';
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,10 +17,29 @@ export async function GET(request: NextRequest) {
       if (!school) {
         return NextResponse.json({ error: 'École introuvable' }, { status: 404 });
       }
+
+      // La vérification de is_active est déjà incluse dans getSchoolBySlug
+      // mais on peut être explicite si on veut un message différent
       const pool = getPoolForDb(school.db_name);
       const [rows] = await pool.query('SELECT name, slogan, logoUrl FROM school_info LIMIT 1') as any[];
       const info = Array.isArray(rows) && rows.length > 0 ? rows[0] : { name: school.name };
       return NextResponse.json(info);
+    }
+
+    // Pour l'accès authentifié, vérifier aussi si l'école est toujours active
+    const cookieStore = await cookies();
+    const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
+
+    if (session?.schoolSlug && session.schoolSlug !== 'default') {
+      const school = await getSchoolBySlug(session.schoolSlug);
+      if (!school) {
+        // L'école a été désactivée ou supprimée dans le registre
+        return NextResponse.json({
+          error: 'Établissement désactivé',
+          code: 'SCHOOL_INACTIVE',
+          message: 'Votre établissement a été suspendu ou désactivé. Veuillez contacter l\'administrateur.'
+        }, { status: 403 });
+      }
     }
 
     const schoolInfo = await getSchoolInfo();

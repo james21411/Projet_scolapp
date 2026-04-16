@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { SchoolInfo } from '@/services/schoolInfoService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -43,11 +44,32 @@ interface SchoolClass {
   levelId: string;
 }
 
-export default function GestionMatieresV2({ currentUser, role }: { currentUser?: { id?: string; username?: string; fullName?: string }; role?: string } = {}) {
+export default function GestionMatieresV2({ currentUser, role, schoolInfo }: { currentUser?: { id?: string; username?: string; fullName?: string }; role?: string, schoolInfo?: SchoolInfo | null } = {}) {
   // États pour la sélection
   const [selectedLevel, setSelectedLevel] = useState<string>('');
   const [selectedClass, setSelectedClass] = useState<string>('');
-  const [selectedSchoolYear, setSelectedSchoolYear] = useState<string>('2025-2026');
+  const [selectedSchoolYear, setSelectedSchoolYear] = useState<string>('');
+
+  useEffect(() => {
+    async function init() {
+      try {
+        const res = await fetch('/api/finance/school-years');
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data.availableYears)) setAvailableYears(data.availableYears);
+
+          const year = schoolInfo?.currentSchoolYear || data.currentSchoolYear || (data.availableYears?.[0]) || '';
+          if (year) {
+            setSelectedSchoolYear(year);
+            setCurrentSettingsYear(year);
+            const prev = getPreviousSchoolYear(year);
+            if (prev) setSourceYearForReconduction(prev);
+          }
+        }
+      } catch (err) { }
+    }
+    init();
+  }, [schoolInfo]);
   const [showAllSubjects, setShowAllSubjects] = useState<boolean>(false);
   const [allSubjects, setAllSubjects] = useState<Subject[]>([]);
 
@@ -59,7 +81,7 @@ export default function GestionMatieresV2({ currentUser, role }: { currentUser?:
   // États pour les affectations enseignant
   const [teacherAssignments, setTeacherAssignments] = useState<any[]>([]);
   const [isTeacherUser, setIsTeacherUser] = useState<boolean>(false);
-  
+
   // États pour le modal d'ajout/modification
   const [showSubjectModal, setShowSubjectModal] = useState(false);
   const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
@@ -104,25 +126,7 @@ export default function GestionMatieresV2({ currentUser, role }: { currentUser?:
     loadLevelsAndClasses();
   }, []);
 
-  // Charger années scolaires depuis les paramètres (API)
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch('/api/finance/school-years');
-        if (res.ok) {
-          const data = await res.json();
-          const years = data.availableYears || [];
-          const current = data.currentSchoolYear || selectedSchoolYear;
-          if (Array.isArray(years) && years.length > 0) setAvailableYears(years);
-          if (current) {
-            setCurrentSettingsYear(current);
-            const prev = getPreviousSchoolYear(current);
-            if (prev) setSourceYearForReconduction(prev);
-          }
-        }
-      } catch {}
-    })();
-  }, []);
+  // Removed redundant school years fetch effect (moved to init)
 
   // Charger les matières quand la classe change ou quand on active "toutes les matières"
   useEffect(() => {
@@ -235,28 +239,40 @@ export default function GestionMatieresV2({ currentUser, role }: { currentUser?:
     }
   };
 
+  const lastRequestRef = React.useRef<number>(0);
+
   const loadSubjects = async () => {
     if (showAllSubjects) {
       await loadAllSubjects();
       return;
     }
 
+    if (!selectedClass) {
+      setSubjects([]);
+      return;
+    }
+
+    const requestId = ++lastRequestRef.current;
     setLoading(true);
+
     try {
       const response = await fetch(`/api/subject-coefficients?classId=${selectedClass}&schoolYear=${selectedSchoolYear}`);
+
+      // Si une nouvelle requête a été lancée entre temps, on ignore celle-ci
+      if (requestId !== lastRequestRef.current) return;
+
       if (response.ok) {
         const data = await response.json();
-
-        // Déduplication des matières pour éviter les doublons
         let uniqueSubjects = deduplicateSubjects(data);
-        logDeduplicationInfo(data, uniqueSubjects, 'GestionMatieresV2');
 
         // Appliquer le filtrage par affectations enseignant si nécessaire
         if (isTeacherUser && teacherAssignments.length > 0) {
           const arr = getAssignmentsArray(teacherAssignments);
+          const className = getClassNameById(selectedClass);
+
           const classAssignments = arr.filter((a: any) => {
-            const byId = a?.classId && a.classId === selectedClass;
-            const byName = a?.className && a.className === selectedClass;
+            const byId = a?.classId && String(a.classId) === String(selectedClass);
+            const byName = a?.className && normalize(a.className) === normalize(className);
             return byId || byName;
           });
 
@@ -264,34 +280,28 @@ export default function GestionMatieresV2({ currentUser, role }: { currentUser?:
             const assignedSet = new Set<string>(classAssignments.map((a: any) => normalize(a.subject || a.subjectName)));
             uniqueSubjects = uniqueSubjects.filter((s: Subject) => assignedSet.has(normalize(s.name)));
           } else {
-            // Si l'enseignant n'a aucune affectation pour cette classe, ne montrer aucune matière
             uniqueSubjects = [];
           }
-        } else if (isTeacherUser && teacherAssignments.length === 0) {
-          // Si l'enseignant n'a aucune affectation du tout, ne montrer aucune matière
-          uniqueSubjects = [];
+        } else if (isTeacherUser) {
+          // Si on est en mode enseignant mais qu'on n'a pas encore les affectations, 
+          // on attend que teacherAssignments arrive via l'autre useEffect
+          // pour éviter d'afficher puis vider brusquement
+          return;
         }
 
-        // Afficher toutes les matières (actives et inactives) pour les administrateurs
-        // Pour les enseignants, seules les matières actives sont affichées (via le filtrage des affectations)
         setSubjects(uniqueSubjects);
-      } else {
-        toast.error('Erreur lors du chargement des matières');
       }
     } catch (error) {
       console.error('Erreur:', error);
-      toast.error('Erreur lors du chargement des matières');
+      if (requestId === lastRequestRef.current) setSubjects([]);
     } finally {
-      setLoading(false);
+      if (requestId === lastRequestRef.current) setLoading(false);
     }
   };
-
-  // Nettoyage: suppression loadSequences (séquences gérées ailleurs)
 
   const handleLevelChange = (levelId: string) => {
     setSelectedLevel(levelId);
     setSelectedClass('');
-    setSubjects([]);
   };
 
   const handleClassChange = (classId: string) => {
@@ -305,24 +315,24 @@ export default function GestionMatieresV2({ currentUser, role }: { currentUser?:
     console.log('🔍 selectedSchoolYear:', selectedSchoolYear);
     console.log('🔍 newSubject:', newSubject);
     console.log('🔍 showSubjectModal avant traitement:', showSubjectModal);
-    
+
     if (!selectedClass) {
       toast.error('Veuillez sélectionner une classe');
       return;
     }
-    
+
     if (!newSubject.code || !newSubject.name || !newSubject.category || !newSubject.coefficient || !newSubject.maxScore) {
       toast.error('Veuillez remplir tous les champs obligatoires');
       return;
     }
 
     // Vérification des doublons de code pour la même classe
-    const existingSubject = subjects.find(s => 
-      s.code === newSubject.code && 
-      s.classId === selectedClass && 
+    const existingSubject = subjects.find(s =>
+      s.code === newSubject.code &&
+      s.classId === selectedClass &&
       s.schoolYear === selectedSchoolYear
     );
-    
+
     if (existingSubject) {
       toast.error(`Une matière avec le code "${newSubject.code}" existe déjà dans cette classe`);
       return;
@@ -334,9 +344,9 @@ export default function GestionMatieresV2({ currentUser, role }: { currentUser?:
         classId: selectedClass,
         schoolYear: selectedSchoolYear
       };
-      
+
       console.log('🔍 Données envoyées à l\'API:', subjectData);
-      
+
       const response = await fetch('/api/subject-coefficients', {
         method: 'POST',
         headers: {
@@ -350,21 +360,21 @@ export default function GestionMatieresV2({ currentUser, role }: { currentUser?:
         console.log('🔍 Matière ajoutée avec succès:', addedSubject);
         console.log('🔍 Classe de la matière ajoutée:', addedSubject.classId);
         console.log('🔍 Classe sélectionnée:', selectedClass);
-        
+
         // Ajouter la nouvelle matière à la liste locale
         setSubjects(prev => [...prev, addedSubject]);
-        
+
         // Afficher le toast de succès avec confirmation
         toast.success(`✅ Matière "${newSubject.name}" ajoutée avec succès à la classe ${getClassNameById(selectedClass)} !`, {
           duration: 4000,
           description: `La matière a été enregistrée et est maintenant visible dans la liste.`
         });
-        
+
         console.log('🔍 Fermeture du modal...');
-        
+
         // Fermer le modal immédiatement
         setShowSubjectModal(false);
-        
+
         // Réinitialiser le formulaire
         setNewSubject({
           code: '',
@@ -374,7 +384,7 @@ export default function GestionMatieresV2({ currentUser, role }: { currentUser?:
           maxScore: 20,
           isActive: true
         });
-        
+
         // Recharger les matières pour s'assurer de la synchronisation
         await loadSubjects();
       } else {
@@ -390,7 +400,7 @@ export default function GestionMatieresV2({ currentUser, role }: { currentUser?:
 
   const handleUpdateSubject = async () => {
     if (!editingSubject) return;
-    
+
     if (!editingSubject.code || !editingSubject.name || !editingSubject.category || !editingSubject.coefficient || !editingSubject.maxScore) {
       toast.error('Veuillez remplir tous les champs obligatoires');
       return;
@@ -407,21 +417,21 @@ export default function GestionMatieresV2({ currentUser, role }: { currentUser?:
 
       if (response.ok) {
         const updatedSubject = await response.json();
-        
+
         // Mettre à jour la liste locale
-        setSubjects(prev => prev.map(s => 
+        setSubjects(prev => prev.map(s =>
           s.id === editingSubject.id ? { ...s, ...updatedSubject } : s
         ));
-        
+
         // Afficher le toast de succès
         toast.success(`Matière "${editingSubject.name}" modifiée avec succès !`);
-        
+
         // Fermer le modal
         setShowSubjectModal(false);
-        
+
         // Réinitialiser l'état d'édition
         setEditingSubject(null);
-        
+
         // Recharger les matières pour s'assurer de la synchronisation
         await loadSubjects();
       } else {
@@ -541,7 +551,7 @@ export default function GestionMatieresV2({ currentUser, role }: { currentUser?:
       toast.error('Veuillez sélectionner les années source et cible');
       return;
     }
-    
+
     try {
       setLoading(true);
       const resp = await fetch('/api/subjects/copy-to-year', {
@@ -549,7 +559,7 @@ export default function GestionMatieresV2({ currentUser, role }: { currentUser?:
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ previousYear: sourceYear, newYear: targetYear })
       });
-      
+
       const json = await resp.json().catch(() => ({}));
       if (resp.ok) {
         const inserted = json.inserted || 0;
@@ -745,7 +755,7 @@ export default function GestionMatieresV2({ currentUser, role }: { currentUser?:
                   <Plus className="h-4 w-4 mr-2" />
                   Ajouter une Matière
                 </Button>
-                
+
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" disabled={isTeacherUser}>
@@ -762,9 +772,9 @@ export default function GestionMatieresV2({ currentUser, role }: { currentUser?:
                       <Copy className="h-4 w-4 mr-2" />
                       Copier vers une autre classe
                     </DropdownMenuItem>
-                    
 
-                    
+
+
                     <DropdownMenuItem
                       onClick={() => {
                         setReconductionData({
@@ -806,85 +816,85 @@ export default function GestionMatieresV2({ currentUser, role }: { currentUser?:
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                          {currentSubjects.length === 0 && isTeacherUser ? (
-                            <TableRow>
-                              <TableCell colSpan={8} className="text-center py-8">
-                                <div className="text-muted-foreground">
-                                  <BookOpen className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                                  <p className="text-lg font-medium mb-2">Aucune matière assignée</p>
-                                  <p className="text-sm">
-                                    Vous n'êtes pas autorisé à voir les matières de cette classe ou aucune matière ne vous a été assignée pour cette classe.
-                                  </p>
-                                  <p className="text-xs mt-2 text-yellow-600">
-                                    Contactez l'administration pour vérifier vos affectations.
-                                  </p>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          ) : (
-                            currentSubjects.map((subject) => (
-                              <TableRow key={subject.id}>
-                                <TableCell className="font-mono">{subject.code}</TableCell>
-                                <TableCell className="font-medium">{subject.name}</TableCell>
-                                <TableCell>
-                                  <Badge className={getCategoryColor(subject.category)}>
-                                    {subject.category}
-                                  </Badge>
-                                </TableCell>
-                                <TableCell>{subject.coefficient}</TableCell>
-                                <TableCell>{subject.maxScore}</TableCell>
-                                <TableCell>
-                                  <Badge variant="outline" className="text-xs">
-                                    {getClassNameById(subject.classId)}
-                                  </Badge>
-                                </TableCell>
-                                <TableCell>
-                                  <Badge variant={subject.isActive ? "default" : "secondary"}>
-                                    {subject.isActive ? 'Actif' : 'Inactif'}
-                                  </Badge>
-                                </TableCell>
-                                <TableCell>
-                                  <div className="flex gap-2">
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => openEditModal(subject)}
-                                      disabled={isTeacherUser}
-                                      title={isTeacherUser ? "Les enseignants ne peuvent pas modifier les matières" : ""}
-                                    >
-                                      <Edit className="h-4 w-4" />
-                                    </Button>
-                                    <AlertDialog>
-                                      <AlertDialogTrigger asChild>
-                                        <Button
-                                          size="sm"
-                                          variant="destructive"
-                                          disabled={isTeacherUser}
-                                          title={isTeacherUser ? "Les enseignants ne peuvent pas supprimer les matières" : ""}
-                                        >
-                                          <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                      </AlertDialogTrigger>
-                                      <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                          <AlertDialogTitle>Supprimer la matière</AlertDialogTitle>
-                                          <AlertDialogDescription>
-                                            Êtes-vous sûr de vouloir supprimer la matière "{subject.name}" ?
-                                          </AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                          <AlertDialogCancel>Annuler</AlertDialogCancel>
-                                          <AlertDialogAction onClick={() => handleDeleteSubject(subject.id)}>
-                                            Supprimer
-                                          </AlertDialogAction>
-                                        </AlertDialogFooter>
-                                      </AlertDialogContent>
-                                    </AlertDialog>
-                                  </div>
-                                </TableCell>
-                              </TableRow>
-                            ))
-                          )}
+                    {currentSubjects.length === 0 && isTeacherUser ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center py-8">
+                          <div className="text-muted-foreground">
+                            <BookOpen className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                            <p className="text-lg font-medium mb-2">Aucune matière assignée</p>
+                            <p className="text-sm">
+                              Vous n'êtes pas autorisé à voir les matières de cette classe ou aucune matière ne vous a été assignée pour cette classe.
+                            </p>
+                            <p className="text-xs mt-2 text-yellow-600">
+                              Contactez l'administration pour vérifier vos affectations.
+                            </p>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      currentSubjects.map((subject) => (
+                        <TableRow key={subject.id}>
+                          <TableCell className="font-mono">{subject.code}</TableCell>
+                          <TableCell className="font-medium">{subject.name}</TableCell>
+                          <TableCell>
+                            <Badge className={getCategoryColor(subject.category)}>
+                              {subject.category}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{subject.coefficient}</TableCell>
+                          <TableCell>{subject.maxScore}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="text-xs">
+                              {getClassNameById(subject.classId)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={subject.isActive ? "default" : "secondary"}>
+                              {subject.isActive ? 'Actif' : 'Inactif'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => openEditModal(subject)}
+                                disabled={isTeacherUser}
+                                title={isTeacherUser ? "Les enseignants ne peuvent pas modifier les matières" : ""}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    disabled={isTeacherUser}
+                                    title={isTeacherUser ? "Les enseignants ne peuvent pas supprimer les matières" : ""}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Supprimer la matière</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Êtes-vous sûr de vouloir supprimer la matière "{subject.name}" ?
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleDeleteSubject(subject.id)}>
+                                      Supprimer
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
                   </TableBody>
                 </Table>
 
@@ -920,23 +930,23 @@ export default function GestionMatieresV2({ currentUser, role }: { currentUser?:
         </Card>
       ) : (
         activeTab === 'subjects' ? (
-        <Card>
-          <CardContent className="text-center py-8">
-            <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <p className="text-muted-foreground">
-              {isTeacherUser
-                ? "Vous n'avez aucune matière assignée ou sélectionnez une classe pour voir ses matières"
-                : "Sélectionnez une classe pour voir ses matières ou activez 'Afficher toutes les matières'"
-              }
-            </p>
-          </CardContent>
-        </Card>) : null
+          <Card>
+            <CardContent className="text-center py-8">
+              <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">
+                {isTeacherUser
+                  ? "Vous n'avez aucune matière assignée ou sélectionnez une classe pour voir ses matières"
+                  : "Sélectionnez une classe pour voir ses matières ou activez 'Afficher toutes les matières'"
+                }
+              </p>
+            </CardContent>
+          </Card>) : null
       )}
       {/* Séquences retiré de cet écran */}
 
       {/* Modal Ajout/Modification Matière */}
-      <Dialog 
-        open={showSubjectModal} 
+      <Dialog
+        open={showSubjectModal}
         onOpenChange={(open) => {
           if (!open) {
             setShowSubjectModal(false);
@@ -963,7 +973,7 @@ export default function GestionMatieresV2({ currentUser, role }: { currentUser?:
               Remplissez les informations de la matière pour la classe {selectedClass ? getClassNameById(selectedClass) : ''}
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -975,17 +985,17 @@ export default function GestionMatieresV2({ currentUser, role }: { currentUser?:
                   onChange={(e) => {
                     const code = e.target.value.toUpperCase();
                     if (editingSubject) {
-                      setEditingSubject({...editingSubject, code});
+                      setEditingSubject({ ...editingSubject, code });
                     } else {
-                      setNewSubject({...newSubject, code});
+                      setNewSubject({ ...newSubject, code });
                     }
                   }}
                   placeholder="Ex: MATH"
                 />
                 {!editingSubject && newSubject.code && (
                   <p className="text-xs text-muted-foreground mt-1">
-                    {subjects.find(s => s.code === newSubject.code && s.classId === selectedClass) 
-                      ? '⚠️ Ce code existe déjà dans cette classe' 
+                    {subjects.find(s => s.code === newSubject.code && s.classId === selectedClass)
+                      ? '⚠️ Ce code existe déjà dans cette classe'
                       : '✅ Code disponible'}
                   </p>
                 )}
@@ -996,9 +1006,9 @@ export default function GestionMatieresV2({ currentUser, role }: { currentUser?:
                   id="subject-name"
                   required
                   value={editingSubject?.name || newSubject.name}
-                  onChange={(e) => editingSubject 
-                    ? setEditingSubject({...editingSubject, name: e.target.value})
-                    : setNewSubject({...newSubject, name: e.target.value})
+                  onChange={(e) => editingSubject
+                    ? setEditingSubject({ ...editingSubject, name: e.target.value })
+                    : setNewSubject({ ...newSubject, name: e.target.value })
                   }
                   placeholder="Ex: Mathématiques"
                 />
@@ -1010,9 +1020,9 @@ export default function GestionMatieresV2({ currentUser, role }: { currentUser?:
                 <Select
                   required
                   value={editingSubject?.category || newSubject.category}
-                  onValueChange={(value) => editingSubject 
-                    ? setEditingSubject({...editingSubject, category: value})
-                    : setNewSubject({...newSubject, category: value})
+                  onValueChange={(value) => editingSubject
+                    ? setEditingSubject({ ...editingSubject, category: value })
+                    : setNewSubject({ ...newSubject, category: value })
                   }
                 >
                   <SelectTrigger>
@@ -1039,9 +1049,9 @@ export default function GestionMatieresV2({ currentUser, role }: { currentUser?:
                   value={editingSubject ? editingSubject.coefficient : newSubject.coefficient}
                   onChange={(e) => {
                     const value = parseFloat(e.target.value) || 0;
-                    editingSubject 
-                      ? setEditingSubject({...editingSubject, coefficient: value})
-                      : setNewSubject({...newSubject, coefficient: value})
+                    editingSubject
+                      ? setEditingSubject({ ...editingSubject, coefficient: value })
+                      : setNewSubject({ ...newSubject, coefficient: value })
                   }}
                 />
               </div>
@@ -1055,9 +1065,9 @@ export default function GestionMatieresV2({ currentUser, role }: { currentUser?:
                   value={editingSubject ? editingSubject.maxScore : newSubject.maxScore}
                   onChange={(e) => {
                     const value = parseInt(e.target.value) || 0;
-                    editingSubject 
-                      ? setEditingSubject({...editingSubject, maxScore: value})
-                      : setNewSubject({...newSubject, maxScore: value})
+                    editingSubject
+                      ? setEditingSubject({ ...editingSubject, maxScore: value })
+                      : setNewSubject({ ...newSubject, maxScore: value })
                   }}
                 />
               </div>
@@ -1068,9 +1078,9 @@ export default function GestionMatieresV2({ currentUser, role }: { currentUser?:
                 value={editingSubject ? (editingSubject.isActive ? 'active' : 'inactive') : (newSubject.isActive ? 'active' : 'inactive')}
                 onValueChange={(value) => {
                   const isActive = value === 'active';
-                  editingSubject 
-                    ? setEditingSubject({...editingSubject, isActive})
-                    : setNewSubject({...newSubject, isActive})
+                  editingSubject
+                    ? setEditingSubject({ ...editingSubject, isActive })
+                    : setNewSubject({ ...newSubject, isActive })
                 }}
               >
                 <SelectTrigger>
@@ -1082,17 +1092,17 @@ export default function GestionMatieresV2({ currentUser, role }: { currentUser?:
                 </SelectContent>
               </Select>
             </div>
-            
+
             <div className="flex justify-end gap-2 pt-4">
               <Button variant="outline" onClick={() => setShowSubjectModal(false)}>
                 Annuler
               </Button>
-              <Button 
+              <Button
                 onClick={editingSubject ? handleUpdateSubject : handleAddSubject}
                 disabled={!editingSubject && (
-                  !newSubject.code || 
-                  !newSubject.name || 
-                  !newSubject.category || 
+                  !newSubject.code ||
+                  !newSubject.name ||
+                  !newSubject.category ||
                   !!subjects.find(s => s.code === newSubject.code && s.classId === selectedClass)
                 )}
               >
@@ -1122,7 +1132,7 @@ export default function GestionMatieresV2({ currentUser, role }: { currentUser?:
                 <Label>Classe Cible</Label>
                 <Select
                   value={copyData.targetClassId}
-                  onValueChange={(value) => setCopyData({...copyData, targetClassId: value})}
+                  onValueChange={(value) => setCopyData({ ...copyData, targetClassId: value })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Sélectionner une classe" />
@@ -1205,13 +1215,13 @@ export default function GestionMatieresV2({ currentUser, role }: { currentUser?:
               Sélectionnez l'année source et l'année cible pour reconduire toutes les matières
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4">
             <div>
               <Label>Année Source</Label>
               <Select
                 value={reconductionData.sourceYear}
-                onValueChange={(value) => setReconductionData({...reconductionData, sourceYear: value})}
+                onValueChange={(value) => setReconductionData({ ...reconductionData, sourceYear: value })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Sélectionner l'année source" />
@@ -1223,17 +1233,17 @@ export default function GestionMatieresV2({ currentUser, role }: { currentUser?:
                 </SelectContent>
               </Select>
             </div>
-            
+
             <div>
               <Label>Année Cible</Label>
               <SchoolYearSelect
                 value={reconductionData.targetYear}
-                onValueChange={(value) => setReconductionData({...reconductionData, targetYear: value})}
+                onValueChange={(value) => setReconductionData({ ...reconductionData, targetYear: value })}
                 availableYears={availableYears}
                 currentSchoolYear={currentSettingsYear}
               />
             </div>
-            
+
             <div className="flex justify-between items-center gap-2 pt-4">
               <div className="text-sm text-muted-foreground">
                 {reconductionData.sourceYear && reconductionData.targetYear ? (
@@ -1245,7 +1255,7 @@ export default function GestionMatieresV2({ currentUser, role }: { currentUser?:
               <Button variant="outline" onClick={() => setShowReconductionModal(false)}>
                 Annuler
               </Button>
-              <Button 
+              <Button
                 onClick={handleReconductionAllClasses}
                 disabled={!reconductionData.sourceYear || !reconductionData.targetYear || loading}
               >

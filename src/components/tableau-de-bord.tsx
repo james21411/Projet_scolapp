@@ -393,7 +393,7 @@ const navItemsConfig = {
 };
 
 // Sub-components moved out for clarity as they don't depend on the main state of TableauDeBord.
-function DashboardTab() {
+function DashboardTab({ schoolInfo }: { schoolInfo: SchoolInfo | null }) {
   const [financialSummary, setFinancialSummary] = useState<OverallFinancialSummary | null>(null);
   const [students, setStudents] = useState<Student[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -401,6 +401,7 @@ function DashboardTab() {
   const [financialChartData, setFinancialChartData] = useState<{ month: string; total: number }[]>([]);
   const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([]);
   const [schoolStructure, setSchoolStructure] = useState<SchoolStructure | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
 
   const [filters, setFilters] = useState<FilterOptions>({
     selectedYear: 'all',
@@ -594,6 +595,11 @@ function DashboardTab() {
   };
 
   console.log('🔍 DashboardTab: Rendering component, isLoading:', isLoading);
+  const activeFiltersCount = [
+    filters.selectedLevel !== 'all',
+    filters.selectedClass !== 'all',
+    filters.financeType !== 'all'
+  ].filter(Boolean).length;
 
   if (isLoading) {
     console.log('🔍 DashboardTab: Showing loading state');
@@ -606,154 +612,175 @@ function DashboardTab() {
 
   return (
     <div className="space-y-6 pt-4">
-      <DashboardFilters 
-        onFiltersChange={setFilters}
-        loading={isLoading}
-        schoolStructure={schoolStructure}
-        students={students}
-      />
-      
+      <div className="flex justify-between items-center mb-2">
+        <h2 className="text-xl font-bold tracking-tight">Finances de l'école</h2>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setShowFilters(!showFilters)}
+          className="flex items-center gap-2 border-primary/20 hover:bg-primary/5 relative"
+        >
+          <Filter className="h-4 w-4" />
+          {showFilters ? "Masquer les filtres" : "Afficher les filtres"}
+          {activeFiltersCount > 0 && (
+            <Badge variant="default" className="ml-1 h-5 w-5 flex items-center justify-center p-0 text-[10px] bg-primary">
+              {activeFiltersCount}
+            </Badge>
+          )}
+          {showFilters ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        </Button>
+      </div>
+
+      {showFilters && (
+        <DashboardFilters
+          onFiltersChange={setFilters}
+          loading={isLoading}
+          schoolStructure={schoolStructure}
+          students={students}
+        />
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card className="card-glow">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Total Revenus ({currentSchoolYear})
-              </CardTitle>
-              <Landmark className="h-4 w-4 text-green-600" />
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card className="card-glow">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Total Revenus ({currentSchoolYear})
+                </CardTitle>
+                <Landmark className="h-4 w-4 text-green-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-emerald-600">
+                  {financialSummary?.totals?.totalPaid.toLocaleString() ?? 0} XAF
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Montant total perçu à ce jour.
+                </p>
+              </CardContent>
+            </Card>
+            <Card className="card-glow">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Élèves Inscrits (Actifs)
+                </CardTitle>
+                <Users className="h-4 w-4 text-blue-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-blue-600">{totalStudents}</div>
+                <p className="text-xs text-muted-foreground">
+                  Total des élèves actifs cette année.
+                </p>
+              </CardContent>
+            </Card>
+            <Card className="card-glow">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Taux de Recouvrement
+                </CardTitle>
+                <TrendingUp className="h-4 w-4 text-orange-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-orange-600">
+                  {financialSummary?.totals ? ((financialSummary.totals.totalPaid / financialSummary.totals.totalDue) * 100).toFixed(1) : 0}%
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Basé sur le total attendu.
+                </p>
+              </CardContent>
+            </Card>
+            <Card className="card-glow">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Impayés
+                </CardTitle>
+                <Bell className="h-4 w-4 text-red-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-red-600">
+                  {financialSummary?.totals?.outstanding.toLocaleString() ?? 0} XAF
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Solde total restant à percevoir.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card className="col-span-4 card-glow">
+            <CardHeader>
+              <CardTitle>Vue d'ensemble financière</CardTitle>
+              <CardDescription>
+                Aperçu des revenus mensuels pour l'année {currentSchoolYear}.
+              </CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {financialSummary?.totals?.totalPaid.toLocaleString() ?? 0} XAF
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Montant total perçu à ce jour.
-              </p>
-            </CardContent>
-          </Card>
-          <Card className="card-glow">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Élèves Inscrits (Actifs)
-              </CardTitle>
-              <Users className="h-4 w-4 text-blue-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{totalStudents}</div>
-              <p className="text-xs text-muted-foreground">
-                Total des élèves actifs cette année.
-              </p>
-            </CardContent>
-          </Card>
-          <Card className="card-glow">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Taux de Recouvrement
-              </CardTitle>
-              <TrendingUp className="h-4 w-4 text-orange-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {financialSummary?.totals ? ((financialSummary.totals.totalPaid / financialSummary.totals.totalDue) * 100).toFixed(1) : 0}%
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Basé sur le total attendu.
-              </p>
-            </CardContent>
-          </Card>
-          <Card className="card-glow">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Impayés
-              </CardTitle>
-              <Bell className="h-4 w-4 text-red-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {financialSummary?.totals?.outstanding.toLocaleString() ?? 0} XAF
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Solde total restant à percevoir.
-              </p>
+            <CardContent className="pl-2">
+              {financialChartData.length > 0 ? (
+                <FinancialBarChart data={financialChartData} />
+              ) : (
+                <div className="flex items-center justify-center h-[250px] text-muted-foreground">
+                  <div className="text-center">
+                    <BarChartIcon className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p>Chargement des données...</p>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
 
-        <Card className="col-span-4 card-glow">
-          <CardHeader>
-            <CardTitle>Vue d'ensemble financière</CardTitle>
-            <CardDescription>
-              Aperçu des revenus mensuels pour l'année {currentSchoolYear}.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pl-2">
-            {financialChartData.length > 0 ? (
-              <FinancialBarChart data={financialChartData} />
-            ) : (
-              <div className="flex items-center justify-center h-[250px] text-muted-foreground">
-                <div className="text-center">
-                  <BarChartIcon className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p>Chargement des données...</p>
-                </div>
+        <div className="space-y-6">
+          <Card className="card-glow">
+            <CardHeader>
+              <CardTitle>Répartition des Élèves</CardTitle>
+              <CardDescription>
+                Distribution des élèves actifs par niveau scolaire.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <StudentPieChart data={studentDistributionData || []} />
+            </CardContent>
+          </Card>
+
+          <Card className="card-glow">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Activité Récente</CardTitle>
+              <CardDescription className="text-xs">
+                Les 5 dernières actions effectuées
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="space-y-1.5">
+                {recentActivities.length > 0 ? (
+                  recentActivities.map((activity, index) => {
+                    const Icon = activityIcons[activity.type] || Bell;
+                    return (
+                      <div key={index} className="flex items-start gap-2 p-1.5 rounded-md hover:bg-muted/50 transition-colors">
+                        <div className="bg-gradient-to-br from-blue-500/20 to-blue-600/10 p-1 rounded-full flex-shrink-0">
+                          <Icon className="h-2.5 w-2.5 text-blue-600" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium truncate leading-tight">{activity.text}</p>
+                          <p className="text-xs text-muted-foreground leading-tight">
+                            {activity.time}
+                          </p>
+                        </div>
+                      </div>
+                    )
+                  })
+                ) : (
+                  <div className="text-center py-4 text-muted-foreground">
+                    <Bell className="h-5 w-5 mx-auto mb-1 opacity-50" />
+                    <p className="text-xs">Aucune activité récente</p>
+                  </div>
+                )}
               </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="space-y-6">
-        <Card className="card-glow">
-          <CardHeader>
-            <CardTitle>Répartition des Élèves</CardTitle>
-            <CardDescription>
-              Distribution des élèves actifs par niveau scolaire.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <StudentPieChart data={studentDistributionData || []} />
-          </CardContent>
-        </Card>
-
-        <Card className="card-glow">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Activité Récente</CardTitle>
-            <CardDescription className="text-xs">
-              Les 5 dernières actions effectuées
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <div className="space-y-1.5">
-              {recentActivities.length > 0 ? (
-                recentActivities.map((activity, index) => {
-                  const Icon = activityIcons[activity.type] || Bell;
-                  return (
-                    <div key={index} className="flex items-start gap-2 p-1.5 rounded-md hover:bg-muted/50 transition-colors">
-                      <div className="bg-gradient-to-br from-blue-500/20 to-blue-600/10 p-1 rounded-full flex-shrink-0">
-                        <Icon className="h-2.5 w-2.5 text-blue-600" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium truncate leading-tight">{activity.text}</p>
-                        <p className="text-xs text-muted-foreground leading-tight">
-                          {activity.time}
-                        </p>
-                      </div>
-                    </div>
-                  )
-                })
-              ) : (
-                <div className="text-center py-4 text-muted-foreground">
-                  <Bell className="h-5 w-5 mx-auto mb-1 opacity-50" />
-                  <p className="text-xs">Aucune activité récente</p>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
 }
 function StudentPaymentsTab({ student }: { student: Student }) {
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -2187,7 +2214,7 @@ function AdvancedReportsTab() {
     />
   );
 }
-function StudentsTab({ role, currentUser }: { role: string, currentUser: User }) {
+function StudentsTab({ role, currentUser, schoolInfo }: { role: string, currentUser: User, schoolInfo: SchoolInfo | null }) {
   const [openInscription, setOpenInscription] = useState(false);
   const [allStudents, setAllStudents] = useState<Student[]>([]);
   const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
@@ -4348,8 +4375,24 @@ function PaymentSearchDialog({
     </>
   )
 }
-function FinancialReportsTab({ onOpenPaymentDialog }: { onOpenPaymentDialog: () => void }) {
+function FinancialReportsTab({ onOpenPaymentDialog, schoolInfo }: { onOpenPaymentDialog: () => void, schoolInfo: SchoolInfo | null }) {
   const { toast } = useToast();
+  const [selectedSchoolYear, setSelectedSchoolYear] = useState<string>('');
+  const [availableYears, setAvailableYears] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (schoolInfo?.currentSchoolYear) {
+      setSelectedSchoolYear(schoolInfo.currentSchoolYear);
+    }
+
+    fetch('/api/school/years')
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          setAvailableYears(data.years);
+        }
+      });
+  }, [schoolInfo]);
   const [filters, setFilters] = useState<FinancialReportFilters>({});
   const [schoolStructure, setSchoolStructure] = useState<SchoolStructure>({ levels: {} });
   const [feeStructure, setFeeStructure] = useState<FeeStructure>({});
@@ -4572,7 +4615,7 @@ function FinancialReportsTab({ onOpenPaymentDialog }: { onOpenPaymentDialog: () 
     doc.text("Rapport Financier Détaillé", 105, 30, { align: 'center' });
 
     doc.setFontSize(10);
-    doc.text(`Période: ${filters.schoolYear || '2024-2025'}`, 20, 40);
+    doc.text(`Période: ${filters.schoolYear || schoolInfo?.currentSchoolYear || ''}`, 20, 40);
     doc.text(`Généré le: ${new Date().toLocaleDateString('fr-FR')}`, 20, 45);
     doc.text(`Type: ${getReportTypeLabel(selectedReportType)}`, 20, 50);
 
@@ -5028,7 +5071,7 @@ function FinancialReportsTab({ onOpenPaymentDialog }: { onOpenPaymentDialog: () 
     </div>
   );
 }
-function FinanceTab({ role, currentUser }: { role: string, currentUser: User }) {
+function FinanceTab({ role, currentUser, schoolInfo }: { role: string, currentUser: User, schoolInfo: SchoolInfo | null }) {
   const { toast } = useToast();
   const [allStudents, setAllStudents] = useState<Student[]>([]);
   const [schoolStructure, setSchoolStructure] = useState<SchoolStructure>({ levels: {} });
@@ -5104,8 +5147,25 @@ function FinanceTab({ role, currentUser }: { role: string, currentUser: User }) 
       setOverallSummary(summary);
 
       // Initialiser les variables pour les composants Select
-      setCurrentSchoolYear(year);
-      setAvailableYears(['2024-2025', '2025-2026', '2026-2027']); // Années disponibles
+      if (schoolInfo?.currentSchoolYear) {
+        setCurrentSchoolYear(schoolInfo.currentSchoolYear);
+        setSelectedSchoolYear(schoolInfo.currentSchoolYear);
+      } else {
+        setCurrentSchoolYear(year);
+        setSelectedSchoolYear(year);
+      }
+
+      // Recharger les années dynamiquement depuis l'API
+      const yearsResp = await fetch('/api/school/years');
+      if (yearsResp.ok) {
+        const yearsData = await yearsResp.json();
+        if (yearsData.success) {
+          setAvailableYears(yearsData.years);
+          if (yearsData.defaultYear && !selectedSchoolYear) {
+            setSelectedSchoolYear(yearsData.defaultYear);
+          }
+        }
+      }
 
       // Charger les niveaux actifs depuis l'API
       try {
@@ -5296,15 +5356,10 @@ function FinanceTab({ role, currentUser }: { role: string, currentUser: User }) 
   };
 
   useEffect(() => {
-    getSchoolInfo().then(info => {
-      if (info) {
-        setSelectedSchoolYear(info.currentSchoolYear);
-        fetchAllData(info.currentSchoolYear);
-      } else {
-        fetchAllData('2024-2025');
-      }
-    });
-  }, [fetchAllData]);
+    const defaultYear = schoolInfo?.currentSchoolYear || `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`;
+    setSelectedSchoolYear(defaultYear);
+    fetchAllData(defaultYear);
+  }, [schoolInfo, fetchAllData]);
 
   // Charger les données d'inscription quand l'année scolaire change
   useEffect(() => {
@@ -5988,10 +6043,10 @@ function FinanceTab({ role, currentUser }: { role: string, currentUser: User }) 
 
 
         <TabsContent value="reports" className="pt-4">
-          <FinancialReportsTab onOpenPaymentDialog={() => setOpenPaymentDialog(true)} />
+          <FinancialReportsTab onOpenPaymentDialog={() => setOpenPaymentDialog(true)} schoolInfo={schoolInfo} />
         </TabsContent>
         <TabsContent value="payments" className="pt-4">
-          {React.createElement(require('./finance-payments').default)}
+          {React.createElement(require('./finance-payments').default, { schoolInfo })}
         </TabsContent>
       </Tabs>
 
@@ -6285,6 +6340,17 @@ function PaymentFollowupTab({ schoolYear, onDataChange, onOpenPaymentDialog }: {
   const [selectedLevel, setSelectedLevel] = useState<string>('');
   const [selectedClass, setSelectedClass] = useState<string>('');
   const [schoolStructure, setSchoolStructure] = useState<SchoolStructure>({ levels: {} });
+  const [availableYears, setAvailableYears] = useState<string[]>([]);
+
+  useEffect(() => {
+    fetch('/api/school/years')
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          setAvailableYears(data.years);
+        }
+      });
+  }, []);
 
   useEffect(() => {
     fetch('/api/school/structure-flat').then(response => response.json()).then(setSchoolStructure);
@@ -6379,7 +6445,13 @@ function PaymentFollowupTab({ schoolYear, onDataChange, onOpenPaymentDialog }: {
               <Label>Année Scolaire</Label>
               <Select value={selectedSchoolYear} onValueChange={v => { setSelectedSchoolYear(v); setSelectedLevel(''); setSelectedClass(''); }}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{["2023-2024", "2024-2025", "2025-2026"].map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}</SelectContent>
+                <SelectContent>
+                  {availableYears.length > 0 ? (
+                    availableYears.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)
+                  ) : (
+                    <SelectItem value={selectedSchoolYear}>{selectedSchoolYear}</SelectItem>
+                  )}
+                </SelectContent>
               </Select>
             </div>
             <div>
@@ -7568,10 +7640,26 @@ function AccountingTab({ role }: { role: string }) {
     </Card>
   )
 }
-function ReportsTab({ role }: { role: string }) {
+function ReportsTab({ role, schoolInfo }: { role: string, schoolInfo: SchoolInfo | null }) {
   const [selectedReport, setSelectedReport] = useState<string>('');
   const [isGenerating, setIsGenerating] = useState(false);
-  const [schoolYear, setSchoolYear] = useState<string>('2025-2026');
+  const [schoolYear, setSchoolYear] = useState<string>('');
+  const [availableYears, setAvailableYears] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (schoolInfo?.currentSchoolYear) {
+      setSchoolYear(schoolInfo.currentSchoolYear);
+    }
+
+    fetch('/api/school/years')
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          setAvailableYears(data.years);
+          if (!schoolYear && data.defaultYear) setSchoolYear(data.defaultYear);
+        }
+      });
+  }, [schoolInfo]);
 
   const reportTypes = [
     {
@@ -7661,9 +7749,13 @@ function ReportsTab({ role }: { role: string }) {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="2024-2025">2024-2025</SelectItem>
-                    <SelectItem value="2025-2026">2025-2026</SelectItem>
-                    <SelectItem value="2026-2027">2026-2027</SelectItem>
+                    {availableYears.length > 0 ? (
+                      availableYears.map(year => (
+                        <SelectItem key={year} value={year}>{year}</SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value={schoolYear}>{schoolYear}</SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -8438,7 +8530,7 @@ function PersonnelTab({ role, currentUser }: { role: string, currentUser?: User 
   );
 }
 
-function GradesTab({ role, currentUser }: { role: string, currentUser: User }) {
+function GradesTab({ role, currentUser, schoolInfo }: { role: string, currentUser: User, schoolInfo: SchoolInfo | null }) {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -8450,7 +8542,7 @@ function GradesTab({ role, currentUser }: { role: string, currentUser: User }) {
         </div>
       </div>
 
-      <SaisieNotesAvancee currentUser={currentUser} role={role} teacherId={role === 'Enseignant' ? currentUser?.id : undefined} />
+      <SaisieNotesAvancee currentUser={currentUser} role={role} teacherId={role === 'Enseignant' ? currentUser?.id : undefined} schoolInfo={schoolInfo} />
     </div>
   );
 }
@@ -8547,20 +8639,20 @@ function TableauDeBord({ role, currentUser }: { role: string, currentUser: User 
       case 'tableaudebord':
         // For teachers show a teacher-focused session, otherwise the global dashboard
         if (role === 'Enseignant') return <TeacherSession currentUser={currentUser} role={role} />;
-        return <DashboardTab />;
+        return <DashboardTab schoolInfo={schoolInfo} />;
       case 'eleves':
-        return <StudentsTab role={role} currentUser={currentUser} />;
+        return <StudentsTab role={role} currentUser={currentUser} schoolInfo={schoolInfo} />;
       case 'finances':
-        return <FinanceTab role={role} currentUser={currentUser} />;
+        return <FinanceTab role={role} currentUser={currentUser} schoolInfo={schoolInfo} />;
       case 'gestionnotes':
-        return <GradesTab role={role} currentUser={currentUser} />;
+        return <GradesTab role={role} currentUser={currentUser} schoolInfo={schoolInfo} />;
       case 'mesclasses':
         // Vue "Mes classes" pour enseignant, avec fallback de résolution utilisateur
         return <MyClasses teacherId={(resolvedTeacherId || currentUser?.id) as string} currentUser={currentUser} />;
       case 'gestionbulletins':
-        return <BulletinManager />;
+        return <BulletinManager schoolInfo={schoolInfo} />;
       case 'rapports':
-        return <ReportsTab role={role} />;
+        return <ReportsTab role={role} schoolInfo={schoolInfo} />;
       case 'statistiques':
         return <StatisticsDashboard role={role} />;
       case 'cartesscolaires':
@@ -8625,7 +8717,7 @@ function TableauDeBord({ role, currentUser }: { role: string, currentUser: User 
                   Configurez les matières enseignées dans chaque classe. Définissez les coefficients et les types d'évaluation.
                 </p>
               </div>
-              <GestionMatieresV2 />
+              <GestionMatieresV2 schoolInfo={schoolInfo} />
             </div>
           </div>
         );
@@ -8640,7 +8732,7 @@ function TableauDeBord({ role, currentUser }: { role: string, currentUser: User 
                 </p>
               </div>
               {/* Séquences dédiée */}
-              {React.createElement(require('./GestionSequences').default)}
+              {React.createElement(require('./GestionSequences').default, { schoolInfo })}
             </div>
           </div>
         );
@@ -8668,7 +8760,7 @@ function TableauDeBord({ role, currentUser }: { role: string, currentUser: User 
                   Configurez les services (tenues, manuels, transport, etc.) et leurs tarifs par niveau ou classe.
                 </p>
               </div>
-              {React.createElement(require('./admin/finance-services-settings').default)}
+              {React.createElement(require('./admin/finance-services-settings').default, { schoolInfo })}
             </div>
           </div>
         );
@@ -8715,7 +8807,7 @@ function TableauDeBord({ role, currentUser }: { role: string, currentUser: User 
           </div>
         );
       default:
-        return <DashboardTab />;
+        return <DashboardTab schoolInfo={schoolInfo} />;
     }
   };
 

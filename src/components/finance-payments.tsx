@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { SchoolInfo } from "@/services/schoolInfoService";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -31,7 +32,7 @@ type PaymentRow = {
   receiptNumber?: string;
 };
 
-export default function FinancePaymentsSection() {
+export default function FinancePaymentsSection({ schoolInfo }: { schoolInfo?: SchoolInfo | null }) {
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [payments, setPayments] = useState<PaymentRow[]>([]);
@@ -55,6 +56,13 @@ export default function FinancePaymentsSection() {
   const [schoolYears, setSchoolYears] = useState<string[]>([]);
   const [currentSchoolYear, setCurrentSchoolYear] = useState<string>("");
   const [schoolYear, setSchoolYear] = useState<string>("");
+
+  useEffect(() => {
+    if (schoolInfo?.currentSchoolYear) {
+      setSchoolYear(schoolInfo.currentSchoolYear);
+      setCurrentSchoolYear(schoolInfo.currentSchoolYear);
+    }
+  }, [schoolInfo]);
   const [level, setLevel] = useState<string>("all");
   const [availableLevels, setAvailableLevels] = useState<string[]>([]);
   const [availableClasses, setAvailableClasses] = useState<string[]>([]);
@@ -132,7 +140,7 @@ export default function FinancePaymentsSection() {
           installmentsPaid: p.installmentsPaid || p.installments || null,
           receiptNumber: p.receiptNumber || p.id || '',
         })) as PaymentRow[];
-        console.debug('[finance-payments] mapped rows count:', rows.length, rows.slice(0,5));
+        console.debug('[finance-payments] mapped rows count:', rows.length, rows.slice(0, 5));
         setPayments(rows);
       } catch (err) {
         console.error('[finance-payments] fetch error:', err);
@@ -181,41 +189,41 @@ export default function FinancePaymentsSection() {
   useEffect(() => {
     // Mettre à jour la liste des classes quand le niveau change, en utilisant la structure en cache
     const classesOfLevel = (lvl: string) => (schoolStructure?.[lvl] || []);
-          const cls = level === 'all' ? [] : classesOfLevel(level);
-          setAvailableClasses(cls);
-          setKlass('all');
+    const cls = level === 'all' ? [] : classesOfLevel(level);
+    setAvailableClasses(cls);
+    setKlass('all');
   }, [level, schoolStructure]);
 
   const handleExportPdf = async () => {
     const doc = new jsPDF('l', 'mm', 'a4');
-    
+
     // En-tête du document
     doc.setFontSize(18);
     doc.text('Historique des Paiements', 14, 20);
-    
+
     // Sous-titre avec année scolaire
     doc.setFontSize(12);
     doc.setTextColor(100, 100, 100);
     doc.text(`Année scolaire: ${schoolYear || currentSchoolYear}`, 14, 28);
-    
+
     // Informations de filtrage
     let filterInfo = [];
     if (level && level !== 'all') filterInfo.push(`Niveau: ${level}`);
     if (klass && klass !== 'all') filterInfo.push(`Classe: ${klass}`);
     if (fromDate) filterInfo.push(`Du: ${new Date(fromDate).toLocaleDateString('fr-FR')}`);
     if (toDate) filterInfo.push(`Au: ${new Date(toDate).toLocaleDateString('fr-FR')}`);
-    
+
     if (filterInfo.length > 0) {
       doc.setFontSize(10);
       doc.setTextColor(80, 80, 80);
       doc.text(`Filtres appliqués: ${filterInfo.join(' | ')}`, 14, 35);
     }
-    
+
     // Date de génération
     doc.setFontSize(9);
     doc.setTextColor(120, 120, 120);
     doc.text(`Généré le: ${new Date().toLocaleString('fr-FR')}`, 14, 42);
-    
+
     // Préparer les données du tableau avec tous les champs
     const tableData = filtered.map(p => [
       new Date(p.date).toLocaleDateString('fr-FR'),
@@ -228,7 +236,7 @@ export default function FinancePaymentsSection() {
       p.method || '—',
       p.reason || '—'
     ]);
-    
+
     // Configuration du tableau optimisé
     const tableConfig = {
       startY: 48,
@@ -267,7 +275,7 @@ export default function FinancePaymentsSection() {
       margin: { top: 48, left: 8, right: 8 },
       pageBreak: 'auto',
       rowPageBreak: 'avoid',
-      didDrawPage: function(data: any) {
+      didDrawPage: function (data: any) {
         // Ajouter numéro de page
         const pageCount = (doc as any).getNumberOfPages();
         doc.setFontSize(8);
@@ -275,21 +283,21 @@ export default function FinancePaymentsSection() {
         doc.text(`Page ${data.pageNumber} sur ${pageCount}`, doc.internal.pageSize.width - 20, doc.internal.pageSize.height - 10, { align: 'right' });
       }
     };
-    
+
     // Générer le tableau
     autoTable(doc, tableConfig);
-    
+
     // Pied de page avec statistiques
     const finalY = (doc as any).lastAutoTable.finalY + 8;
     doc.setFontSize(9);
     doc.setTextColor(80, 80, 80);
     doc.text(`Total: ${filtered.length} paiements`, 14, finalY);
-    
+
     const totalAmount = filtered.reduce((sum, p) => sum + Number(p.amount), 0);
     doc.text(`Montant total: ${totalAmount.toLocaleString('fr-FR')} XAF`, 14, finalY + 6);
-    
+
     // Sauvegarder le PDF
-    doc.save(`paiements_${schoolYear || currentSchoolYear}_${new Date().toISOString().slice(0,10)}.pdf`);
+    doc.save(`paiements_${schoolYear || currentSchoolYear}_${new Date().toISOString().slice(0, 10)}.pdf`);
   };
 
   const openDetails = (p: PaymentRow) => {
@@ -308,7 +316,7 @@ export default function FinancePaymentsSection() {
       amount: String(p.amount ?? ''),
       method: p.method ?? '',
       reason: p.reason ?? '',
-      date: p.date ? new Date(p.date).toISOString().slice(0,16) : ''
+      date: p.date ? new Date(p.date).toISOString().slice(0, 16) : ''
     });
     setEditOpen(true);
   };
@@ -412,73 +420,73 @@ export default function FinancePaymentsSection() {
   const generatePaymentReceipt = async (payment: PaymentRow, updatedFields: any) => {
     try {
       const doc = new jsPDF('p', 'mm', 'a4');
-      
+
       // En-tête du reçu de paiement (format différent du reçu de tranche)
       doc.setFontSize(20);
       doc.setTextColor(0, 0, 0);
       doc.text('REÇU DE PAIEMENT', 105, 30, { align: 'center' });
-      
+
       // Informations de l'établissement
       doc.setFontSize(12);
       doc.setTextColor(100, 100, 100);
       doc.text('ÉTABLISSEMENT SCOLAIRE', 105, 45, { align: 'center' });
       doc.text('Yaoundé, Cameroun', 105, 52, { align: 'center' });
-      
+
       // Séparateur
       doc.setDrawColor(200, 200, 200);
       doc.line(20, 60, 190, 60);
-      
+
       // Numéro de reçu
       doc.setFontSize(14);
       doc.setTextColor(0, 0, 0);
       doc.text(`Reçu N°: ${payment.receiptNumber || payment.id}`, 20, 80);
-      
+
       // Date de paiement
       const paymentDate = updatedFields.date ? new Date(updatedFields.date) : new Date(payment.date);
       doc.text(`Date: ${paymentDate.toLocaleDateString('fr-FR')}`, 20, 90);
-      
+
       // Informations de l'élève
       doc.text(`Élève: ${payment.studentName || '—'}`, 20, 105);
       doc.text(`ID: ${payment.studentId}`, 20, 115);
       doc.text(`Classe: ${payment.class || '—'}`, 20, 125);
       doc.text(`Année scolaire: ${payment.schoolYear || schoolYear}`, 20, 140);
-      
+
       // Détails du paiement
       doc.setFontSize(16);
       doc.setTextColor(0, 100, 0);
       doc.text(`Montant payé: ${Number(updatedFields.amount || payment.amount).toLocaleString('fr-FR')} XAF`, 20, 160);
-      
+
       doc.setFontSize(12);
       doc.setTextColor(0, 0, 0);
       doc.text(`Mode de paiement: ${updatedFields.method || payment.method || '—'}`, 20, 175);
       doc.text(`Motif: ${updatedFields.reason || payment.reason || '—'}`, 20, 185);
-      
+
       // Informations du caissier
       doc.text(`Caissier: ${payment.cashierUsername || payment.cashier || '—'}`, 20, 200);
-      
+
       // Séparateur
       doc.line(20, 210, 190, 210);
-      
+
       // Note importante
       doc.setFontSize(10);
       doc.setTextColor(150, 150, 150);
       doc.text('Ce reçu confirme le paiement effectué. Conservez-le précieusement.', 105, 220, { align: 'center' });
       doc.text('Format différent du reçu de tranche pour éviter toute confusion.', 105, 227, { align: 'center' });
-      
+
       // Code de vérification
       const verificationCode = `VER-${payment.id.slice(-8)}-${Date.now().toString(36).toUpperCase()}`;
       doc.setFontSize(8);
       doc.setTextColor(100, 100, 100);
       doc.text(`Code de vérification: ${verificationCode}`, 105, 240, { align: 'center' });
-      
+
       // Générer le nom de fichier
-      const fileName = `recu_paiement_${payment.studentId}_${paymentDate.toISOString().slice(0,10)}.pdf`;
-      
+      const fileName = `recu_paiement_${payment.studentId}_${paymentDate.toISOString().slice(0, 10)}.pdf`;
+
       // Afficher la prévisualisation au lieu de télécharger automatiquement
       const pdfDataUrl = doc.output('datauristring');
       setReceiptPreview({ dataUrl: pdfDataUrl, fileName });
       setReceiptPreviewOpen(true);
-      
+
       console.log('Reçu de paiement généré, prévisualisation affichée:', fileName);
     } catch (error) {
       console.error('Erreur lors de la génération du reçu:', error);
@@ -488,7 +496,7 @@ export default function FinancePaymentsSection() {
   // Fonction pour télécharger le reçu
   const downloadReceipt = () => {
     if (!receiptPreview) return;
-    
+
     // Créer un lien de téléchargement
     const link = document.createElement('a');
     link.href = receiptPreview.dataUrl;
@@ -496,7 +504,7 @@ export default function FinancePaymentsSection() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    
+
     // Fermer la prévisualisation
     setReceiptPreviewOpen(false);
     setReceiptPreview(null);
@@ -539,10 +547,10 @@ export default function FinancePaymentsSection() {
             </DialogContent>
           </Dialog>
           <div className="flex gap-2">
-            <Button className="bg-blue-600 text-white hover:bg-blue-700" onClick={handleExportPdf}><Printer className="h-4 w-4 mr-2"/> Imprimer</Button>
+            <Button className="bg-blue-600 text-white hover:bg-blue-700" onClick={handleExportPdf}><Printer className="h-4 w-4 mr-2" /> Imprimer</Button>
           </div>
         </CardHeader>
-  <CardContent className="space-y-4 overflow-hidden">
+        <CardContent className="space-y-4 overflow-hidden">
           <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
             <div className="space-y-1 md:col-span-2">
               <Label>Année scolaire</Label>
@@ -558,7 +566,7 @@ export default function FinancePaymentsSection() {
             <div className="space-y-1 md:col-span-1">
               <Label>Niveau</Label>
               <Select value={level} onValueChange={setLevel}>
-                <SelectTrigger><SelectValue placeholder="Tous les niveaux"/></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Tous les niveaux" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tous</SelectItem>
                   {availableLevels.map(l => (
@@ -570,7 +578,7 @@ export default function FinancePaymentsSection() {
             <div className="space-y-1 md:col-span-1">
               <Label>Classe</Label>
               <Select value={klass} onValueChange={setKlass}>
-                <SelectTrigger><SelectValue placeholder="Toutes les classes"/></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Toutes les classes" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Toutes</SelectItem>
                   {availableClasses.map(c => (
@@ -601,7 +609,7 @@ export default function FinancePaymentsSection() {
 
           <div className="relative z-50 bg-white border rounded-lg overflow-auto max-h-[55vh]">
             {isLoading ? (
-              <div className="flex justify-center p-8"><Loader2 className="animate-spin h-8 w-8"/></div>
+              <div className="flex justify-center p-8"><Loader2 className="animate-spin h-8 w-8" /></div>
             ) : (
               <div className="w-full overflow-auto">
                 <Table className="w-full table-auto text-xs">
@@ -654,7 +662,7 @@ export default function FinancePaymentsSection() {
                               }}
                               title="Imprimer le reçu"
                             >
-                              <Printer className="h-4 w-4"/>
+                              <Printer className="h-4 w-4" />
                             </Button>
                           </div>
                         </TableCell>
@@ -680,7 +688,7 @@ export default function FinancePaymentsSection() {
               <div className="flex items-center gap-2">
                 <span className="text-sm">Lignes</span>
                 <Select value={`${rowsPerPage}`} onValueChange={v => { setRowsPerPage(Number(v)); setPage(1); }}>
-                  <SelectTrigger className="h-8 w-[80px]"><SelectValue/></SelectTrigger>
+                  <SelectTrigger className="h-8 w-[80px]"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {[10, 20, 50, 100].map(v => <SelectItem key={v} value={`${v}`}>{v}</SelectItem>)}
                   </SelectContent>
@@ -803,7 +811,7 @@ export default function FinancePaymentsSection() {
               <div className="text-sm text-muted-foreground">
                 Nom du fichier: <span className="font-mono">{receiptPreview.fileName}</span>
               </div>
-              
+
               {/* Prévisualisation du PDF */}
               <div className="border rounded-lg overflow-hidden">
                 <iframe
@@ -814,7 +822,7 @@ export default function FinancePaymentsSection() {
                   className="border-0"
                 />
               </div>
-              
+
               <div className="text-xs text-muted-foreground text-center">
                 <p>Ce reçu confirme le paiement effectué avec un format différent du reçu de tranche.</p>
                 <p>Cliquez sur "Télécharger" pour enregistrer le fichier sur votre ordinateur.</p>

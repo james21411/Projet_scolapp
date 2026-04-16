@@ -13,6 +13,8 @@ import {
   YAxis,
   CartesianGrid,
   BarChart,
+  Line,
+  ComposedChart,
 } from "recharts";
 import { BarChart as BarChartIcon, PieChart as PieChartIcon } from "lucide-react";
 
@@ -29,7 +31,7 @@ export const FinancialBarChart = ({ data }: { data: ChartData[] }) => {
   console.log('🔍 FinancialBarChart: Data type:', typeof data);
   console.log('🔍 FinancialBarChart: Is array:', Array.isArray(data));
   console.log('🔍 FinancialBarChart: Data length:', data?.length || 0);
-  
+
   if (!data || !Array.isArray(data) || data.length === 0) {
     console.log('🔍 FinancialBarChart: No data, showing empty state');
     return (
@@ -47,9 +49,9 @@ export const FinancialBarChart = ({ data }: { data: ChartData[] }) => {
     ...item,
     month: item.month ? item.month.split(' ')[0] : item.month // Garder seulement la première partie (mois)
   }));
-  
+
   console.log('🔍 FinancialBarChart: Cleaned data:', cleanedData);
-  
+
   // Vérifier chaque élément des données nettoyées
   cleanedData.forEach((item, index) => {
     console.log(`🔍 FinancialBarChart: Cleaned item ${index}:`, item);
@@ -66,18 +68,41 @@ export const FinancialBarChart = ({ data }: { data: ChartData[] }) => {
   return (
     <div className="w-full h-[250px]">
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={cleanedData}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="month" />
-          <YAxis />
-          <Tooltip formatter={(value) => [`${Number(value).toLocaleString()} XAF`, 'Montant']} />
-          <Legend />
-          <Bar dataKey="total" fill="#3B82F6">
+        <ComposedChart data={cleanedData}>
+          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+          <XAxis
+            dataKey="month"
+            axisLine={false}
+            tickLine={false}
+            tick={{ fill: '#64748B', fontSize: 12 }}
+            dy={10}
+          />
+          <YAxis
+            axisLine={false}
+            tickLine={false}
+            tick={{ fill: '#64748B', fontSize: 12 }}
+            tickFormatter={(value) => `${value / 1000}k`}
+          />
+          <Tooltip
+            cursor={{ fill: 'transparent' }}
+            contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+            formatter={(value) => [`${Number(value).toLocaleString()} XAF`, 'Montant']}
+          />
+          <Legend verticalAlign="top" height={36} />
+          <Bar dataKey="total" fill="#3B82F6" radius={[4, 4, 0, 0]} barSize={40}>
             {cleanedData.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill="#3B82F6" />
+              <Cell key={`cell-${index}`} fill="#3B82F6" opacity={0.8} />
             ))}
           </Bar>
-        </BarChart>
+          <Line
+            type="monotone"
+            dataKey="total"
+            stroke="#F59E0B"
+            strokeWidth={3}
+            dot={{ r: 4, fill: '#F59E0B', strokeWidth: 2, stroke: '#fff' }}
+            activeDot={{ r: 6, strokeWidth: 0 }}
+          />
+        </ComposedChart>
       </ResponsiveContainer>
     </div>
   );
@@ -120,9 +145,9 @@ export const StudentPieChart = ({ data }: { data: ChartData[] }) => {
             dataKey="value"
           >
             {data.map((entry, index) => (
-              <Cell 
-                key={`cell-${index}`} 
-                fill={entry.fill || pieColors[index % pieColors.length]} 
+              <Cell
+                key={`cell-${index}`}
+                fill={entry.fill || pieColors[index % pieColors.length]}
               />
             ))}
           </Pie>

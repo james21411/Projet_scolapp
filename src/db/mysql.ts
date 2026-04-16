@@ -3,11 +3,25 @@ import { cookies } from 'next/headers';
 import { getIronSession } from 'iron-session';
 import { sessionOptions, type SessionData } from '@/lib/session';
 
-// Cache des pools par nom de base de données
-const poolCache = new Map<string, mysql.Pool>();
+// Cache des pools par nom de base de données persisté entre les rechargements HMR en développement
+const poolCache: Map<string, mysql.Pool> = (global as any)._mysqlPoolCache || new Map<string, mysql.Pool>();
+if (process.env.NODE_ENV !== 'production') {
+    (global as any)._mysqlPoolCache = poolCache;
+}
 
 // Créer ou récupérer un pool pour une DB donnée
 export function getPoolForDb(dbName: string): mysql.Pool {
+    // Empêcher l'accumulation excessive de pools (Max 80)
+    if (poolCache.size >= 80) {
+        console.log(`⚠️ Alerte: Nombre de pools (${poolCache.size}) élevé. Nettoyage en cours...`);
+        // Fermer les anciens pools en arrière-plan pour libérer les connexions MySQL
+        poolCache.forEach((p, name) => {
+            p.end().catch(err => console.error(`Erreur fermeture pool ${name}:`, err));
+        });
+        poolCache.clear();
+        console.log("♻️ Cache des pools réinitialisé.");
+    }
+
     if (poolCache.has(dbName)) {
         return poolCache.get(dbName)!;
     }

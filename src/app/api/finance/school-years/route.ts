@@ -3,7 +3,11 @@ import pool from '@/db/mysql';
 
 export async function GET() {
   try {
-    // Récupérer les années scolaires disponibles depuis les services financiers
+    // 1. Récupérer l'année en cours depuis les paramètres
+    const [infoData] = await pool.execute('SELECT currentSchoolYear FROM school_info LIMIT 1') as any[];
+    const currentSchoolYear = (infoData as any[]).length > 0 ? infoData[0].currentSchoolYear : '2025-2026';
+
+    // 2. Récupérer les années scolaires disponibles depuis les services financiers
     const [rows] = await pool.execute(`
       SELECT DISTINCT schoolYear 
       FROM financial_services 
@@ -12,14 +16,11 @@ export async function GET() {
     `) as any[];
 
     const availableYears = rows.map(row => row.schoolYear);
-    
-    // Année courante par défaut (format: 2024-2025)
-    const currentYear = new Date().getFullYear();
-    const currentSchoolYear = `${currentYear}-${currentYear + 1}`;
-    
-    // Ajouter l'année courante si elle n'existe pas
+
+    // S'assurer que l'année courante est dans la liste
     if (!availableYears.includes(currentSchoolYear)) {
-      availableYears.unshift(currentSchoolYear);
+      availableYears.push(currentSchoolYear);
+      availableYears.sort((a, b) => b.localeCompare(a));
     }
 
     return NextResponse.json({

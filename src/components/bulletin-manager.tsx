@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { SchoolInfo } from '@/services/schoolInfoService';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -10,10 +11,10 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { 
-  FileText, 
-  Download, 
-  Edit, 
+import {
+  FileText,
+  Download,
+  Edit,
   Search,
   CheckCircle,
   AlertCircle,
@@ -92,38 +93,45 @@ interface Bulletin {
   issuedBy: string;
 }
 
-export default function BulletinManager() {
+export default function BulletinManager({ schoolInfo }: { schoolInfo?: SchoolInfo | null }) {
   // États de base
   const [selectedLevel, setSelectedLevel] = useState<string>('');
   const [selectedClass, setSelectedClass] = useState<string>('');
   const [selectedPeriod, setSelectedPeriod] = useState<string>('');
-  // Fonction pour obtenir l'année scolaire actuelle
-  const getCurrentSchoolYear = () => {
-    const currentYear = new Date().getFullYear();
-    const currentMonth = new Date().getMonth() + 1; // getMonth() retourne 0-11
-    
-    // Si on est entre septembre et décembre, l'année scolaire commence cette année
-    // Si on est entre janvier et août, l'année scolaire a commencé l'année précédente
-    if (currentMonth >= 9) {
-      return `${currentYear}-${currentYear + 1}`;
-    } else {
-      return `${currentYear - 1}-${currentYear}`;
+  const [availableYears, setAvailableYears] = useState<string[]>([]);
+  const [schoolYear, setSchoolYear] = useState<string>('2025-2026');
+
+  useEffect(() => {
+    if (schoolInfo?.currentSchoolYear) {
+      setSchoolYear(schoolInfo.currentSchoolYear);
     }
-  };
+
+    fetch('/api/school/years')
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          setAvailableYears(data.years);
+          if (!schoolYear && data.defaultYear) setSchoolYear(data.defaultYear);
+        }
+      });
+  }, [schoolInfo]);
+
+  const [loading, setLoading] = useState(false);
+  const currentSchoolYear = schoolYear;
 
   // Fonction pour obtenir le label dynamique des séquences selon le trimestre
   const getSequenceLabel = (sequenceNumber: number, periodId: string): string => {
     if (!periodId) return `Séquence ${sequenceNumber}`;
-    
+
     // Trouver la période par son ID pour obtenir son nom
     const period = evaluationPeriods.find(p => p.id === periodId);
     if (!period) return `Séquence ${sequenceNumber}`;
-    
+
     const periodName = period.name;
     const periodLower = periodName.toLowerCase();
-    
+
     console.log(`🔍 getSequenceLabel: periodId="${periodId}", periodName="${periodName}", sequenceNumber=${sequenceNumber}`);
-    
+
     if (periodLower.includes('1er') || periodLower.includes('1er trimestre') || periodLower.includes('1st trimester')) {
       return sequenceNumber === 1 ? '1ère Séquence' : '2ème Séquence';
     } else if (periodLower.includes('2ème') || periodLower.includes('2eme') || periodLower.includes('2nd') || periodLower.includes('2ème trimestre') || periodLower.includes('2nd trimester')) {
@@ -131,101 +139,89 @@ export default function BulletinManager() {
     } else if (periodLower.includes('3ème') || periodLower.includes('3eme') || periodLower.includes('3rd') || periodLower.includes('3ème trimestre') || periodLower.includes('3rd trimester')) {
       return sequenceNumber === 1 ? '5ème Séquence' : '6ème Séquence';
     }
-    
+
     // Fallback par défaut
     return `Séquence ${sequenceNumber}`;
   };
 
-  const [schoolYear, setSchoolYear] = useState<string>(getCurrentSchoolYear());
-  
-  // Années scolaires disponibles
-  const availableYears = [
-    '2020-2021', '2021-2022', '2022-2023', '2023-2024', 
-    '2024-2025', '2025-2026', '2026-2027', '2027-2028', '2028-2029'
-  ];
-  
-  // Année scolaire actuelle
-  const currentSchoolYear = getCurrentSchoolYear();
-  const [loading, setLoading] = useState(false);
-  
-
-  
   // États des données
   const [students, setStudents] = useState<Student[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [evaluationPeriods, setEvaluationPeriods] = useState<EvaluationPeriod[]>([]);
   const [grades, setGrades] = useState<GradesByStudent>({});
   const [bulletins, setBulletins] = useState<Bulletin[]>([]);
-  const [classes, setClasses] = useState<{id: string, name: string}[]>([]);
+  const [classes, setClasses] = useState<{ id: string, name: string }[]>([]);
   const [availableLevels, setAvailableLevels] = useState<string[]>([]);
   const [levelsData, setLevelsData] = useState<any[]>([]);
 
   // État pour stocker les vrais rangs calculés
-  const [calculatedRanks, setCalculatedRanks] = useState<{[studentId: string]: {
-    rank: number;
-    totalStudents: number;
-    average: number;
-    totalWeighted: number;
-    totalCoefficient: number;
-  }}>({});
+  const [calculatedRanks, setCalculatedRanks] = useState<{
+    [studentId: string]: {
+      rank: number;
+      totalStudents: number;
+      average: number;
+      totalWeighted: number;
+      totalCoefficient: number;
+    }
+  }>({});
 
   // État pour déterminer si la période sélectionnée est un trimestre
   const [isTrimester, setIsTrimester] = useState<boolean>(false);
-  
+
   // État de debug pour forcer les mises à jour
   const [debugTrigger, setDebugTrigger] = useState<number>(0);
-  
+
   // État pour stocker les rangs par matière récupérés depuis la base de données
-  const [subjectRanksFromDB, setSubjectRanksFromDB] = useState<{[subjectId: string]: {rank: number, totalStudents: number}}>({});
+  const [subjectRanksFromDB, setSubjectRanksFromDB] = useState<{ [subjectId: string]: { rank: number, totalStudents: number } }>({});
   const [isLoadingSubjectRanks, setIsLoadingSubjectRanks] = useState(false);
 
   // Fonction pour calculer les vrais rangs (même logique que le modal)
   const calculateTrueRanks = () => {
     if (!selectedClass || !selectedPeriod) return;
-    
+
     // Trouver la période sélectionnée pour obtenir son nom
     const selectedPeriodData = evaluationPeriods.find(p => p.id === selectedPeriod);
     if (!selectedPeriodData) {
       console.log('⚠️ Période sélectionnée non trouvée pour calculateTrueRanks');
       return;
     }
-    
+
     // Vérifier si c'est un trimestre
     const periodName = selectedPeriodData.name;
     const isTrimester = periodName.toLowerCase().includes('trim') || periodName.toLowerCase().includes('trimestre');
-    
+
     console.log(`📝 Type de période: ${isTrimester ? 'TRIMESTRE' : 'SÉQUENCE'} (${periodName})`);
-    
+
     const studentsWithGrades = students.filter(student => {
       const studentGrades = grades[student.id];
       return studentGrades && studentGrades.length > 0;
     });
-    
+
     const studentsData = studentsWithGrades.map(student => {
       const studentGrades = grades[student.id] || [];
       let totalWeighted = 0;
       let totalCoefficient = 0;
-      
+
       if (isTrimester) {
         // Pour les trimestres, calculer sur les moyennes des 2 séquences
         // Les notes contiennent déjà seq1, seq2 et periodAverage calculés par loadGrades
         console.log(`🔍 Calcul trimestre pour ${student.id}:`, studentGrades);
-        
+
         totalWeighted = studentGrades.reduce((sum: number, grade: any) => {
           // Utiliser periodAverage qui est déjà la moyenne des 2 séquences
           const averageScore = parseFloat(String(grade.periodAverage)) || 0;
           const coefficient = parseFloat(String(grade.coefficient)) || 1;
           const weighted = averageScore * coefficient;
-          
+
           console.log(`  📊 ${grade.subjectName}: ${averageScore}/20 × ${coefficient} = ${weighted.toFixed(2)}`);
-          
+
           return sum + weighted;
         }, 0);
-        
+
         totalCoefficient = studentGrades.reduce((sum: number, grade: any) => {
           return sum + (parseFloat(String(grade.coefficient)) || 1);
         }, 0);
-        
+
         console.log(`  📈 Total pondéré: ${totalWeighted.toFixed(2)}, Total coefficient: ${totalCoefficient}`);
       } else {
         // Pour les séquences, calculer la moyenne directe
@@ -236,16 +232,16 @@ export default function BulletinManager() {
           const normalizedScore = (score / maxScore) * 20;
           return sum + (normalizedScore * coefficient);
         }, 0);
-        
+
         totalCoefficient = studentGrades.reduce((sum: number, grade: any) => {
           return sum + (parseFloat(String(grade.coefficient)) || 1);
         }, 0);
       }
-      
+
       const average = totalCoefficient > 0 ? totalWeighted / totalCoefficient : 0;
-      
+
       console.log(`📊 Moyenne finale pour ${student.id}: ${average.toFixed(2)}/20`);
-      
+
       return {
         studentId: student.id,
         average,
@@ -253,12 +249,12 @@ export default function BulletinManager() {
         totalCoefficient
       };
     });
-    
+
     // Trier par moyenne décroissante
     studentsData.sort((a, b) => b.average - a.average);
-    
+
     // Créer l'objet des rangs
-    const ranksData: {[studentId: string]: any} = {};
+    const ranksData: { [studentId: string]: any } = {};
     studentsData.forEach((studentData, index) => {
       ranksData[studentData.studentId] = {
         rank: index + 1,
@@ -268,10 +264,10 @@ export default function BulletinManager() {
         totalCoefficient: studentData.totalCoefficient
       };
     });
-    
+
     setCalculatedRanks(ranksData);
     console.log('🏆 Vrais rangs calculés:', ranksData);
-    
+
     // Déclencher une mise à jour de l'affichage
     setDebugTrigger(prev => prev + 1);
   };
@@ -316,7 +312,7 @@ export default function BulletinManager() {
       loadEvaluationPeriods();
     }
   }, [selectedClass, schoolYear]);
-  
+
   // Effet pour forcer la mise à jour quand debugTrigger change
   useEffect(() => {
     if (debugTrigger > 0 && selectedClass && selectedPeriod) {
@@ -391,12 +387,12 @@ export default function BulletinManager() {
       const loadClassesForLevel = async () => {
         try {
           const selectedLevelData = levelsData.find((level: any) => level.name === selectedLevel);
-          
+
           if (selectedLevelData) {
             const levelClasses = selectedLevelData.classes.map((cls: any) => ({ id: cls.id, name: cls.name }));
             setClasses(levelClasses);
             console.log(`✅ Classes chargées pour le niveau ${selectedLevel}:`, levelClasses);
-            
+
             if (levelClasses.length === 0) {
               toast.error(`Aucune classe configurée pour le niveau ${selectedLevel}`);
             }
@@ -432,10 +428,10 @@ export default function BulletinManager() {
   useEffect(() => {
     if (selectedClass && selectedPeriod && schoolYear) {
       console.log('🔄 Changement de classe/période détecté, chargement automatique...');
-      
+
       // Réinitialiser la pagination quand la période change
       setCurrentPage(1);
-      
+
       // Charger les données de base
       Promise.all([
         loadGrades(),
@@ -443,7 +439,7 @@ export default function BulletinManager() {
       ]).then(() => {
         // Une fois les données chargées, déclencher automatiquement le recalcul des rangs
         console.log('🏆 Déclenchement automatique du recalcul des rangs...');
-        
+
         // Utiliser la nouvelle API pour recalculer automatiquement les rangs
         fetch('/api/bulletins/recalculate-ranks', {
           method: 'POST',
@@ -497,10 +493,10 @@ export default function BulletinManager() {
 
   // Fonction de recalcul des rangs (NOUVELLE VERSION FIABLE)
   const recalculateRanks = async () => {
-      if (!selectedClass || !selectedPeriod || !schoolYear || !selectedLevel) {
-    toast.error('Veuillez sélectionner un niveau, une classe et une période');
-    return;
-  }
+    if (!selectedClass || !selectedPeriod || !schoolYear || !selectedLevel) {
+      toast.error('Veuillez sélectionner un niveau, une classe et une période');
+      return;
+    }
 
     try {
       setLoading(true);
@@ -520,20 +516,20 @@ export default function BulletinManager() {
       if (response.ok) {
         const result = await response.json();
         console.log('✅ Résultat du recalcul:', result);
-        
+
         if (result.success) {
           toast.success(`✅ Rangs recalculés avec succès pour ${result.successCount}/${result.totalStudents} élève(s)`);
-          
+
           // Recharger automatiquement les bulletins pour afficher les nouveaux rangs
           await loadBulletins();
-          
+
           // Recharger aussi les autres données pour s'assurer de la cohérence
           await Promise.all([
             loadStudents(),
             loadSubjects(),
             loadGrades()
           ]);
-          
+
           console.log('🔄 Toutes les données ont été rechargées après le recalcul des rangs');
         } else {
           toast.error('❌ Erreur lors du recalcul des rangs');
@@ -561,7 +557,7 @@ export default function BulletinManager() {
         // Vérifier si c'est un trimestre
         const isTrimester = selectedPeriod.toLowerCase().includes('trim');
         console.log(`📝 Type de période: ${isTrimester ? 'TRIMESTRE' : 'SÉQUENCE'}`);
-        
+
         // D'abord recharger les données de base
         console.log('📊 1. Rechargement des données de base...');
         await Promise.all([
@@ -569,47 +565,47 @@ export default function BulletinManager() {
           loadSubjects(),
           loadGrades() // Cette fonction gère déjà correctement les trimestres vs séquences
         ]);
-        
+
         if (isTrimester) {
           // Pour les trimestres, charger directement les données des bulletins
           console.log('🏆 2. Chargement direct des données des bulletins pour trimestre...');
-          
+
           // Charger directement les données des bulletins au lieu de recalculer
           await loadBulletinsData();
-          
+
           toast.success('✅ Données des bulletins trimestre chargées directement');
         } else {
           // Pour les séquences, utiliser l'API de recalcul automatique
           console.log('🏆 2. Recalcul automatique des rangs pour séquence...');
-        const response = await fetch('/api/bulletins/recalculate-ranks', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            classId: selectedClass,
-            evaluationPeriodId: selectedPeriod,
-            schoolYear
-          })
-        });
+          const response = await fetch('/api/bulletins/recalculate-ranks', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              classId: selectedClass,
+              evaluationPeriodId: selectedPeriod,
+              schoolYear
+            })
+          });
 
-        if (response.ok) {
-          const result = await response.json();
-          console.log('✅ Résultat du recalcul automatique:', result);
-          
-          if (result.success) {
-            toast.success(`✅ Rangs recalculés automatiquement pour ${result.successCount}/${result.totalStudents} élève(s)`);
-            
-            // Recharger les bulletins pour afficher les nouveaux rangs
-            await loadBulletins();
+          if (response.ok) {
+            const result = await response.json();
+            console.log('✅ Résultat du recalcul automatique:', result);
+
+            if (result.success) {
+              toast.success(`✅ Rangs recalculés automatiquement pour ${result.successCount}/${result.totalStudents} élève(s)`);
+
+              // Recharger les bulletins pour afficher les nouveaux rangs
+              await loadBulletins();
+            } else {
+              toast.error('❌ Erreur lors du recalcul automatique des rangs');
+            }
           } else {
-            toast.error('❌ Erreur lors du recalcul automatique des rangs');
-          }
-        } else {
-          const errorData = await response.json();
-          console.error('❌ Erreur API recalcul automatique:', errorData);
-          toast.error(`Erreur lors du recalcul automatique: ${errorData.error || 'Erreur inconnue'}`);
+            const errorData = await response.json();
+            console.error('❌ Erreur API recalcul automatique:', errorData);
+            toast.error(`Erreur lors du recalcul automatique: ${errorData.error || 'Erreur inconnue'}`);
           }
         }
-        
+
         console.log('✅ Rechargement complet terminé avec succès');
       } catch (error) {
         console.error('❌ Erreur lors du rechargement complet:', error);
@@ -624,12 +620,12 @@ export default function BulletinManager() {
     try {
       setLoading(true);
       console.log('🚀 Chargement des données initiales...');
-      
+
       // Charger les niveaux et classes (même logique que saisie-notes-avancee.tsx)
       const levelsResponse = await fetch('/api/school/levels-with-classes');
       if (levelsResponse.ok) {
         const levelsDataResponse = await levelsResponse.json();
-        
+
         if (Array.isArray(levelsDataResponse)) {
           setLevelsData(levelsDataResponse);
           const levels = levelsDataResponse.map((level: any) => level.name);
@@ -651,7 +647,7 @@ export default function BulletinManager() {
         setEvaluationPeriods(periodsData);
         console.log(`✅ ${periodsData.length} périodes d'évaluation chargées`);
       }
-      
+
       console.log('✅ Données initiales chargées avec succès');
     } catch (error) {
       console.error('Erreur lors du chargement des données initiales:', error);
@@ -667,30 +663,30 @@ export default function BulletinManager() {
       // Priorité 1: Type de période (Séquence avant Trimestre)
       const aType = a.name.toLowerCase();
       const bType = b.name.toLowerCase();
-      
+
       const aIsSequence = aType.includes('seq') || aType.includes('séquence');
       const bIsSequence = bType.includes('seq') || bType.includes('séquence');
       const aIsTrimester = aType.includes('trim');
       const bIsTrimester = bType.includes('trim');
-      
+
       // Séquences en premier
       if (aIsSequence && !bIsSequence) return -1;
       if (!aIsSequence && bIsSequence) return 1;
-      
+
       // Si les deux sont des séquences, trier par ordre
       if (aIsSequence && bIsSequence) {
         const aOrder = a.order || 0;
         const bOrder = b.order || 0;
         return aOrder - bOrder;
       }
-      
+
       // Si les deux sont des trimestres, trier par ordre
       if (aIsTrimester && bIsTrimester) {
         const aOrder = a.order || 0;
         const bOrder = b.order || 0;
         return aOrder - bOrder;
       }
-      
+
       // Ordre par défaut basé sur le nom
       return a.name.localeCompare(b.name);
     });
@@ -699,25 +695,25 @@ export default function BulletinManager() {
   const loadEvaluationPeriods = async () => {
     try {
       console.log('🔍 Chargement des périodes d\'évaluation pour l\'année:', schoolYear);
-      
+
       const response = await fetch(`/api/evaluation-periods?schoolYear=${schoolYear}`);
-      
+
       if (response.ok) {
         const data = await response.json();
         console.log('📦 Périodes d\'évaluation reçues:', data.length, 'périodes');
-        
+
         // Trier les périodes dans l'ordre logique
         const sortedPeriods = sortEvaluationPeriods(data);
-        
+
         // Vérifier que les trimestres sont bien présents
         const trimesters = sortedPeriods.filter(p => p.name.toLowerCase().includes('trim'));
         const sequences = sortedPeriods.filter(p => p.name.toLowerCase().includes('seq'));
-        
+
         console.log('🏆 Trimestres trouvés:', trimesters.length, trimesters.map(p => p.name));
         console.log('📝 Séquences trouvées:', sequences.length, sequences.map(p => p.name));
-        
+
         setEvaluationPeriods(sortedPeriods);
-        
+
         // Si aucune période n'est trouvée, afficher un avertissement
         if (data.length === 0) {
           console.warn('⚠️ Aucune période d\'évaluation trouvée pour l\'année:', schoolYear);
@@ -761,13 +757,13 @@ export default function BulletinManager() {
     try {
       // Utiliser directement l'ID de la classe comme dans la saisie des notes
       console.log('🔍 Chargement des élèves pour la classe ID:', selectedClass);
-      
+
       const response = await fetch(`/api/students?classId=${encodeURIComponent(selectedClass)}&schoolYear=${schoolYear}`);
       if (response.ok) {
         const data = await response.json();
-  const activeOnly = filterActiveStudents(data || []);
-  console.log(`📦 Élèves récupérés: ${(data || []).length}, actifs retenus: ${activeOnly.length}`);
-  setStudents(activeOnly);
+        const activeOnly = filterActiveStudents(data || []);
+        console.log(`📦 Élèves récupérés: ${(data || []).length}, actifs retenus: ${activeOnly.length}`);
+        setStudents(activeOnly);
       } else {
         console.error('❌ Erreur lors du chargement des élèves:', response.statusText);
       }
@@ -780,12 +776,12 @@ export default function BulletinManager() {
     try {
       // Utiliser directement l'ID de la classe comme dans la saisie des notes
       console.log('🔍 Chargement des matières pour la classe ID:', selectedClass);
-      
+
       const response = await fetch(`/api/subject-coefficients?classId=${encodeURIComponent(selectedClass)}&schoolYear=${schoolYear}`);
       if (response.ok) {
         const data = await response.json();
         console.log('📦 Matières récupérées:', data);
-        
+
         // Si aucune matière trouvée, essayer de récupérer toutes les matières
         if (!data || data.length === 0) {
           console.log('⚠️ Aucune matière trouvée avec classId, essai de récupération globale');
@@ -816,36 +812,36 @@ export default function BulletinManager() {
     try {
       // Use the class ID directly as in note entry
       console.log('🔍 Chargement des notes pour la classe ID:', selectedClass);
-      
+
       // Vérifier si c'est un trimestre
       const isTrimester = selectedPeriod && selectedPeriod.toLowerCase().includes('trim');
-      
+
       if (isTrimester) {
         // Pour les trimestres, récupérer les notes des 2 séquences
         console.log('📚 Trimestre détecté, récupération des notes des séquences');
-        
+
         // Récupérer les IDs des séquences selon le trimestre
         const sequencesResponse = await fetch(`/api/evaluation-periods?schoolYear=${schoolYear}&type=sequence`);
         console.log('🔍 URL de récupération des séquences:', `/api/evaluation-periods?schoolYear=${schoolYear}&type=sequence`);
-        
+
         if (sequencesResponse.ok) {
           const sequences = await sequencesResponse.json();
           console.log('📝 Séquences trouvées:', sequences);
-          
+
           if (sequences.length > 0) {
             // Déterminer quelles séquences charger selon le trimestre
             let targetSequences: EvaluationPeriod[] = [];
-            
+
             // Utiliser la période déjà trouvée
             const selectedPeriodData = evaluationPeriods.find(p => p.id === selectedPeriod);
             if (!selectedPeriodData) {
               console.log('⚠️ Période sélectionnée non trouvée');
               return;
             }
-            
+
             const periodName = selectedPeriodData.name;
             console.log(`🎯 Période sélectionnée: ID="${selectedPeriod}", Nom="${periodName}"`);
-            
+
             if (periodName.toLowerCase().includes('1er') || periodName.toLowerCase().includes('1st')) {
               // 1er trimestre : séquences 1 et 2
               targetSequences = sequences.filter((seq: any) => seq.order === 1 || seq.order === 2);
@@ -864,41 +860,41 @@ export default function BulletinManager() {
               targetSequences = sequences.slice(0, 2);
               console.log('📚 Fallback: 2 premières séquences sélectionnées');
             }
-            
+
             // Trier les séquences cibles par numéro
             targetSequences.sort((a, b) => a.order - b.order);
-            
+
             console.log('🎯 Séquences cibles selon le trimestre:', targetSequences.map(s => ({ id: s.id, name: s.name })));
-            
+
             if (targetSequences.length === 0) {
               console.log('⚠️ Aucune séquence trouvée pour ce trimestre');
               return;
             }
-            
+
             // Récupérer les notes de la 1ère séquence cible
             const seq1Url = `/api/grades?classId=${encodeURIComponent(selectedClass)}&evaluationPeriodId=${targetSequences[0].id}&schoolYear=${schoolYear}`;
             console.log('🔍 URL 1ère séquence cible:', seq1Url);
-            
+
             const seq1Response = await fetch(seq1Url);
             console.log('📡 Réponse 1ère séquence cible:', seq1Response.status, seq1Response.statusText);
-            
+
             if (!seq1Response.ok) {
               console.error('❌ Erreur lors de la récupération des notes de la 1ère séquence:', seq1Response.statusText);
               return;
             }
-            
+
             const seq1Grades = await seq1Response.json();
             console.log('📊 Notes 1ère séquence cible:', seq1Grades);
             console.log('📊 Nombre de notes récupérées:', seq1Grades.length);
-            
+
             // Récupérer les notes de la 2ème séquence cible (si disponible)
             let seq2Grades = [];
             if (targetSequences.length > 1) {
               console.log('🔍 Récupération de la 2ème séquence cible...');
-              
+
               const seq2Response = await fetch(`/api/grades?classId=${encodeURIComponent(selectedClass)}&evaluationPeriodId=${targetSequences[1].id}&schoolYear=${schoolYear}`);
               console.log('📡 Réponse 2ème séquence cible:', seq2Response.status, seq2Response.statusText);
-              
+
               if (seq2Response.ok) {
                 seq2Grades = await seq2Response.json();
                 console.log('📊 Notes 2ème séquence cible:', seq2Grades);
@@ -909,23 +905,23 @@ export default function BulletinManager() {
             } else {
               console.log('⚠️ Pas de 2ème séquence cible disponible');
             }
-            
+
             // Organiser par élève et par matière avec seq1 et seq2
             const gradesByStudent: GradesByStudent = {};
-            
+
             // Identifier les matières qui ont des notes dans la première séquence
             const subjectsWithGrades = new Set();
             seq1Grades.forEach((grade: Grade) => {
               // Convertir en nombre pour correspondre aux IDs des matières
               subjectsWithGrades.add(parseInt(grade.subjectId));
             });
-            
+
             console.log('📚 Matières avec des notes dans la 1ère séquence:', Array.from(subjectsWithGrades));
-            
+
             students.forEach(student => {
               gradesByStudent[student.id] = [];
               console.log(`🔍 Traitement de l'élève: ${student.id}`);
-              
+
               // Utiliser uniquement les matières qui ont des notes dans la 1ère séquence
               subjects.forEach(subject => {
                 // Vérifier si cette matière a des notes dans la 1ère séquence
@@ -936,11 +932,11 @@ export default function BulletinManager() {
                   const seq1Grade = seq1Grades.find((g: Grade) => g.studentId === student.id && parseInt(g.subjectId) === subject.id);
                   // Chercher la note de la 2ème séquence
                   const seq2Grade = seq2Grades.find((g: Grade) => g.studentId === student.id && parseInt(g.subjectId) === subject.id);
-                  
+
                   console.log(`      🔍 Recherche de notes pour ${student.id} - ${subject.id}`);
                   console.log(`        Seq1 Grade trouvé:`, seq1Grade);
                   console.log(`        Seq2 Grade trouvé:`, seq2Grade);
-                  
+
                   // Créer l'objet de note avec seq1 et seq2
                   const combinedGrade: Grade = {
                     id: `combined-${student.id}-${subject.id}`,
@@ -957,7 +953,7 @@ export default function BulletinManager() {
                     subjectName: subject.name,
                     subjectCoefficient: subject.coefficient || 1
                   };
-                  
+
                   // Calculer la moyenne de la période
                   let totalScoreSum = 0;
                   let scoreCount = 0;
@@ -978,16 +974,16 @@ export default function BulletinManager() {
                   }
                   combinedGrade.periodAverage = scoreCount > 0 ? totalScoreSum / scoreCount : 0;
                   console.log(`        Calculated periodAverage for ${student.id} - ${subject.name}: ${combinedGrade.periodAverage}`);
-                  
+
                   gradesByStudent[student.id].push(combinedGrade);
                   console.log(`        ✅ Note ajoutée pour ${student.id} - ${subject.id}:`, combinedGrade);
                 }
               });
             });
-            
+
             setGrades(gradesByStudent);
             console.log('📊 Notes organisées par élève (trimestre avec seq1/seq2):', gradesByStudent);
-            
+
             // ===== DÉBOGAGE SUPPLÉMENTAIRE =====
             console.log('🔍 === DÉBOGAGE LOADGRADES TRIMESTRE ===');
             console.log('📝 Séquences trouvées:', sequences);
@@ -997,10 +993,10 @@ export default function BulletinManager() {
             console.log('👥 Élèves traités:', students.map(s => ({ id: s.id, name: s.nom })));
             console.log('🔍 État final de gradesByStudent:', gradesByStudent);
             console.log('🔍 === FIN DÉBOGAGE LOADGRADES ===');
-            
+
             // Forcer le recalcul des rangs après avoir chargé les notes des trimestres
             console.log('🔄 Forcer le recalcul des rangs après chargement des notes trimestre...');
-            
+
             // Attendre que l'état soit mis à jour, puis recalculer
             setTimeout(() => {
               console.log('🔄 Exécution de calculateTrueRanks après délai...');
@@ -1011,11 +1007,11 @@ export default function BulletinManager() {
       } else {
         // Pour les séquences, récupération normale
         const response = await fetch(`/api/grades?classId=${encodeURIComponent(selectedClass)}&evaluationPeriodId=${selectedPeriod}&schoolYear=${schoolYear}`);
-        
+
         if (response.ok) {
           const data = await response.json();
           console.log('📦 Notes récupérées de l\'API (séquence):', data);
-          
+
           const gradesByStudent: GradesByStudent = {};
           data.forEach((grade: Grade) => {
             if (!gradesByStudent[grade.studentId]) {
@@ -1038,11 +1034,11 @@ export default function BulletinManager() {
 
   const loadBulletins = async () => {
     if (!selectedPeriod) return;
-    
+
     try {
       // Utiliser directement l'ID de la classe comme dans la saisie des notes
       console.log('🔍 Chargement des bulletins pour la classe ID:', selectedClass);
-      
+
       const response = await fetch(`/api/bulletins?classId=${encodeURIComponent(selectedClass)}&evaluationPeriodId=${selectedPeriod}&schoolYear=${schoolYear}`);
       if (response.ok) {
         const data = await response.json();
@@ -1059,24 +1055,24 @@ export default function BulletinManager() {
   // Fonction pour charger directement les données des bulletins (plus fiable que le recalcul)
   const loadBulletinsData = async () => {
     if (!selectedClass || !selectedPeriod || !schoolYear) return;
-    
+
     console.log('🔄 Chargement direct des données des bulletins...');
     setLoading(true);
-    
+
     try {
       // Charger directement les bulletins depuis l'API
       const response = await fetch(`/api/bulletins?classId=${encodeURIComponent(selectedClass)}&evaluationPeriodId=${selectedPeriod}&schoolYear=${schoolYear}`);
-      
+
       if (response.ok) {
         const bulletinsData = await response.json();
         console.log('📦 Données des bulletins récupérées:', bulletinsData);
-        
+
         // Mettre à jour l'état des bulletins
         setBulletins(bulletinsData);
-        
+
         // Créer un objet des rangs basé sur les données des bulletins
-        const ranksFromBulletins: {[studentId: string]: any} = {};
-        
+        const ranksFromBulletins: { [studentId: string]: any } = {};
+
         bulletinsData.forEach((bulletin: any) => {
           ranksFromBulletins[bulletin.studentId] = {
             rank: bulletin.rank || 1,
@@ -1086,18 +1082,18 @@ export default function BulletinManager() {
             totalCoefficient: bulletin.totalCoefficient || 0
           };
         });
-        
+
         // Mettre à jour les rangs calculés avec les vraies données des bulletins
         setCalculatedRanks(ranksFromBulletins);
-        
+
         console.log('✅ Rangs mis à jour depuis les bulletins:', ranksFromBulletins);
         toast.success('✅ Données des bulletins chargées et rangs synchronisés');
-        
+
       } else {
         console.error('❌ Erreur lors du chargement des bulletins:', response.statusText);
         toast.error('Erreur lors du chargement des bulletins');
       }
-      
+
     } catch (error) {
       console.error('❌ Erreur lors du chargement des bulletins:', error);
       toast.error('Erreur lors du chargement des bulletins');
@@ -1108,32 +1104,32 @@ export default function BulletinManager() {
 
   const getStudentGrades = (studentId: string) => {
     const studentGrades = grades[studentId] || [];
-    
+
     // Filtrer et nettoyer les notes pour éviter les doublons
-    const uniqueGrades = studentGrades.filter((grade, index, self) => 
+    const uniqueGrades = studentGrades.filter((grade, index, self) =>
       index === self.findIndex(g => g.id === grade.id)
     );
-    
+
     // Vérifier si c'est un trimestre
     const isTrimester = selectedPeriod && selectedPeriod.toLowerCase().includes('trim');
-    
+
     if (isTrimester) {
       // Pour les trimestres, organiser les notes par matière avec seq1 et seq2
       console.log(`📚 Trimestre détecté pour ${studentId}, organisation des notes des séquences`);
-      
+
       // Créer un objet avec toutes les matières de la classe
       const allSubjectsGrades: { [subjectId: string]: any } = {};
-      
+
       // Pour les trimestres, utiliser directement les notes organisées par loadGrades
       // Ces notes contiennent déjà seq1, seq2 et periodAverage
       console.log(`🔍 Notes du trimestre pour l'élève ${studentId}:`, uniqueGrades);
       return uniqueGrades;
     }
-    
+
     // Pour les séquences, logique existante
     // Créer un objet avec toutes les matières de la classe
     const allSubjectsGrades: { [subjectId: string]: Grade } = {};
-    
+
     // D'abord, initialiser toutes les matières avec des notes par défaut (0)
     subjects.forEach(subject => {
       allSubjectsGrades[subject.id] = {
@@ -1152,7 +1148,7 @@ export default function BulletinManager() {
         subjectCoefficient: subject.coefficient || 1
       };
     });
-    
+
     // Ensuite, remplacer par les vraies notes existantes
     uniqueGrades.forEach(grade => {
       if (allSubjectsGrades[grade.subjectId]) {
@@ -1165,12 +1161,12 @@ export default function BulletinManager() {
         };
       }
     });
-    
+
     // Convertir en tableau et trier par nom de matière
-    const result = Object.values(allSubjectsGrades).sort((a, b) => 
+    const result = Object.values(allSubjectsGrades).sort((a, b) =>
       (a.subjectName || '').localeCompare(b.subjectName || '')
     );
-    
+
     console.log(`🔍 Notes complètes pour l'élève ${studentId}:`, result);
     return result;
   };
@@ -1180,19 +1176,19 @@ export default function BulletinManager() {
       // PRIORITÉ 1: Utiliser les rangs calculés par calculateTrueRanks()
       if (calculatedRanks && calculatedRanks[studentId]) {
         const rankData = calculatedRanks[studentId];
-  const average = typeof rankData.average === 'number' ? rankData.average : (typeof rankData.average === 'string' ? parseFloat(rankData.average) : 0);
+        const average = typeof rankData.average === 'number' ? rankData.average : (typeof rankData.average === 'string' ? parseFloat(rankData.average) : 0);
         console.log(`🏆 Moyenne depuis calculatedRanks pour ${studentId}: ${average}`);
         return average;
       }
-      
+
       // PRIORITÉ 2: Utiliser directement les données du bulletin
       const bulletin = bulletins.find(b => b.studentId === studentId);
       if (bulletin && bulletin.averageScore !== undefined) {
-  const average = typeof bulletin.averageScore === 'number' ? bulletin.averageScore : (typeof bulletin.averageScore === 'string' ? parseFloat(bulletin.averageScore) : 0);
+        const average = typeof bulletin.averageScore === 'number' ? bulletin.averageScore : (typeof bulletin.averageScore === 'string' ? parseFloat(bulletin.averageScore) : 0);
         console.log(`📊 Moyenne du bulletin pour ${studentId}: ${average}`);
         return average;
       }
-      
+
       // Fallback : calcul manuel si pas de bulletin
       const studentGrades = getStudentGrades(studentId);
       if (studentGrades.length === 0) return 0;
@@ -1208,37 +1204,37 @@ export default function BulletinManager() {
       // Utiliser toutes les matières de la classe
       subjects.forEach(subject => {
         const grade = studentGrades.find(g => g.subjectId === String(subject.id));
-  const coefficient = typeof subject.coefficient === 'number' ? subject.coefficient : (typeof subject.coefficient === 'string' ? parseFloat(subject.coefficient) : 1);
-        
+        const coefficient = typeof subject.coefficient === 'number' ? subject.coefficient : (typeof subject.coefficient === 'string' ? parseFloat(subject.coefficient) : 1);
+
         if (grade) {
           if (isTrimester && grade.periodAverage !== undefined) {
             // Pour les trimestres, utiliser periodAverage (moyenne des 2 séquences)
             const averageScore = parseFloat(String(grade.periodAverage)) || 0;
             const weightedScore = averageScore * coefficient;
             totalWeightedScore += weightedScore;
-            
+
             console.log(`📊 Trimestre ${subject.name}: Moyenne ${grade.periodAverage}/20 × ${coefficient} = ${weightedScore.toFixed(2)}`);
           } else if (grade.score !== undefined && grade.score !== null) {
             // Pour les séquences, normaliser sur 20
             const score = parseFloat(String(grade.score));
             const maxScore = parseFloat(String(grade.maxScore));
-            
+
             if (!isNaN(score) && !isNaN(maxScore) && maxScore > 0) {
               const normalizedScore = (score / maxScore) * 20;
               const weightedScore = normalizedScore * coefficient;
               totalWeightedScore += weightedScore;
-              
+
               console.log(`📊 Séquence ${subject.name}: ${score}/${maxScore} × ${coefficient} = ${normalizedScore.toFixed(2)} × ${coefficient} = ${weightedScore.toFixed(2)}`);
             }
           }
         }
-        
+
         totalCoefficient += coefficient;
       });
 
       const average = totalCoefficient > 0 ? totalWeightedScore / totalCoefficient : 0;
       console.log(`📊 Moyenne calculée: ${average.toFixed(2)} (totalWeighted: ${totalWeightedScore.toFixed(2)}, totalCoef: ${totalCoefficient})`);
-      
+
       // S'assurer de retourner toujours un nombre valide
       return isNaN(average) ? 0 : average;
     } catch (error) {
@@ -1254,14 +1250,14 @@ export default function BulletinManager() {
       console.log(`🏆 Rang depuis calculatedRanks pour ${studentId}: ${rankData.rank}`);
       return rankData.rank;
     }
-    
+
     // PRIORITÉ 2: Utiliser directement les données du bulletin
     const bulletin = bulletins.find(b => b.studentId === studentId);
     if (bulletin && bulletin.rank !== undefined) {
       console.log(`📊 Rang du bulletin pour ${studentId}: ${bulletin.rank}`);
       return bulletin.rank;
     }
-    
+
     // Fallback : calcul manuel si pas de bulletin
     const averages = students.map(student => ({
       studentId: student.id,
@@ -1275,8 +1271,8 @@ export default function BulletinManager() {
   // NOUVELLE FONCTION : Calculer les rangs par matière
   const getStudentRanksBySubject = (studentId: string) => {
     const studentGrades = grades[studentId] || [];
-    const ranksBySubject: {[subjectId: string]: {rank: number, totalStudents: number}} = {};
-    
+    const ranksBySubject: { [subjectId: string]: { rank: number, totalStudents: number } } = {};
+
     // Debug pour voir ce qui se passe
     console.log(`🔍 getStudentRanksBySubject pour ${studentId}:`, {
       studentGrades,
@@ -1285,24 +1281,24 @@ export default function BulletinManager() {
       isTrimester: selectedPeriod && selectedPeriod.toLowerCase().includes('trim'),
       gradesContent: grades[studentId]
     });
-    
+
     // Grouper les notes par matière
-    const gradesBySubject: {[subjectId: string]: any[]} = {};
+    const gradesBySubject: { [subjectId: string]: any[] } = {};
     studentGrades.forEach(grade => {
       if (!gradesBySubject[grade.subjectId]) {
         gradesBySubject[grade.subjectId] = [];
       }
       gradesBySubject[grade.subjectId].push(grade);
     });
-    
+
     // Pour chaque matière, calculer le rang de l'élève
     Object.entries(gradesBySubject).forEach(([subjectId, subjectGrades]) => {
       // Vérifier si c'est un trimestre
       const isTrimester = selectedPeriod && selectedPeriod.toLowerCase().includes('trim');
-      
+
       // Calculer la moyenne de l'élève dans cette matière
       let studentSubjectAverage = 0;
-      
+
       if (isTrimester) {
         // Pour les trimestres, utiliser periodAverage (moyenne des 2 séquences)
         const grade = subjectGrades[0]; // Prendre la première note qui contient toutes les infos
@@ -1312,21 +1308,21 @@ export default function BulletinManager() {
       } else {
         // Pour les séquences, calculer normalement
         studentSubjectAverage = subjectGrades.reduce((sum, grade) => {
-        const score = parseFloat(String(grade.score)) || 0;
-        const maxScore = parseFloat(String(grade.maxScore)) || 20;
-        const coefficient = parseFloat(String(grade.coefficient)) || 1;
-        const normalizedScore = (score / maxScore) * 20;
-        return sum + (normalizedScore * coefficient);
-      }, 0) / subjectGrades.reduce((sum, grade) => sum + (parseFloat(String(grade.coefficient)) || 1), 0);
+          const score = parseFloat(String(grade.score)) || 0;
+          const maxScore = parseFloat(String(grade.maxScore)) || 20;
+          const coefficient = parseFloat(String(grade.coefficient)) || 1;
+          const normalizedScore = (score / maxScore) * 20;
+          return sum + (normalizedScore * coefficient);
+        }, 0) / subjectGrades.reduce((sum, grade) => sum + (parseFloat(String(grade.coefficient)) || 1), 0);
       }
-      
+
       // Calculer les moyennes de tous les élèves dans cette matière
       const allStudentsSubjectAverages = students.map(student => {
         const studentSubjectGrades = grades[student.id]?.filter(g => g.subjectId === subjectId) || [];
         if (studentSubjectGrades.length === 0) return { studentId: student.id, average: 0 };
-        
+
         let average = 0;
-        
+
         if (isTrimester) {
           // Pour les trimestres, utiliser periodAverage
           const grade = studentSubjectGrades[0];
@@ -1335,33 +1331,33 @@ export default function BulletinManager() {
           }
         } else {
           // Pour les séquences, calculer normalement
-        const totalWeighted = studentSubjectGrades.reduce((sum, grade) => {
-          const score = parseFloat(String(grade.score)) || 0;
-          const maxScore = parseFloat(String(grade.maxScore)) || 20;
-          const coefficient = parseFloat(String(grade.coefficient)) || 1;
-          const normalizedScore = (score / maxScore) * 20;
-          return sum + (normalizedScore * coefficient);
-        }, 0);
-        
-        const totalCoefficient = studentSubjectGrades.reduce((sum, grade) => 
-          sum + (parseFloat(String(grade.coefficient)) || 1), 0);
-        
+          const totalWeighted = studentSubjectGrades.reduce((sum, grade) => {
+            const score = parseFloat(String(grade.score)) || 0;
+            const maxScore = parseFloat(String(grade.maxScore)) || 20;
+            const coefficient = parseFloat(String(grade.coefficient)) || 1;
+            const normalizedScore = (score / maxScore) * 20;
+            return sum + (normalizedScore * coefficient);
+          }, 0);
+
+          const totalCoefficient = studentSubjectGrades.reduce((sum, grade) =>
+            sum + (parseFloat(String(grade.coefficient)) || 1), 0);
+
           average = totalCoefficient > 0 ? totalWeighted / totalCoefficient : 0;
         }
-        
+
         return { studentId: student.id, average };
       }); // SUPPRIMER LE FILTRE .filter(s => s.average > 0) pour inclure tous les élèves
-      
+
       // Trier par moyenne décroissante et calculer le rang
       allStudentsSubjectAverages.sort((a, b) => b.average - a.average);
       const rank = allStudentsSubjectAverages.findIndex(s => s.studentId === studentId) + 1;
-      
+
       ranksBySubject[subjectId] = {
         rank: rank > 0 ? rank : 1,
         totalStudents: allStudentsSubjectAverages.length
       };
     });
-    
+
     return ranksBySubject;
   };
 
@@ -1441,7 +1437,7 @@ export default function BulletinManager() {
       }
     } catch (error) {
       console.error('❌ Erreur lors de la sauvegarde:', error);
-  toast.error(`Erreur lors de la sauvegarde: ${(error as any).message}`);
+      toast.error(`Erreur lors de la sauvegarde: ${(error as any).message}`);
     }
   };
 
@@ -1454,53 +1450,53 @@ export default function BulletinManager() {
       console.log('🏫 Classe sélectionnée:', selectedClass);
       console.log('📊 Niveau sélectionné:', selectedLevel);
       console.log('📚 Année scolaire:', schoolYear);
-      
+
       // Vérifier si c'est un trimestre
       const isTrimester = selectedPeriod && selectedPeriod.toLowerCase().includes('trim');
       console.log('🔍 Type de période (trimestre?):', isTrimester);
-      
+
       // Récupérer les notes de l'élève
       const studentGrades = getStudentGrades(studentId);
       console.log('📊 Notes de l\'élève récupérées:', studentGrades);
-      
+
       // Récupérer les informations de l'élève
       const student = students.find(s => s.id === studentId);
       console.log('👤 Informations de l\'élève:', student);
-      
+
       // Récupérer les matières
       console.log('📚 Matières disponibles:', subjects);
-      
+
       // Récupérer les périodes d'évaluation
       console.log('📅 Périodes d\'évaluation:', evaluationPeriods);
-      
+
       // Récupérer l'état des notes
       console.log('📊 État des notes (grades):', grades);
-      
+
       // CALCULER LES VRAIS RANGS AVANT LA GÉNÉRATION
       calculateTrueRanks();
-      
+
       // Récupérer le rang calculé pour cet élève
       const studentRankData = calculatedRanks[studentId];
       console.log('🏆 Rang calculé pour cet élève:', studentRankData);
-      
+
       console.log('🚀 === FIN DÉBOGAGE ===');
-      
+
       // Calculer les rangs par matière pour cet élève
       const studentRanksBySubject = getStudentRanksBySubject(studentId);
       console.log('🏆 Rangs par matière calculés:', studentRanksBySubject);
-      
+
       // Récupérer le vrai effectif de la classe (nombre total d'élèves)
       const classStudents = students.filter(s => s.classeId === selectedClass);
       const trueClassSize = classStudents.length;
       console.log(`👥 Effectif réel de la classe: ${trueClassSize} élèves`);
-      
+
       // Déterminer quelle API utiliser selon le type de période
-      const apiEndpoint = isTrimester 
+      const apiEndpoint = isTrimester
         ? '/api/bulletins/generate-trimestre-individuel'
         : '/api/bulletins/generate';
-      
+
       console.log('🔗 API utilisée:', apiEndpoint);
-      
+
       const response = await fetch(apiEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1583,7 +1579,7 @@ export default function BulletinManager() {
   const filteredStudents = students.filter(student => {
     const matchesSearch = student.nom.toLowerCase().includes(searchTerm.toLowerCase());
     const average = getStudentAverage(student.id);
-    
+
     if (statusFilter === 'graded') return matchesSearch && average !== null;
     if (statusFilter === 'ungraded') return matchesSearch && average === null;
     return matchesSearch;
@@ -1604,7 +1600,7 @@ export default function BulletinManager() {
 
     try {
       console.log('🔍 Récupération des vraies données du bulletin depuis l\'API...');
-      
+
       // Appeler l'API de génération de bulletin pour récupérer les vraies données
       const response = await fetch('/api/bulletins/generate', {
         method: 'POST',
@@ -1632,11 +1628,11 @@ export default function BulletinManager() {
       // L'API retourne un PDF, mais nous voulons juste les données
       // Nous allons utiliser une approche différente : récupérer les données depuis la base
       console.log('✅ Données du bulletin récupérées avec succès');
-      
+
       // Pour l'instant, retourner les données du bulletin existant
       const existingBulletin = bulletins.find(b => b.studentId === studentId);
       return existingBulletin;
-      
+
     } catch (error) {
       console.error('❌ Erreur lors de la récupération des données du bulletin:', error);
       return null;
@@ -1652,7 +1648,7 @@ export default function BulletinManager() {
     try {
       setIsLoadingSubjectRanks(true);
       console.log('🔍 Récupération des rangs par matière depuis la base de données...');
-      
+
       // Appeler l'API pour récupérer les rangs par matière
       const response = await fetch('/api/bulletins/subject-ranks', {
         method: 'POST',
@@ -1676,7 +1672,7 @@ export default function BulletinManager() {
         console.error('❌ Erreur lors de la récupération des rangs par matière:', response.statusText);
         return {};
       }
-      
+
     } catch (error) {
       console.error('❌ Erreur lors de la récupération des rangs par matière:', error);
       return {};
@@ -1689,154 +1685,154 @@ export default function BulletinManager() {
   const openDetailsModal = async (student: Student) => {
     setSelectedStudent(student);
     setShowDetailsModal(true);
-    
+
     // Récupérer les vraies données du bulletin depuis la base de données
     console.log('🔍 Ouverture de la boîte de dialogue des détails pour:', student.nom);
     await getSubjectRanksFromDatabase(student.id);
   };
 
   // Nouvelles fonctions pour calculer les rangs (même logique que les bulletins)
-  
+
   // Calcul des rangs par matière pour ce composant
   const calculateSubjectRanksForComponent = (classId: number, periodId: number) => {
     if (!students.length || !subjects.length) return {};
-    
-    const subjectRanks: {[subjectId: string]: {[studentId: number]: {rank: number, average: number, totalStudents: number}}} = {};
-    
+
+    const subjectRanks: { [subjectId: string]: { [studentId: number]: { rank: number, average: number, totalStudents: number } } } = {};
+
     subjects.forEach(subject => {
       const subjectId = subject.id.toString();
       subjectRanks[subjectId] = {};
-      
+
       // Calculer les moyennes par élève pour cette matière
-      const studentAverages: {studentId: number, average: number}[] = [];
-      
+      const studentAverages: { studentId: number, average: number }[] = [];
+
       students.forEach(student => {
         const studentGrades = grades[student.id] || [];
-        const studentSubjectGrades = studentGrades.filter(g => 
+        const studentSubjectGrades = studentGrades.filter(g =>
           String(g.subjectId) === String(subject.id) &&
           String(g.evaluationPeriodId) === String(periodId)
         );
-        
+
         if (studentSubjectGrades.length > 0) {
           let totalScore = 0;
           let totalMaxScore = 0;
-          
+
           studentSubjectGrades.forEach(grade => {
             totalScore += grade.score;
             totalMaxScore += grade.maxScore;
           });
-          
+
           const average = totalMaxScore > 0 ? (totalScore / totalMaxScore) * 20 : 0;
           studentAverages.push({ studentId: typeof student.id === 'number' ? student.id : parseInt(student.id), average: typeof average === 'number' ? average : (typeof average === 'string' ? parseFloat(average) : 0) });
         }
       });
-      
+
       // Trier par moyenne décroissante
       studentAverages.sort((a, b) => b.average - a.average);
-      
+
       // Assigner les rangs (gérer les égalités)
       let currentRank = 1;
       let previousAverage = -1;
-      
+
       studentAverages.forEach((student, index) => {
         if (student.average !== previousAverage) {
           currentRank = index + 1;
         }
-        
+
         subjectRanks[subjectId][student.studentId] = {
           rank: currentRank,
           average: student.average,
           totalStudents: studentAverages.length
         };
-        
+
         previousAverage = student.average;
       });
     });
-    
+
     return subjectRanks;
   };
-  
+
   // Calcul des rangs généraux pour ce composant
   const calculateGeneralRanksForComponent = (classId: number, periodId: number) => {
     if (!students.length || !subjects.length) return {};
-    
-    const generalRanks: {[studentId: number]: {rank: number, average: number, totalStudents: number}} = {};
-    
+
+    const generalRanks: { [studentId: number]: { rank: number, average: number, totalStudents: number } } = {};
+
     // Calculer la moyenne générale par élève
-    const studentGeneralAverages: {studentId: number, average: number, totalCoefficient: number}[] = [];
-    
+    const studentGeneralAverages: { studentId: number, average: number, totalCoefficient: number }[] = [];
+
     students.forEach(student => {
       let totalWeightedScore = 0;
       let totalCoefficient = 0;
-      
+
       const studentGrades = grades[student.id] || [];
-      
+
       subjects.forEach(subject => {
-        const subjectGrades = studentGrades.filter(g => 
+        const subjectGrades = studentGrades.filter(g =>
           String(g.subjectId) === String(subject.id) &&
           String(g.evaluationPeriodId) === String(periodId)
         );
-        
+
         if (subjectGrades.length > 0) {
           let subjectTotalScore = 0;
           let subjectTotalMaxScore = 0;
-          
+
           subjectGrades.forEach(grade => {
             subjectTotalScore += grade.score;
             subjectTotalMaxScore += grade.maxScore;
           });
-          
+
           if (subjectTotalMaxScore > 0) {
             const subjectAverage = (subjectTotalScore / subjectTotalMaxScore) * 20;
             const coefficient = subject.coefficient || 1;
-            
+
             totalWeightedScore += subjectAverage * coefficient;
             totalCoefficient += coefficient;
           }
         }
       });
-      
+
       const generalAverage = totalCoefficient > 0 ? totalWeightedScore / totalCoefficient : 0;
       studentGeneralAverages.push({
-  studentId: typeof student.id === 'number' ? student.id : parseInt(student.id),
+        studentId: typeof student.id === 'number' ? student.id : parseInt(student.id),
         average: generalAverage,
         totalCoefficient
       });
     });
-    
+
     // Trier par moyenne générale décroissante
     studentGeneralAverages.sort((a, b) => b.average - a.average);
-    
+
     // Assigner les rangs généraux (gérer les égalités)
     let currentRank = 1;
     let previousAverage = -1;
-    
+
     studentGeneralAverages.forEach((student, index) => {
       if (student.average !== previousAverage) {
         currentRank = index + 1;
       }
-      
+
       generalRanks[student.studentId] = {
         rank: currentRank,
         average: student.average,
         totalStudents: studentGeneralAverages.length
       };
-      
+
       previousAverage = student.average;
     });
-    
+
     return generalRanks;
   };
-  
+
   // Fonction pour recalculer tous les rangs (par matière et général)
   const recalculateAllRanksForComponent = () => {
     if (!selectedClass || !selectedPeriod) return;
-    
+
     console.log('🔄 Recalcul des rangs par matière et généraux pour ce composant...');
-    
+
     // Calculer les rangs par matière
-  const periodId = typeof selectedPeriod === 'object' && selectedPeriod !== null && 'id' in selectedPeriod ? (selectedPeriod as any).id : selectedPeriod;
-  const subjectRanks = calculateSubjectRanksForComponent(parseInt(selectedClass), periodId);
+    const periodId = typeof selectedPeriod === 'object' && selectedPeriod !== null && 'id' in selectedPeriod ? (selectedPeriod as any).id : selectedPeriod;
+    const subjectRanks = calculateSubjectRanksForComponent(parseInt(selectedClass), periodId);
     // Adapter la structure pour correspondre au type attendu
     const adaptedSubjectRanks: { [subjectId: string]: { rank: number; totalStudents: number; } } = {};
     Object.keys(subjectRanks).forEach(subjectId => {
@@ -1854,14 +1850,14 @@ export default function BulletinManager() {
       }
     });
     setSubjectRanksFromDB(adaptedSubjectRanks);
-    
+
     // Calculer les rangs généraux
-  const generalRanks = calculateGeneralRanksForComponent(parseInt(selectedClass), periodId);
-    
+    const generalRanks = calculateGeneralRanksForComponent(parseInt(selectedClass), periodId);
+
     // Mettre à jour les bulletins avec les nouveaux rangs
-    setBulletins(prevBulletins => 
+    setBulletins(prevBulletins =>
       prevBulletins.map(bulletin => {
-  const generalRank = generalRanks[typeof bulletin.studentId === 'number' ? bulletin.studentId : parseInt(bulletin.studentId)];
+        const generalRank = generalRanks[typeof bulletin.studentId === 'number' ? bulletin.studentId : parseInt(bulletin.studentId)];
         if (generalRank) {
           return {
             ...bulletin,
@@ -1873,7 +1869,7 @@ export default function BulletinManager() {
         return bulletin;
       })
     );
-    
+
     console.log('✅ Rangs recalculés pour ce composant');
   };
 
@@ -1887,13 +1883,13 @@ export default function BulletinManager() {
             Gérez les bulletins, les notes et les rangs des élèves par classe et par période
           </p>
         </div>
-        
+
         {/* Boutons d'action */}
         <div className="flex items-center gap-3">
           {/* Bouton de débogage pour les trimestres */}
           {isTrimester && (
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => {
                 console.log('🔍 === DÉBOGAGE FORCÉ ===');
                 console.log('📅 Période sélectionnée:', selectedPeriod);
@@ -1909,9 +1905,9 @@ export default function BulletinManager() {
               🔍 Debug Notes
             </Button>
           )}
-          
+
           {/* Bouton pour générer tous les bulletins */}
-          <Button 
+          <Button
             onClick={generateAllBulletins}
             disabled={loading || !selectedClass || !selectedPeriod}
             className="bg-green-600 hover:bg-green-700"
@@ -1976,35 +1972,35 @@ export default function BulletinManager() {
                 </SelectTrigger>
                 <SelectContent>
                   {classes.map((cls) => (
-                      <SelectItem key={cls.id} value={cls.id}>
-                        {cls.name}
-                      </SelectItem>
-                    ))}
+                    <SelectItem key={cls.id} value={cls.id}>
+                      {cls.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
             <div>
               <Label>Période d'Évaluation</Label>
               <div className="flex gap-2">
-              <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner une période" />
-                </SelectTrigger>
-                <SelectContent>
+                <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner une période" />
+                  </SelectTrigger>
+                  <SelectContent>
                     {/* Grouper les périodes par type */}
                     {(() => {
-                      const sequences = evaluationPeriods.filter(p => 
+                      const sequences = evaluationPeriods.filter(p =>
                         p.name.toLowerCase().includes('seq') || p.name.toLowerCase().includes('séquence')
                       );
-                      const trimesters = evaluationPeriods.filter(p => 
+                      const trimesters = evaluationPeriods.filter(p =>
                         p.name.toLowerCase().includes('trim')
                       );
-                      const others = evaluationPeriods.filter(p => 
-                        !p.name.toLowerCase().includes('seq') && 
-                        !p.name.toLowerCase().includes('séquence') && 
+                      const others = evaluationPeriods.filter(p =>
+                        !p.name.toLowerCase().includes('seq') &&
+                        !p.name.toLowerCase().includes('séquence') &&
                         !p.name.toLowerCase().includes('trim')
                       );
-                      
+
                       return (
                         <>
                           {/* Séquences */}
@@ -2014,13 +2010,13 @@ export default function BulletinManager() {
                                 📚 Séquences
                               </div>
                               {sequences.map((period) => (
-                    <SelectItem key={period.id} value={period.id}>
-                      {period.name}
-                    </SelectItem>
-                  ))}
+                                <SelectItem key={period.id} value={period.id}>
+                                  {period.name}
+                                </SelectItem>
+                              ))}
                             </>
                           )}
-                          
+
                           {/* Trimestres */}
                           {trimesters.length > 0 && (
                             <>
@@ -2034,7 +2030,7 @@ export default function BulletinManager() {
                               ))}
                             </>
                           )}
-                          
+
                           {/* Autres périodes */}
                           {others.length > 0 && (
                             <>
@@ -2051,10 +2047,10 @@ export default function BulletinManager() {
                         </>
                       );
                     })()}
-                </SelectContent>
-              </Select>
-                
-                <Button 
+                  </SelectContent>
+                </Select>
+
+                <Button
                   onClick={async () => {
                     // Recharger les données ET calculer automatiquement les rangs
                     await reloadAllDataWithRanks();
@@ -2213,7 +2209,7 @@ export default function BulletinManager() {
                                 Debug
                               </Button>
                             )}
-                            
+
                             <Button
                               size="sm"
                               variant="default"
@@ -2240,11 +2236,11 @@ export default function BulletinManager() {
                   <div className="text-sm text-muted-foreground">
                     Affichage de {startIndex + 1} à {Math.min(endIndex, filteredStudents.length)} sur {filteredStudents.length} élève(s)
                   </div>
-                <div className="text-sm text-muted-foreground">
-                  Page {currentPage} sur {totalPages}
+                  <div className="text-sm text-muted-foreground">
+                    Page {currentPage} sur {totalPages}
+                  </div>
                 </div>
-                </div>
-                
+
                 <div className="flex items-center gap-2">
                   {/* Bouton Première page */}
                   <Button
@@ -2256,7 +2252,7 @@ export default function BulletinManager() {
                   >
                     ⏮️
                   </Button>
-                  
+
                   {/* Bouton Précédent */}
                   <Button
                     variant="outline"
@@ -2266,12 +2262,12 @@ export default function BulletinManager() {
                   >
                     ◀️ Précédent
                   </Button>
-                  
+
                   {/* Sélecteur de page rapide */}
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-muted-foreground">Page:</span>
-                    <Select 
-                      value={currentPage.toString()} 
+                    <Select
+                      value={currentPage.toString()}
                       onValueChange={(value) => setCurrentPage(parseInt(value))}
                     >
                       <SelectTrigger className="w-20">
@@ -2287,7 +2283,7 @@ export default function BulletinManager() {
                     </Select>
                     <span className="text-sm text-muted-foreground">sur {totalPages}</span>
                   </div>
-                  
+
                   {/* Bouton Suivant */}
                   <Button
                     variant="outline"
@@ -2297,7 +2293,7 @@ export default function BulletinManager() {
                   >
                     Suivant ▶️
                   </Button>
-                  
+
                   {/* Bouton Dernière page */}
                   <Button
                     variant="outline"
@@ -2371,7 +2367,7 @@ export default function BulletinManager() {
               📊 Détails des Notes et Rangs - {selectedStudent?.nom}
             </DialogTitle>
           </DialogHeader>
-          
+
           {selectedStudent && (
             <div className="space-y-6">
               {/* Informations générales de l'élève */}
@@ -2385,7 +2381,7 @@ export default function BulletinManager() {
                     <span className="font-medium">Classe :</span> {selectedStudent.classeId}
                   </div>
                   <div>
-                    <span className="font-medium">Moyenne Générale :</span> 
+                    <span className="font-medium">Moyenne Générale :</span>
                     <span className="font-bold text-blue-600 ml-2">
                       {/* Utiliser la vraie moyenne du bulletin au lieu de celle calculée par le frontend */}
                       {(() => {
@@ -2399,7 +2395,7 @@ export default function BulletinManager() {
                     </span>
                   </div>
                   <div>
-                    <span className="font-medium">Rang Général :</span> 
+                    <span className="font-medium">Rang Général :</span>
                     <span className="font-bold text-green-600 ml-2">
                       {/* Utiliser le vrai rang du bulletin au lieu de celui calculé par le frontend */}
                       {(() => {
@@ -2427,9 +2423,9 @@ export default function BulletinManager() {
                     // Pour les trimestres, afficher toutes les matières de la classe
                     // Pour les séquences, afficher seulement les matières avec des notes
                     const isTrimester = selectedPeriod && selectedPeriod.toLowerCase().includes('trim');
-                    
+
                     let subjectsToDisplay: any[] = [];
-                    
+
                     if (isTrimester) {
                       // Pour les trimestres, utiliser toutes les matières de la classe
                       subjectsToDisplay = subjects;
@@ -2441,7 +2437,7 @@ export default function BulletinManager() {
                       subjectsToDisplay = subjects.filter(s => subjectsWithGrades.includes(s.id.toString()));
                       console.log('📚 Affichage séquence: matières avec des notes:', subjectsToDisplay);
                     }
-                    
+
                     if (subjectsToDisplay.length === 0) {
                       return (
                         <div className="text-center py-8 text-gray-500">
@@ -2450,15 +2446,15 @@ export default function BulletinManager() {
                         </div>
                       );
                     }
-                    
+
                     return subjectsToDisplay.map((subject) => {
                       const subjectId = subject.id.toString();
                       const subjectName = subject.name || `Matière ${subjectId}`;
                       const studentGrades = grades[selectedStudent.id]?.filter(g => g.subjectId === subjectId) || [];
-                      
+
                       // Vérifier si c'est un trimestre
                       const isTrimester = selectedPeriod && selectedPeriod.toLowerCase().includes('trim');
-                      
+
                       // Calculer la moyenne selon le type de période
                       const subjectAverage = (() => {
                         if (isTrimester && studentGrades.length > 0) {
@@ -2480,7 +2476,7 @@ export default function BulletinManager() {
                           }, 0) / studentGrades.reduce((sum, grade) => sum + (parseFloat(String(grade.coefficient)) || 1), 0);
                         }
                       })();
-                      
+
                       // Obtenir le rang pour cette matière depuis le bulletin (pas depuis le frontend)
                       const getSubjectRankFromBulletin = (subjectId: string) => {
                         // Utiliser les rangs récupérés depuis la base de données
@@ -2491,17 +2487,15 @@ export default function BulletinManager() {
                         // Fallback : utiliser un rang par défaut
                         return { rank: 1, totalStudents: students.length };
                       };
-                      
+
                       const rankData = getSubjectRankFromBulletin(subjectId);
-                      
+
                       return (
-                        <div key={subjectId} className={`border rounded-lg p-3 ${
-                          subjectAverage < 10 ? 'bg-red-50 border-red-200' : 'bg-gray-50'
-                        }`}>
+                        <div key={subjectId} className={`border rounded-lg p-3 ${subjectAverage < 10 ? 'bg-red-50 border-red-200' : 'bg-gray-50'
+                          }`}>
                           <div className="flex items-center justify-between mb-3">
-                            <h4 className={`font-semibold text-lg ${
-                              subjectAverage < 10 ? 'text-red-700' : 'text-blue-700'
-                            }`}>{subjectName}</h4>
+                            <h4 className={`font-semibold text-lg ${subjectAverage < 10 ? 'text-red-700' : 'text-blue-700'
+                              }`}>{subjectName}</h4>
                             <div className="text-center">
                               <div className="text-sm text-gray-600">Rang</div>
                               <div className="text-xl font-bold text-green-600">
@@ -2509,7 +2503,7 @@ export default function BulletinManager() {
                               </div>
                             </div>
                           </div>
-                          
+
                           {/* Détails des notes */}
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             {(() => {
@@ -2517,13 +2511,12 @@ export default function BulletinManager() {
                                 // Pour les trimestres, afficher seq1, seq2 et la moyenne
                                 if (studentGrades.length > 0) {
                                   const grade = studentGrades[0]; // Prendre la première note (contient toutes les infos)
-                                  
+
                                   return (
                                     <>
                                       {/* Séquence 1 */}
-                                      <div className={`flex items-center justify-between p-3 rounded border ${
-                                        (grade.seq1 || 0) < 10 ? 'bg-red-50 border-red-200' : 'bg-white'
-                                      }`}>
+                                      <div className={`flex items-center justify-between p-3 rounded border ${(grade.seq1 || 0) < 10 ? 'bg-red-50 border-red-200' : 'bg-white'
+                                        }`}>
                                         <div>
                                           <div className="font-medium text-sm">
                                             {getSequenceLabel(1, selectedPeriod)}
@@ -2531,23 +2524,20 @@ export default function BulletinManager() {
                                           <div className="text-xs text-gray-500">Coefficient: {grade.coefficient}</div>
                                         </div>
                                         <div className="text-right">
-                                          <div className={`font-bold text-lg ${
-                                            (grade.seq1 || 0) < 10 ? 'text-red-600' : 'text-gray-900'
-                                          }`}>
+                                          <div className={`font-bold text-lg ${(grade.seq1 || 0) < 10 ? 'text-red-600' : 'text-gray-900'
+                                            }`}>
                                             {grade.seq1 || 0}/20
                                           </div>
-                                          <div className={`text-xs ${
-                                            (grade.seq1 || 0) < 10 ? 'text-red-500' : 'text-gray-500'
-                                          }`}>
+                                          <div className={`text-xs ${(grade.seq1 || 0) < 10 ? 'text-red-500' : 'text-gray-500'
+                                            }`}>
                                             {(grade.seq1 || 0).toFixed(2)}/20
                                           </div>
                                         </div>
                                       </div>
-                                      
+
                                       {/* Séquence 2 */}
-                                      <div className={`flex items-center justify-between p-3 rounded border ${
-                                        (grade.seq2 || 0) < 10 ? 'bg-red-50 border-red-200' : 'bg-white'
-                                      }`}>
+                                      <div className={`flex items-center justify-between p-3 rounded border ${(grade.seq2 || 0) < 10 ? 'bg-red-50 border-red-200' : 'bg-white'
+                                        }`}>
                                         <div>
                                           <div className="font-medium text-sm">
                                             {getSequenceLabel(2, selectedPeriod)}
@@ -2555,44 +2545,37 @@ export default function BulletinManager() {
                                           <div className="text-xs text-gray-500">Coefficient: {grade.coefficient}</div>
                                         </div>
                                         <div className="text-right">
-                                          <div className={`text-lg ${
-                                            (grade.seq2 || 0) < 10 ? 'text-red-600' : 'text-gray-900'
-                                          }`}>
+                                          <div className={`text-lg ${(grade.seq2 || 0) < 10 ? 'text-red-600' : 'text-gray-900'
+                                            }`}>
                                             {grade.seq2 || 0}/20
                                           </div>
-                                          <div className={`text-xs ${
-                                            (grade.seq2 || 0) < 10 ? 'text-red-500' : 'text-gray-500'
-                                          }`}>
+                                          <div className={`text-xs ${(grade.seq2 || 0) < 10 ? 'text-red-500' : 'text-gray-500'
+                                            }`}>
                                             {(grade.seq2 || 0).toFixed(2)}/20
                                           </div>
                                         </div>
                                       </div>
-                                      
+
                                       {/* Moyenne des 2 séquences */}
-                                      <div className={`flex items-center justify-between p-3 rounded border ${
-                                        (grade.periodAverage || 0) < 10 ? 'bg-red-50 border-red-200' : 'bg-blue-50 border-blue-200'
-                                      }`}>
+                                      <div className={`flex items-center justify-between p-3 rounded border ${(grade.periodAverage || 0) < 10 ? 'bg-red-50 border-red-200' : 'bg-blue-50 border-blue-200'
+                                        }`}>
                                         <div>
-                                          <div className={`font-medium text-sm ${
-                                            (grade.periodAverage || 0) < 10 ? 'text-red-700' : 'text-blue-700'
-                                          }`}>
+                                          <div className={`font-medium text-sm ${(grade.periodAverage || 0) < 10 ? 'text-red-700' : 'text-blue-700'
+                                            }`}>
                                             Moyenne Trimestre
                                           </div>
-                                          <div className={`text-xs ${
-                                            (grade.periodAverage || 0) < 10 ? 'text-red-600' : 'text-blue-600'
-                                          }`}>
+                                          <div className={`text-xs ${(grade.periodAverage || 0) < 10 ? 'text-red-600' : 'text-blue-600'
+                                            }`}>
                                             Coefficient: {grade.coefficient}
                                           </div>
                                         </div>
                                         <div className="text-right">
-                                          <div className={`font-bold text-lg ${
-                                            (grade.periodAverage || 0) < 10 ? 'text-red-700' : 'text-blue-700'
-                                          }`}>
+                                          <div className={`font-bold text-lg ${(grade.periodAverage || 0) < 10 ? 'text-red-700' : 'text-blue-700'
+                                            }`}>
                                             {grade.periodAverage?.toFixed(2) || '0.00'}/20
                                           </div>
-                                          <div className={`text-xs ${
-                                            (grade.periodAverage || 0) < 10 ? 'text-red-600' : 'text-blue-600'
-                                          }`}>
+                                          <div className={`text-xs ${(grade.periodAverage || 0) < 10 ? 'text-red-600' : 'text-blue-600'
+                                            }`}>
                                             Moyenne des 2 séquences
                                           </div>
                                         </div>
@@ -2647,7 +2630,7 @@ export default function BulletinManager() {
               </div>
             </div>
           )}
-          
+
           <div className="flex justify-end pt-4 border-t">
             <Button variant="outline" onClick={() => setShowDetailsModal(false)}>
               Fermer
@@ -2657,7 +2640,7 @@ export default function BulletinManager() {
       </Dialog>
 
       {/* Modal des informations des élèves avec rangs - SUPPRIMÉ */}
-      
+
       {/* Fonction de débogage pour les trimestres */}
       {(() => {
         const debugStudentBulletin = async (studentId: string) => {
@@ -2667,13 +2650,13 @@ export default function BulletinManager() {
             console.log('📅 Période sélectionnée:', selectedPeriod);
             console.log('🏫 Classe sélectionnée:', selectedClass);
             console.log('📚 Année scolaire:', schoolYear);
-            
+
             // Vérifier si c'est un trimestre
             if (!isTrimester) {
               toast.error('Le mode débogage est uniquement disponible pour les trimestres.');
               return;
             }
-            
+
             // Appeler l'API de débogage
             const response = await fetch('/api/bulletins/debug-trimestre', {
               method: 'POST',
@@ -2686,32 +2669,32 @@ export default function BulletinManager() {
                 schoolYear: schoolYear
               })
             });
-            
+
             if (!response.ok) {
               const errorText = await response.text();
               console.error('❌ Erreur API debug:', response.status, errorText);
               toast.error('Erreur lors de la récupération des données de débogage.');
               return;
             }
-            
+
             const data = await response.json();
             console.log('✅ Données de débogage reçues:', data);
-            
+
             // Afficher les données dans une alerte pour l'instant
             alert(`Debug Trimestre - ${data.studentsCount} élèves analysés\n\n` +
-                  `Période: ${data.periodName}\n` +
-                  `Classe: ${data.className}\n\n` +
-                  `Données complètes dans la console.`);
-            
+              `Période: ${data.periodName}\n` +
+              `Classe: ${data.className}\n\n` +
+              `Données complètes dans la console.`);
+
           } catch (error) {
             console.error('❌ Erreur lors du débogage:', error);
             toast.error('Erreur lors de la récupération des données de débogage.');
           }
         };
-        
+
         // Rendre la fonction disponible globalement pour le composant
         (window as any).debugStudentBulletin = debugStudentBulletin;
-        
+
         return null;
       })()}
     </div>

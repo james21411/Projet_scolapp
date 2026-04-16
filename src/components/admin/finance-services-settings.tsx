@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from 'react';
+import { SchoolInfo } from '@/services/schoolInfoService';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,17 +30,23 @@ const CATEGORIES = [
   { value: 'other', label: 'Autres' }
 ];
 
-export default function FinanceServicesSettings() {
+export default function FinanceServicesSettings({ schoolInfo }: { schoolInfo?: SchoolInfo | null }) {
   const { toast } = useToast();
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState<Service>({ id: '', name: '', category: 'other', price: 0, isActive: true });
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [search, setSearch] = useState<string>('');
-  const [levels, setLevels] = useState<{id:string,name:string}[]>([]);
-  const [classes, setClasses] = useState<{id:string,name:string,levelId:string}[]>([]);
+  const [levels, setLevels] = useState<{ id: string, name: string }[]>([]);
+  const [classes, setClasses] = useState<{ id: string, name: string, levelId: string }[]>([]);
   const [schoolYear, setSchoolYear] = useState<string>('');
   const [availableYears, setAvailableYears] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (schoolInfo?.currentSchoolYear) {
+      setSchoolYear(schoolInfo.currentSchoolYear);
+    }
+  }, [schoolInfo]);
   const [showForm, setShowForm] = useState(false);
 
   const load = async () => {
@@ -76,8 +83,8 @@ export default function FinanceServicesSettings() {
           const y = await yearsRes.json();
           if (y?.availableYears) setAvailableYears(y.availableYears);
           if (y?.currentSchoolYear) setSchoolYear(y.currentSchoolYear);
-        } catch {}
-      } catch {}
+        } catch { }
+      } catch { }
     })();
   }, []);
 
@@ -194,10 +201,10 @@ export default function FinanceServicesSettings() {
             <Label>Recherche</Label>
             <div className="relative">
               <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input 
-                value={search} 
-                onChange={e => setSearch(e.target.value)} 
-                placeholder="Rechercher un service..." 
+              <Input
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Rechercher un service..."
                 className="pl-8"
               />
             </div>
@@ -262,8 +269,8 @@ export default function FinanceServicesSettings() {
                 {form.id ? 'Modifier' : 'Enregistrer'}
               </Button>
               {!form.id && form.levelId && (
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   onClick={() => applyBulkForLevel(form.levelId!)}
                   disabled={loading}
                 >
@@ -333,9 +340,9 @@ export default function FinanceServicesSettings() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex gap-2 justify-end">
-                          <Button 
-                            size="sm" 
-                            variant="outline" 
+                          <Button
+                            size="sm"
+                            variant="outline"
                             onClick={() => {
                               setForm(s);
                               setShowForm(true);
@@ -343,9 +350,9 @@ export default function FinanceServicesSettings() {
                           >
                             <Edit className="h-3 w-3" />
                           </Button>
-                          <Button 
-                            size="sm" 
-                            variant="destructive" 
+                          <Button
+                            size="sm"
+                            variant="destructive"
                             onClick={() => remove(s.id)}
                           >
                             <Trash2 className="h-3 w-3" />
@@ -369,7 +376,7 @@ export default function FinanceServicesSettings() {
         {/* Résumé */}
         {filtered.length > 0 && (
           <div className="text-sm text-muted-foreground">
-            {filtered.length} service(s) trouvé(s) 
+            {filtered.length} service(s) trouvé(s)
             {categoryFilter !== 'all' && ` dans la catégorie "${CATEGORIES.find(c => c.value === categoryFilter)?.label}"`}
             {search && ` pour "${search}"`}
             {schoolYear && ` pour l'année ${schoolYear}`}

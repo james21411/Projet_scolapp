@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { SchoolInfo } from '@/services/schoolInfoService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,9 +9,9 @@ import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 
-export default function GestionSequences() {
-  const [selectedSchoolYear, setSelectedSchoolYear] = useState<string>('2025-2026');
-  const [availableYears, setAvailableYears] = useState<string[]>(['2025-2026', '2024-2025', '2023-2024', '2022-2023']);
+export default function GestionSequences({ schoolInfo }: { schoolInfo?: SchoolInfo | null }) {
+  const [selectedSchoolYear, setSelectedSchoolYear] = useState<string>('');
+  const [availableYears, setAvailableYears] = useState<string[]>([]);
   const [sequences, setSequences] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [copyYears, setCopyYears] = useState<{ source: string; target: string }>({ source: '', target: '' });
@@ -21,23 +22,28 @@ export default function GestionSequences() {
   const saveTimersRef = useRef<Record<string, any>>({});
 
   useEffect(() => {
-    (async () => {
+    async function init() {
       try {
         const res = await fetch('/api/finance/school-years');
         if (res.ok) {
           const data = await res.json();
-          const years = data.availableYears || [];
-          const current = data.currentSchoolYear || selectedSchoolYear;
-          if (Array.isArray(years) && years.length > 0) setAvailableYears(years);
-          if (current) setSelectedSchoolYear(current);
+          if (Array.isArray(data.availableYears)) setAvailableYears(data.availableYears);
+
+          // Priorité : schoolInfo > data.currentSchoolYear > premier de la liste
+          const year = schoolInfo?.currentSchoolYear || data.currentSchoolYear || (data.availableYears?.[0]) || '';
+          if (year) setSelectedSchoolYear(year);
         }
-      } catch {}
-      loadSequences();
-    })();
-  }, []);
+      } catch (err) {
+        console.error("Init sequences error:", err);
+      }
+    }
+    init();
+  }, [schoolInfo]);
 
   useEffect(() => {
-    loadSequences();
+    if (selectedSchoolYear) {
+      loadSequences();
+    }
   }, [selectedSchoolYear]);
 
   const loadSequences = async () => {
@@ -73,7 +79,7 @@ export default function GestionSequences() {
     }
   };
 
-  const scheduleSaveDates = () => {};
+  const scheduleSaveDates = () => { };
 
   const handleDateChange = (seq: any, kind: 'startDate' | 'endDate', value: string) => {
     setEditedDates(prev => ({

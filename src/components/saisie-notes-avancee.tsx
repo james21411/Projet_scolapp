@@ -1,4 +1,4 @@
- 'use client';
+'use client';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,8 +11,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  Loader2, BookOpen, Users, Calendar, FileText, Save, AlertCircle, 
+import {
+  Loader2, BookOpen, Users, Calendar, FileText, Save, AlertCircle,
   CheckCircle, Search, TrendingUp, BarChart3, PieChart, Download,
   Upload, Filter, SortAsc, SortDesc, Eye, EyeOff, Calculator,
   Target, Award, Clock, CheckSquare, Square, Star, RefreshCw, Trash2, Edit
@@ -81,9 +81,11 @@ interface GradeStatistics {
 }
 interface User { id?: string; username?: string; fullName?: string; role?: string }
 
-export default function SaisieNotesAvancee({ currentUser, role, teacherId }: { currentUser?: User; role?: string; teacherId?: string } = {}) {
+import { SchoolInfo } from '@/services/schoolInfoService';
+
+export default function SaisieNotesAvancee({ currentUser, role, teacherId, schoolInfo }: { currentUser?: User; role?: string; teacherId?: string, schoolInfo?: SchoolInfo | null } = {}) {
   const { toast } = useToast();
-  
+
   // États principaux
   const [students, setStudents] = useState<Student[]>([]);
   const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
@@ -98,7 +100,7 @@ export default function SaisieNotesAvancee({ currentUser, role, teacherId }: { c
   const [schoolYear, setSchoolYear] = useState<string>('2025-2026');
   const [grades, setGrades] = useState<Grade[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [classes, setClasses] = useState<{id: string, name: string}[]>([]);
+  const [classes, setClasses] = useState<{ id: string, name: string }[]>([]);
   const [teacherAssignments, setTeacherAssignments] = useState<any[]>([]);
   const [existingGrades, setExistingGrades] = useState<any[]>([]);
   const [error, setError] = useState<string>('');
@@ -113,7 +115,7 @@ export default function SaisieNotesAvancee({ currentUser, role, teacherId }: { c
   const [studentsPerPage, setStudentsPerPage] = useState<number>(10);
   const [resolvedTeacherId, setResolvedTeacherId] = useState<string | null>(null);
   const [triedTeacherFallback, setTriedTeacherFallback] = useState(false);
-  
+
   // Types d'évaluation simplifiés (6 séquences)
   const evaluationTypes = [
     { id: 'seq1', name: '1ère Séquence', weight: 1.00 },
@@ -123,12 +125,12 @@ export default function SaisieNotesAvancee({ currentUser, role, teacherId }: { c
     { id: 'seq5', name: '5ème Séquence', weight: 1.00 },
     { id: 'seq6', name: '6ème Séquence', weight: 1.00 }
   ];
-  
+
   // États pour la recherche et pagination
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [sortField, setSortField] = useState<'name' | 'score' | 'percentage'>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
-  
+
   // États pour les fonctionnalités avancées
   const [showStatistics, setShowStatistics] = useState<boolean>(true);
   const [bulkEditMode, setBulkEditMode] = useState<boolean>(false);
@@ -138,7 +140,7 @@ export default function SaisieNotesAvancee({ currentUser, role, teacherId }: { c
   const [showAdvancedFilters, setShowAdvancedFilters] = useState<boolean>(false);
   const [gradeFilter, setGradeFilter] = useState<'all' | 'graded' | 'ungraded'>('all');
   const [refreshTrigger, setRefreshTrigger] = useState<number>(0);
-  
+
   // États pour la boîte de dialogue d'édition
   const [editDialogOpen, setEditDialogOpen] = useState<boolean>(false);
   const [editingStudentId, setEditingStudentId] = useState<string>('');
@@ -146,7 +148,7 @@ export default function SaisieNotesAvancee({ currentUser, role, teacherId }: { c
   const [editingScore, setEditingScore] = useState<string>('');
   const [editingMaxScore, setEditingMaxScore] = useState<number>(20);
 
-  const isTeacherUser = !!(teacherId || (currentUser && (role === 'Enseignant' || (currentUser.role||'').toLowerCase().includes('enseign'))));
+  const isTeacherUser = !!(teacherId || (currentUser && (role === 'Enseignant' || (currentUser.role || '').toLowerCase().includes('enseign'))));
 
   console.log('🔍 SAISIE NOTES - Vérification rôle enseignant:', {
     teacherId,
@@ -154,7 +156,7 @@ export default function SaisieNotesAvancee({ currentUser, role, teacherId }: { c
     role,
     isTeacherUser,
     currentUserRole: currentUser?.role,
-    roleCheck: role === 'Enseignant' || (currentUser?.role||'').toLowerCase().includes('enseign')
+    roleCheck: role === 'Enseignant' || (currentUser?.role || '').toLowerCase().includes('enseign')
   });
   const getAssignmentsArray = useCallback((val: any): any[] => {
     if (Array.isArray(val)) return val;
@@ -208,7 +210,7 @@ export default function SaisieNotesAvancee({ currentUser, role, teacherId }: { c
     }
 
     const isModified = isGradeModified(grade, originalGrade);
-    
+
     if (grade.isSaved) {
       if (isModified) {
         return {
@@ -242,25 +244,25 @@ export default function SaisieNotesAvancee({ currentUser, role, teacherId }: { c
 
   // Calculer les statistiques
   const statistics = useMemo((): GradeStatistics => {
-    const currentGrades = grades.filter(g => 
+    const currentGrades = grades.filter(g =>
       g.subjectId === selectedSubject && g.evaluationPeriodId === selectedPeriod
     );
-    
+
     const totalStudents = students.length;
     const gradedStudents = currentGrades.length;
     const scores = currentGrades.map(g => g.score);
     const averageScore = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
     const highestScore = scores.length > 0 ? Math.max(...scores) : 0;
     const lowestScore = scores.length > 0 ? Math.min(...scores) : 0;
-    
+
     const subject = subjects.find(s => s.id === selectedSubject);
     const maxScore = subject?.maxScore || 20;
     const passThreshold = maxScore * 0.5; // 50% pour réussir
     const excellentThreshold = maxScore * 0.8; // 80% pour excellent
-    
+
     const passCount = scores.filter(s => s >= passThreshold).length;
     const excellentCount = scores.filter(s => s >= excellentThreshold).length;
-    
+
     return {
       totalStudents,
       gradedStudents,
@@ -313,7 +315,7 @@ export default function SaisieNotesAvancee({ currentUser, role, teacherId }: { c
   // Charger les données initiales
   useEffect(() => {
     loadInitialData();
-  }, []);
+  }, [schoolInfo, schoolYear]);
 
   // Gestion du resolvedTeacherId (même logique que Mes Classes)
   useEffect(() => {
@@ -380,7 +382,7 @@ export default function SaisieNotesAvancee({ currentUser, role, teacherId }: { c
   useEffect(() => {
     if (selectedClass && selectedSubject && selectedPeriod) {
       console.log('🔄 Rechargement des notes pour le contexte:', { selectedClass, selectedSubject, selectedPeriod, schoolYear });
-      
+
       const timer = setTimeout(async () => {
         // CORRECTION : Charger UNIQUEMENT depuis la base de données et utiliser le résultat
         const fetchedGrades = await loadExistingGrades();
@@ -404,7 +406,7 @@ export default function SaisieNotesAvancee({ currentUser, role, teacherId }: { c
           clearGradesFromLocalStorage();
         }
       }, 100);
-      
+
       return () => clearTimeout(timer);
     }
   }, [selectedClass, selectedSubject, selectedPeriod, schoolYear]);
@@ -528,49 +530,49 @@ export default function SaisieNotesAvancee({ currentUser, role, teacherId }: { c
         const classAssignments = arr.filter((a: any) => (a?.classId && a.classId === classId) || (a?.className && a.className === selectedClass));
 
         // DEBUG: Log des affectations et matières pour déboguer
-          console.log('🔍 DEBUG - Affectations pour cette classe:', {
-            classId,
-            selectedClass,
-            teacherAssignments: arr,
-            classAssignments,
-            classAssignmentsSubjects: classAssignments.map((a: any) => ({ subject: a.subject, subjectName: a.subjectName }))
-          });
-  
-          // Créer un ensemble des matières assignées avec leurs IDs pour une correspondance plus précise
-          const assignedSubjectsMap = new Map<string, any>();
-          classAssignments.forEach((assignment: any) => {
-            const subjectName = normalize(assignment.subject || assignment.subjectName);
-            const subjectId = assignment.subjectId;
-            assignedSubjectsMap.set(subjectName, { subjectId, assignment });
-          });
-  
-          const allSubjects = Array.isArray(list) ? list : (Array.isArray(list?.data) ? list.data : []);
-  
-          console.log('🔍 DEBUG - Matières disponibles:', {
-            allSubjects: allSubjects.map((s: any) => ({ id: s.id, name: s.name })),
-            assignedSubjectsMap: Array.from(assignedSubjectsMap.entries()),
-            normalizedSubjects: allSubjects.map((s: any) => normalize(s?.name))
-          });
-  
-          // Filtrer les matières en vérifiant si l'enseignant est assigné à cette matière dans cette classe
-          const filtered = (allSubjects || []).filter((s: any) => {
-            const subjectName = normalize(s?.name);
-            const subjectId = s?.id;
-  
-            // Vérifier par nom normalisé
-            if (assignedSubjectsMap.has(subjectName)) {
+        console.log('🔍 DEBUG - Affectations pour cette classe:', {
+          classId,
+          selectedClass,
+          teacherAssignments: arr,
+          classAssignments,
+          classAssignmentsSubjects: classAssignments.map((a: any) => ({ subject: a.subject, subjectName: a.subjectName }))
+        });
+
+        // Créer un ensemble des matières assignées avec leurs IDs pour une correspondance plus précise
+        const assignedSubjectsMap = new Map<string, any>();
+        classAssignments.forEach((assignment: any) => {
+          const subjectName = normalize(assignment.subject || assignment.subjectName);
+          const subjectId = assignment.subjectId;
+          assignedSubjectsMap.set(subjectName, { subjectId, assignment });
+        });
+
+        const allSubjects = Array.isArray(list) ? list : (Array.isArray(list?.data) ? list.data : []);
+
+        console.log('🔍 DEBUG - Matières disponibles:', {
+          allSubjects: allSubjects.map((s: any) => ({ id: s.id, name: s.name })),
+          assignedSubjectsMap: Array.from(assignedSubjectsMap.entries()),
+          normalizedSubjects: allSubjects.map((s: any) => normalize(s?.name))
+        });
+
+        // Filtrer les matières en vérifiant si l'enseignant est assigné à cette matière dans cette classe
+        const filtered = (allSubjects || []).filter((s: any) => {
+          const subjectName = normalize(s?.name);
+          const subjectId = s?.id;
+
+          // Vérifier par nom normalisé
+          if (assignedSubjectsMap.has(subjectName)) {
+            return true;
+          }
+
+          // Vérifier par ID si disponible
+          for (const [name, data] of assignedSubjectsMap.entries()) {
+            if (data.subjectId === subjectId) {
               return true;
             }
-  
-            // Vérifier par ID si disponible
-            for (const [name, data] of assignedSubjectsMap.entries()) {
-              if (data.subjectId === subjectId) {
-                return true;
-              }
-            }
-  
-            return false;
-          });
+          }
+
+          return false;
+        });
 
         // Ne conserver que les matières actives
         const onlyActive = filtered.filter((s: any) => s.isActive === 1 || s.isActive === true);
@@ -603,10 +605,10 @@ export default function SaisieNotesAvancee({ currentUser, role, teacherId }: { c
   // Sauvegarder les notes dans localStorage quand elles changent
   useEffect(() => {
     if (selectedClass && selectedSubject && selectedPeriod && grades.length > 0) {
-      const contextGrades = grades.filter(g => 
+      const contextGrades = grades.filter(g =>
         g.subjectId === selectedSubject && g.evaluationPeriodId === selectedPeriod
       );
-      
+
       if (contextGrades.length > 0) {
         // CORRECTION : Ne sauvegarder que les notes non sauvegardées
         const unsavedGrades = contextGrades.filter(g => !g.isSaved);
@@ -623,68 +625,73 @@ export default function SaisieNotesAvancee({ currentUser, role, teacherId }: { c
   const currentStudents = filteredStudents.slice(indexOfFirstStudent, indexOfLastStudent);
   const totalPages = Math.ceil(filteredStudents.length / studentsPerPage);
 
-   const loadInitialData = async () => {
-     setIsLoading(true);
-     setError('');
-     try {
-       // Charger l'année scolaire actuelle et les années disponibles
-       const schoolResponse = await fetch('/api/school/info');
-       if (!schoolResponse.ok) {
-         throw new Error('Impossible de charger les informations de l\'école');
-       }
-       const schoolInfo = await schoolResponse.json();
-       setSchoolYear(schoolInfo.currentSchoolYear || '2025-2026');
+  const loadInitialData = async () => {
+    setIsLoading(true);
+    setError('');
+    try {
+      // Charger l'année scolaire actuelle et les années disponibles
+      const schoolResponse = await fetch('/api/school/info');
+      if (!schoolResponse.ok) {
+        throw new Error('Impossible de charger les informations de l\'école');
+      }
+      const schoolInfo = await schoolResponse.json();
+      setSchoolYear(schoolInfo.currentSchoolYear || '2025-2026');
 
-       // Charger les années scolaires disponibles
-       const yearsResponse = await fetch('/api/finance/school-years');
-       if (yearsResponse.ok) {
-         const yearsData = await yearsResponse.json();
-         setAvailableSchoolYears(yearsData.availableYears || []);
-       } else {
-         const currentYear = new Date().getFullYear();
-         setAvailableSchoolYears([
-           `${currentYear-1}-${currentYear}`,
-           `${currentYear}-${currentYear+1}`,
-           `${currentYear+1}-${currentYear+2}`
-         ]);
-       }
+      // Charger les années scolaires disponibles
+      const yearsResponse = await fetch('/api/finance/school-years');
+      if (yearsResponse.ok) {
+        const yearsData = await yearsResponse.json();
+        setAvailableSchoolYears(yearsData.availableYears || []);
+      } else {
+        const currentYear = new Date().getFullYear();
+        setAvailableSchoolYears([
+          `${currentYear - 1}-${currentYear}`,
+          `${currentYear}-${currentYear + 1}`,
+          `${currentYear + 1}-${currentYear + 2}`
+        ]);
+      }
 
-       // Charger les niveaux et classes
-       console.log('🔍 Chargement des niveaux et classes...');
-       const levelsResponse = await fetch('/api/school/levels-with-classes');
-       
-       if (levelsResponse.ok) {
-         const levelsDataResponse = await levelsResponse.json();
-         
-         if (Array.isArray(levelsDataResponse)) {
-           setLevelsData(levelsDataResponse);
-           const levels = levelsDataResponse.map((level: any) => level.name);
-           setAvailableLevels(levels);
-         } else {
-           setLevelsData([]);
-           setAvailableLevels([]);
-         }
-       } else {
-         setLevelsData([]);
-         setAvailableLevels([]);
-       }
+      // Charger les niveaux et classes
+      console.log('🔍 Chargement des niveaux et classes...');
+      const levelsResponse = await fetch('/api/school/levels-with-classes');
 
-       // Charger les périodes d'évaluation
-       const periodsResponse = await fetch(`/api/evaluation-periods?schoolYear=${schoolYear}`);
-       if (!periodsResponse.ok) {
-         throw new Error('Impossible de charger les périodes d\'évaluation');
-       }
-       const periodsData = await periodsResponse.json();
-       const sequences = periodsData.filter((period: any) => period.name && period.name.includes('Séquence'));
-       setPeriods(sequences);
+      if (levelsResponse.ok) {
+        const levelsDataResponse = await levelsResponse.json();
 
-       toast({
-         title: "Données chargées",
-         description: "Configuration initiale terminée avec succès",
-       });
+        if (Array.isArray(levelsDataResponse)) {
+          setLevelsData(levelsDataResponse);
+          const levels = levelsDataResponse.map((level: any) => level.name);
+          setAvailableLevels(levels);
+        } else {
+          setLevelsData([]);
+          setAvailableLevels([]);
+        }
+      } else {
+        setLevelsData([]);
+        setAvailableLevels([]);
+      }
+
+      // Charger les périodes d'évaluation (Séquences)
+      const yearToUse = schoolInfo?.currentSchoolYear || schoolYear || '2025-2026';
+      if (schoolInfo?.currentSchoolYear) {
+        setSchoolYear(schoolInfo.currentSchoolYear);
+      }
+
+      const periodsResponse = await fetch(`/api/evaluation-periods/sequences?schoolYear=${encodeURIComponent(yearToUse)}`);
+      if (!periodsResponse.ok) {
+        throw new Error('Impossible de charger les périodes d\'évaluation');
+      }
+      const segments = await periodsResponse.json();
+      const sequences = Array.isArray(segments) ? segments : [];
+      setPeriods(sequences);
+
+      toast({
+        title: "Données chargées",
+        description: "Configuration initiale terminée avec succès",
+      });
 
       // Si l'utilisateur est un enseignant, charger ses affectations (même logique que Mes Classes)
-      if (teacherId || (currentUser && (role === 'Enseignant' || (currentUser.role||'').toLowerCase().includes('enseign')))) {
+      if (teacherId || (currentUser && (role === 'Enseignant' || (currentUser.role || '').toLowerCase().includes('enseign')))) {
         try {
           const tId = teacherId || currentUser?.id;
           console.log('🔍 SAISIE NOTES - Chargement affectations pour teacherId:', tId);
@@ -702,7 +709,7 @@ export default function SaisieNotesAvancee({ currentUser, role, teacherId }: { c
             if (assignmentsArray.length > 0) {
               console.log('🔍 SAISIE NOTES - Détail des affectations:');
               assignmentsArray.forEach((a: any, i: number) => {
-                console.log(`🔍 SAISIE NOTES - Affectation ${i+1}:`, {
+                console.log(`🔍 SAISIE NOTES - Affectation ${i + 1}:`, {
                   id: a.id,
                   teacherId: a.teacherId,
                   classId: a.classId,
@@ -724,7 +731,7 @@ export default function SaisieNotesAvancee({ currentUser, role, teacherId }: { c
                   const raw = await getTeachers().catch(() => []);
                   const teachers = Array.isArray(raw) ? raw : (Array.isArray((raw as any)?.data) ? (raw as any).data : []);
 
-                  const match = (teachers as any[]).find((t:any) => {
+                  const match = (teachers as any[]).find((t: any) => {
                     if (currentUser.username && t.username && t.username.toLowerCase() === currentUser.username.toLowerCase()) return true;
                     if (currentUser.fullName && t.fullName && t.fullName.toLowerCase() === currentUser.fullName.toLowerCase()) return true;
                     return false;
@@ -763,161 +770,161 @@ export default function SaisieNotesAvancee({ currentUser, role, teacherId }: { c
       } else {
         console.log('🔍 SAISIE NOTES - Utilisateur non-enseignant, pas de chargement d\'affectations');
       }
-     } catch (error) {
-       console.error('Erreur lors du chargement des données initiales:', error);
-       setError(error instanceof Error ? error.message : 'Erreur lors du chargement des données');
-       toast({
-         title: "Erreur",
-         description: "Impossible de charger les données initiales",
-         variant: "destructive",
-       });
-     } finally {
-       setIsLoading(false);
-     }
-   };
+    } catch (error) {
+      console.error('Erreur lors du chargement des données initiales:', error);
+      setError(error instanceof Error ? error.message : 'Erreur lors du chargement des données');
+      toast({
+        title: "Erreur",
+        description: "Impossible de charger les données initiales",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-   // Charger les classes quand un niveau est sélectionné
-   useEffect(() => {
-     if (selectedLevel) {
-       const loadClassesForLevel = async () => {
-         try {
-           setError('');
-           
-           const selectedLevelData = levelsData.find((level: any) => level.name === selectedLevel);
-           
-           if (selectedLevelData) {
-             const levelClasses = selectedLevelData.classes.map((cls: any) => ({ id: cls.id, name: cls.name }));
-             setClasses(levelClasses);
-             
-             if (levelClasses.length === 0) {
-               toast({
-                 title: "Aucune classe trouvée",
-                 description: `Aucune classe configurée pour le niveau ${selectedLevel}`,
-               });
-             }
-           } else {
-             setClasses([]);
-           }
-         } catch (error) {
-           console.error('Erreur lors du chargement des classes:', error);
-           setError('Erreur lors du chargement des classes');
-           toast({
-             title: "Erreur",
-             description: "Impossible de charger les classes",
-             variant: "destructive",
-           });
-         }
-       };
-       loadClassesForLevel();
-     } else {
-       setClasses([]);
-       setSelectedClass('');
-       setSelectedClassId('');
-     }
-   }, [selectedLevel, levelsData]);
+  // Charger les classes quand un niveau est sélectionné
+  useEffect(() => {
+    if (selectedLevel) {
+      const loadClassesForLevel = async () => {
+        try {
+          setError('');
 
-   // Charger les élèves quand une classe est sélectionnée
-   useEffect(() => {
-     if (selectedClass) {
-       loadStudents();
-       setGrades([]);
-       setExistingGrades([]);
-     } else {
-       setStudents([]);
-       setGrades([]);
-       setExistingGrades([]);
-     }
-   }, [selectedClass, schoolYear]);
+          const selectedLevelData = levelsData.find((level: any) => level.name === selectedLevel);
 
-   // Charger les matières quand une classe est sélectionnée
-    // Use selectedClassId (the real class identifier) to load subjects.
-    useEffect(() => {
-      if (selectedClassId && teacherAssignments && teacherAssignments.length > 0) {
-        console.log('🔄 USEEFFECT - Chargement des matières avec affectations:', teacherAssignments.length);
-        loadSubjects();
-      } else if (selectedClassId) {
-        console.log('⏳ USEEFFECT - Attente des affectations avant chargement des matières...');
-        // Attendre un peu que les affectations soient chargées
-        const timer = setTimeout(() => {
-          if (teacherAssignments && teacherAssignments.length > 0) {
-            console.log('✅ USEEFFECT - Affectations maintenant disponibles, chargement des matières');
-            loadSubjects();
+          if (selectedLevelData) {
+            const levelClasses = selectedLevelData.classes.map((cls: any) => ({ id: cls.id, name: cls.name }));
+            setClasses(levelClasses);
+
+            if (levelClasses.length === 0) {
+              toast({
+                title: "Aucune classe trouvée",
+                description: `Aucune classe configurée pour le niveau ${selectedLevel}`,
+              });
+            }
           } else {
-            console.log('❌ USEEFFECT - Toujours pas d\'affectations après timeout');
-            setSubjects([]);
-            setSelectedSubject('');
+            setClasses([]);
           }
-        }, 1000);
-        return () => clearTimeout(timer);
-      } else {
-        setSubjects([]);
-        setSelectedSubject('');
-      }
-    }, [selectedClassId, schoolYear, teacherAssignments]);
+        } catch (error) {
+          console.error('Erreur lors du chargement des classes:', error);
+          setError('Erreur lors du chargement des classes');
+          toast({
+            title: "Erreur",
+            description: "Impossible de charger les classes",
+            variant: "destructive",
+          });
+        }
+      };
+      loadClassesForLevel();
+    } else {
+      setClasses([]);
+      setSelectedClass('');
+      setSelectedClassId('');
+    }
+  }, [selectedLevel, levelsData]);
 
-    // Helper: déterminer si un élève est actif selon plusieurs conventions possibles
-    const isStudentActive = (stu: any): boolean => {
-      if (!stu) return false;
-      // Booléens explicites
-      if (typeof stu.isActive === 'boolean') return stu.isActive;
-      if (typeof stu.active === 'boolean') return stu.active;
+  // Charger les élèves quand une classe est sélectionnée
+  useEffect(() => {
+    if (selectedClass) {
+      loadStudents();
+      setGrades([]);
+      setExistingGrades([]);
+    } else {
+      setStudents([]);
+      setGrades([]);
+      setExistingGrades([]);
+    }
+  }, [selectedClass, schoolYear]);
 
-      // Statut textuel (divers formats possibles)
-      if (stu.status !== undefined && stu.status !== null) {
-        const s = String(stu.status).toLowerCase();
-        return [
-          'active', 'actif', 'a', '1', 'true', 'enabled', 'inscrit'
-        ].includes(s) || s.startsWith('act');
-      }
+  // Charger les matières quand une classe est sélectionnée
+  // Use selectedClassId (the real class identifier) to load subjects.
+  useEffect(() => {
+    if (selectedClassId && teacherAssignments && teacherAssignments.length > 0) {
+      console.log('🔄 USEEFFECT - Chargement des matières avec affectations:', teacherAssignments.length);
+      loadSubjects();
+    } else if (selectedClassId) {
+      console.log('⏳ USEEFFECT - Attente des affectations avant chargement des matières...');
+      // Attendre un peu que les affectations soient chargées
+      const timer = setTimeout(() => {
+        if (teacherAssignments && teacherAssignments.length > 0) {
+          console.log('✅ USEEFFECT - Affectations maintenant disponibles, chargement des matières');
+          loadSubjects();
+        } else {
+          console.log('❌ USEEFFECT - Toujours pas d\'affectations après timeout');
+          setSubjects([]);
+          setSelectedSubject('');
+        }
+      }, 1000);
+      return () => clearTimeout(timer);
+    } else {
+      setSubjects([]);
+      setSelectedSubject('');
+    }
+  }, [selectedClassId, schoolYear, teacherAssignments]);
 
-      if (stu.state !== undefined && stu.state !== null) {
-        const s = String(stu.state).toLowerCase();
-        return ['active', 'a', '1', 'true'].includes(s);
-      }
+  // Helper: déterminer si un élève est actif selon plusieurs conventions possibles
+  const isStudentActive = (stu: any): boolean => {
+    if (!stu) return false;
+    // Booléens explicites
+    if (typeof stu.isActive === 'boolean') return stu.isActive;
+    if (typeof stu.active === 'boolean') return stu.active;
 
-      // Si aucune information de statut, on suppose actif (pour compatibilité)
-      return true;
-    };
+    // Statut textuel (divers formats possibles)
+    if (stu.status !== undefined && stu.status !== null) {
+      const s = String(stu.status).toLowerCase();
+      return [
+        'active', 'actif', 'a', '1', 'true', 'enabled', 'inscrit'
+      ].includes(s) || s.startsWith('act');
+    }
 
-    const filterActiveStudents = (arr: any[]) => Array.isArray(arr) ? arr.filter(isStudentActive) : [];
+    if (stu.state !== undefined && stu.state !== null) {
+      const s = String(stu.state).toLowerCase();
+      return ['active', 'a', '1', 'true'].includes(s);
+    }
 
-   // Charger les périodes d'évaluation quand l'année scolaire change
-   useEffect(() => {
-     if (schoolYear) {
-       const loadPeriods = async () => {
-         try {
-           setError('');
-           const response = await fetch(`/api/evaluation-periods?schoolYear=${schoolYear}`);
-           if (!response.ok) {
-             throw new Error('Impossible de charger les périodes d\'évaluation');
-           }
-           const periodsData = await response.json();
-           const sequences = periodsData.filter((period: any) => period.name && period.name.includes('Séquence'));
-           setPeriods(sequences);
-           
-           if (sequences.length === 0) {
-             toast({
-               title: "Aucune séquence trouvée",
-               description: `Aucune séquence configurée pour l'année ${schoolYear}`,
-             });
-           }
-         } catch (error) {
-           console.error('Erreur lors du chargement des périodes:', error);
-           setError('Erreur lors du chargement des périodes');
-           toast({
-             title: "Erreur",
-             description: "Impossible de charger les périodes d'évaluation",
-             variant: "destructive",
-           });
-         }
-       };
-       loadPeriods();
-     } else {
-       setPeriods([]);
-     }
-   }, [schoolYear]);
+    // Si aucune information de statut, on suppose actif (pour compatibilité)
+    return true;
+  };
 
-     // CORRECTION : Charger les notes existantes sans vider l'état local
+  const filterActiveStudents = (arr: any[]) => Array.isArray(arr) ? arr.filter(isStudentActive) : [];
+
+  // Charger les périodes d'évaluation quand l'année scolaire change
+  useEffect(() => {
+    if (schoolYear) {
+      const loadPeriods = async () => {
+        try {
+          setError('');
+          const response = await fetch(`/api/evaluation-periods?schoolYear=${schoolYear}`);
+          if (!response.ok) {
+            throw new Error('Impossible de charger les périodes d\'évaluation');
+          }
+          const periodsData = await response.json();
+          const sequences = periodsData.filter((period: any) => period.name && period.name.includes('Séquence'));
+          setPeriods(sequences);
+
+          if (sequences.length === 0) {
+            toast({
+              title: "Aucune séquence trouvée",
+              description: `Aucune séquence configurée pour l'année ${schoolYear}`,
+            });
+          }
+        } catch (error) {
+          console.error('Erreur lors du chargement des périodes:', error);
+          setError('Erreur lors du chargement des périodes');
+          toast({
+            title: "Erreur",
+            description: "Impossible de charger les périodes d'évaluation",
+            variant: "destructive",
+          });
+        }
+      };
+      loadPeriods();
+    } else {
+      setPeriods([]);
+    }
+  }, [schoolYear]);
+
+  // CORRECTION : Charger les notes existantes sans vider l'état local
   useEffect(() => {
     if (selectedClass && selectedSubject && selectedPeriod) {
       loadExistingGrades();
@@ -926,14 +933,14 @@ export default function SaisieNotesAvancee({ currentUser, role, teacherId }: { c
     }
   }, [selectedClass, selectedSubject, selectedPeriod]);
 
-     // CORRECTION : Recharger les notes sauvegardées sans conflit
+  // CORRECTION : Recharger les notes sauvegardées sans conflit
   useEffect(() => {
     if (selectedClass && selectedSubject && selectedPeriod) {
       console.log('🔍 Contexte changé, notes sauvegardées disponibles');
     }
   }, [selectedClass, selectedSubject, selectedPeriod, selectedClassId, schoolYear]);
-   
-     // CORRECTION : Rechargement automatique des notes existantes lors du changement de contexte
+
+  // CORRECTION : Rechargement automatique des notes existantes lors du changement de contexte
   useEffect(() => {
     if (selectedClassId && selectedSubject && selectedPeriod) {
       console.log('🔍 Contexte changé, rechargement des notes existantes...');
@@ -943,49 +950,49 @@ export default function SaisieNotesAvancee({ currentUser, role, teacherId }: { c
 
   // CORRECTION : Mise à jour de l'affichage et filtres (toujours actif)
   useEffect(() => {
-      setFilteredStudents(prev => {
-        let filtered = students;
-        if (searchTerm.trim() !== '') {
-          filtered = filtered.filter(student => 
-            student.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            student.prenom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            student.code.toLowerCase().includes(searchTerm.toLowerCase())
-          );
-        }
-        if (gradeFilter !== 'all') {
-          filtered = filtered.filter(student => {
-            const grade = getGradeForStudent(student.id);
-            if (gradeFilter === 'graded') return grade !== null;
-            if (gradeFilter === 'ungraded') return grade === null;
-            return true;
-          });
-        }
-        filtered.sort((a, b) => {
-          const gradeA = getGradeForStudent(a.id);
-          const gradeB = getGradeForStudent(b.id);
-          const subject = subjects.find(s => s.id === selectedSubject);
-          const maxScore = subject?.maxScore || 20;
+    setFilteredStudents(prev => {
+      let filtered = students;
+      if (searchTerm.trim() !== '') {
+        filtered = filtered.filter(student =>
+          student.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          student.prenom.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          student.code.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+      }
+      if (gradeFilter !== 'all') {
+        filtered = filtered.filter(student => {
+          const grade = getGradeForStudent(student.id);
+          if (gradeFilter === 'graded') return grade !== null;
+          if (gradeFilter === 'ungraded') return grade === null;
+          return true;
+        });
+      }
+      filtered.sort((a, b) => {
+        const gradeA = getGradeForStudent(a.id);
+        const gradeB = getGradeForStudent(b.id);
+        const subject = subjects.find(s => s.id === selectedSubject);
+        const maxScore = subject?.maxScore || 20;
         let valueA: any;
         let valueB: any;
-          switch (sortField) {
-            case 'name':
-              valueA = `${a.nom} ${a.prenom}`.toLowerCase();
-              valueB = `${b.nom} ${b.prenom}`.toLowerCase();
-              break;
-            case 'score':
-              valueA = gradeA?.score || 0;
-              valueB = gradeB?.score || 0;
-              break;
-            case 'percentage':
-              valueA = gradeA ? (gradeA.score / maxScore) * 100 : 0;
-              valueB = gradeB ? (gradeB.score / maxScore) * 100 : 0;
-              break;
-          }
+        switch (sortField) {
+          case 'name':
+            valueA = `${a.nom} ${a.prenom}`.toLowerCase();
+            valueB = `${b.nom} ${b.prenom}`.toLowerCase();
+            break;
+          case 'score':
+            valueA = gradeA?.score || 0;
+            valueB = gradeB?.score || 0;
+            break;
+          case 'percentage':
+            valueA = gradeA ? (gradeA.score / maxScore) * 100 : 0;
+            valueB = gradeB ? (gradeB.score / maxScore) * 100 : 0;
+            break;
+        }
         if (sortDirection === 'asc') return valueA > valueB ? 1 : -1;
-            return valueA < valueB ? 1 : -1;
-        });
-        return filtered;
+        return valueA < valueB ? 1 : -1;
       });
+      return filtered;
+    });
   }, [grades, students, searchTerm, gradeFilter, sortField, sortDirection, selectedSubject, selectedPeriod, subjects]);
 
   // NOUVEAU : useEffect pour forcer le rafraîchissement de l'affichage
@@ -995,16 +1002,16 @@ export default function SaisieNotesAvancee({ currentUser, role, teacherId }: { c
       // Forcer la mise à jour de l'affichage en recalculant filteredStudents
       setFilteredStudents(prev => {
         let filtered = students;
-        
+
         // Filtre par recherche
         if (searchTerm.trim() !== '') {
-          filtered = filtered.filter(student => 
+          filtered = filtered.filter(student =>
             student.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
             student.prenom.toLowerCase().includes(searchTerm.toLowerCase()) ||
             student.code.toLowerCase().includes(searchTerm.toLowerCase())
           );
         }
-        
+
         // Filtre par statut des notes
         if (gradeFilter !== 'all') {
           filtered = filtered.filter(student => {
@@ -1014,16 +1021,16 @@ export default function SaisieNotesAvancee({ currentUser, role, teacherId }: { c
             return true;
           });
         }
-        
+
         // Tri
         filtered.sort((a, b) => {
           const gradeA = getGradeForStudent(a.id);
           const gradeB = getGradeForStudent(b.id);
           const subject = subjects.find(s => s.id === selectedSubject);
           const maxScore = subject?.maxScore || 20;
-          
+
           let valueA, valueB;
-          
+
           switch (sortField) {
             case 'name':
               valueA = `${a.nom} ${a.prenom}`.toLowerCase();
@@ -1038,24 +1045,24 @@ export default function SaisieNotesAvancee({ currentUser, role, teacherId }: { c
               valueB = gradeB ? (gradeB.score / maxScore) * 100 : 0;
               break;
           }
-           
+
           if (sortDirection === 'asc') {
             return valueA > valueB ? 1 : -1;
           } else {
             return valueA < valueB ? 1 : -1;
           }
         });
-        
+
         return filtered;
       });
     }
   }, [refreshTrigger, students, searchTerm, gradeFilter, sortField, sortDirection, selectedSubject, selectedPeriod, subjects]);
 
-     // CORRECTION : Persistance automatique optimisée pour éviter les rechargements multiples
+  // CORRECTION : Persistance automatique optimisée pour éviter les rechargements multiples
   useEffect(() => {
     if (selectedClass && selectedSubject && selectedPeriod && schoolYear) {
       console.log('🔄 Persistance automatique : chargement des notes sauvegardées...');
-      
+
       // Charger les notes depuis la base de données
       const loadPersistedGrades = async () => {
         try {
@@ -1065,27 +1072,27 @@ export default function SaisieNotesAvancee({ currentUser, role, teacherId }: { c
           console.error('❌ Erreur lors du chargement des notes persistées:', error);
         }
       };
-      
+
       loadPersistedGrades();
     }
   }, [selectedClass, selectedSubject, selectedPeriod, schoolYear]);
 
-   const loadStudents = async () => {
-     try {
-       setError('');
-       console.log('🔍 Chargement des élèves pour la classe:', selectedClass);
-       
-       const url = `/api/students?classId=${selectedClassId}&schoolYear=${schoolYear}`;
-       const response = await fetch(url);
-       
-       if (!response.ok) {
-         const errorText = await response.text();
-         throw new Error(`Impossible de charger les élèves: ${response.status} ${errorText}`);
-       }
-       
+  const loadStudents = async () => {
+    try {
+      setError('');
+      console.log('🔍 Chargement des élèves pour la classe:', selectedClass);
+
+      const url = `/api/students?classId=${selectedClassId}&schoolYear=${schoolYear}`;
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Impossible de charger les élèves: ${response.status} ${errorText}`);
+      }
+
       const data = await response.json();
       const activeOnly = filterActiveStudents(data || []);
-      console.log(`🔍 Élèves trouvés: ${ (data || []).length }, actifs retenus: ${activeOnly.length }`);
+      console.log(`🔍 Élèves trouvés: ${(data || []).length}, actifs retenus: ${activeOnly.length}`);
       setStudents(activeOnly);
       setCurrentPage(1);
 
@@ -1095,16 +1102,16 @@ export default function SaisieNotesAvancee({ currentUser, role, teacherId }: { c
           description: `Aucun élève actif trouvé pour la classe ${selectedClass}`,
         });
       }
-     } catch (error) {
-       console.error('❌ Erreur lors du chargement des élèves:', error);
-       setError('Erreur lors du chargement des élèves');
-       toast({
-         title: "Erreur",
-         description: "Impossible de charger les élèves",
-         variant: "destructive",
-       });
-     }
-   };
+    } catch (error) {
+      console.error('❌ Erreur lors du chargement des élèves:', error);
+      setError('Erreur lors du chargement des élèves');
+      toast({
+        title: "Erreur",
+        description: "Impossible de charger les élèves",
+        variant: "destructive",
+      });
+    }
+  };
 
   // Déléguons l'ancien loadSubjects vers la nouvelle implémentation
   const loadSubjects = async () => {
@@ -1116,7 +1123,7 @@ export default function SaisieNotesAvancee({ currentUser, role, teacherId }: { c
     try {
       setError('');
       console.log('🔍 Chargement des notes existantes...');
-      
+
       if (!selectedClassId || !selectedSubject || !selectedPeriod || !schoolYear) {
         console.log('⚠️ Paramètres manquants pour le chargement des notes');
         return [];
@@ -1132,7 +1139,7 @@ export default function SaisieNotesAvancee({ currentUser, role, teacherId }: { c
 
       const data = await response.json();
       console.log('📊 Notes récupérées de la base:', data);
-      
+
       // DEBUG : Analyser la structure des données reçues
       if (data && data.length > 0) {
         console.log('🔍 DEBUG - Structure de la première note:', {
@@ -1148,7 +1155,7 @@ export default function SaisieNotesAvancee({ currentUser, role, teacherId }: { c
           }
         });
       }
-      
+
       // CORRECTION : Mettre à jour existingGrades
       setExistingGrades(data || []);
 
@@ -1163,21 +1170,21 @@ export default function SaisieNotesAvancee({ currentUser, role, teacherId }: { c
           console.log('📝 Aucune note en base pour cette matière - création de placeholders (élèves actifs)');
           const subject = subjects.find(s => s.id === selectedSubject);
           const placeholders: Grade[] = activeStudents.map((stu) => ({
-          studentId: stu.id,
-          classId: selectedClassId,
-          schoolYear,
-          subjectId: selectedSubject,
-          evaluationTypeId: selectedEvaluationType,
-          evaluationPeriodId: selectedPeriod,
-          score: 0,
-          maxScore: subject?.maxScore || 20,
-          coefficient: subject?.coefficient || 1,
-          isSaved: false,
-          originalScore: undefined,
-          isModified: false,
-          isCleared: false,
-          lastModified: new Date()
-        }));
+            studentId: stu.id,
+            classId: selectedClassId,
+            schoolYear,
+            subjectId: selectedSubject,
+            evaluationTypeId: selectedEvaluationType,
+            evaluationPeriodId: selectedPeriod,
+            score: 0,
+            maxScore: subject?.maxScore || 20,
+            coefficient: subject?.coefficient || 1,
+            isSaved: false,
+            originalScore: undefined,
+            isModified: false,
+            isCleared: false,
+            lastModified: new Date()
+          }));
 
           // Merge placeholders but avoid duplicate entries
           setGrades(prev => {
@@ -1188,7 +1195,7 @@ export default function SaisieNotesAvancee({ currentUser, role, teacherId }: { c
           });
         }
       }
-      
+
       // CORRECTION : Fusionner les notes existantes avec les notes locales
       setGrades(prev => {
         // Garder les notes d'autres contextes
@@ -1213,8 +1220,8 @@ export default function SaisieNotesAvancee({ currentUser, role, teacherId }: { c
 
         // Garder les notes locales non sauvegardées
         const localUnsavedGrades = prev.filter(g =>
-          g.subjectId === selectedSubject && 
-          g.evaluationPeriodId === selectedPeriod && 
+          g.subjectId === selectedSubject &&
+          g.evaluationPeriodId === selectedPeriod &&
           !g.isSaved
         );
 
@@ -1252,23 +1259,23 @@ export default function SaisieNotesAvancee({ currentUser, role, teacherId }: { c
   // CORRECTION : Fonction simplifiée pour récupérer les notes d'un élève
   const getGradeForStudent = (studentId: string) => {
     // Recherche dans l'état local (priorité aux modifications en cours)
-    const localGrade = grades.find(g => 
-      g.studentId === studentId && 
-      g.subjectId === selectedSubject && 
+    const localGrade = grades.find(g =>
+      g.studentId === studentId &&
+      g.subjectId === selectedSubject &&
       g.evaluationPeriodId === selectedPeriod
     );
-    
+
     if (localGrade) {
       return localGrade;
     }
 
     // Si pas de note locale, chercher dans les notes existantes
-    const existingGrade = existingGrades.find(g => 
-      g.studentId === studentId && 
-      g.subjectId === selectedSubject && 
+    const existingGrade = existingGrades.find(g =>
+      g.studentId === studentId &&
+      g.subjectId === selectedSubject &&
       g.evaluationPeriodId === selectedPeriod
     );
-    
+
     if (existingGrade) {
       return {
         studentId: existingGrade.studentId,
@@ -1301,7 +1308,7 @@ export default function SaisieNotesAvancee({ currentUser, role, teacherId }: { c
     }
 
     const numericScore = parseFloat(newScore);
-    
+
     if (isNaN(numericScore) || numericScore < 0) {
       // Si la note est invalide, on ne fait rien
       return;
@@ -1311,7 +1318,7 @@ export default function SaisieNotesAvancee({ currentUser, role, teacherId }: { c
     if (!subject) return;
 
     const maxScore = subject.maxScore;
-    
+
     if (numericScore > maxScore) {
       toast({
         title: "Note invalide",
@@ -1323,11 +1330,11 @@ export default function SaisieNotesAvancee({ currentUser, role, teacherId }: { c
 
     // Trouver l'élève pour obtenir son code matricule
     const student = students.find(s => s.id === studentId);
-    
+
     // CORRECTION : Chercher la note existante avec l'ID ET le code matricule
-    const existingGrade = existingGrades.find(g => 
-      (g.studentId === studentId || g.studentId === student?.code) && 
-      g.subjectId === selectedSubject && 
+    const existingGrade = existingGrades.find(g =>
+      (g.studentId === studentId || g.studentId === student?.code) &&
+      g.subjectId === selectedSubject &&
       g.evaluationPeriodId === selectedPeriod
     );
 
@@ -1350,12 +1357,12 @@ export default function SaisieNotesAvancee({ currentUser, role, teacherId }: { c
 
     setGrades(prev => {
       // CORRECTION : Chercher dans l'état local avec l'ID ET le code matricule
-      const existing = prev.findIndex(g => 
-        (g.studentId === studentId || g.studentId === student?.code) && 
-        g.subjectId === selectedSubject && 
+      const existing = prev.findIndex(g =>
+        (g.studentId === studentId || g.studentId === student?.code) &&
+        g.subjectId === selectedSubject &&
         g.evaluationPeriodId === selectedPeriod
       );
-      
+
       if (existing >= 0) {
         const updated = [...prev];
         updated[existing] = newGrade;
@@ -1367,19 +1374,19 @@ export default function SaisieNotesAvancee({ currentUser, role, teacherId }: { c
         return newGrades;
       }
     });
-    
+
     console.log('🔄 Note mise à jour sans forcer le refresh');
   };
 
-    // NOUVELLE FONCTION : Effacer explicitement une note
+  // NOUVELLE FONCTION : Effacer explicitement une note
   const handleGradeClear = (studentId: string) => {
     // Trouver l'élève pour obtenir son code matricule
     const student = students.find(s => s.id === studentId);
-    
+
     // CORRECTION : Chercher la note existante avec l'ID ET le code matricule
-    const existingGrade = existingGrades.find(g => 
-      (g.studentId === studentId || g.studentId === student?.code) && 
-      g.subjectId === selectedSubject && 
+    const existingGrade = existingGrades.find(g =>
+      (g.studentId === studentId || g.studentId === student?.code) &&
+      g.subjectId === selectedSubject &&
       g.evaluationPeriodId === selectedPeriod
     );
 
@@ -1404,12 +1411,12 @@ export default function SaisieNotesAvancee({ currentUser, role, teacherId }: { c
 
       setGrades(prev => {
         // CORRECTION : Chercher dans l'état local avec l'ID ET le code matricule
-        const existing = prev.findIndex(g => 
-          (g.studentId === studentId || g.studentId === student?.code) && 
-          g.subjectId === selectedSubject && 
+        const existing = prev.findIndex(g =>
+          (g.studentId === studentId || g.studentId === student?.code) &&
+          g.subjectId === selectedSubject &&
           g.evaluationPeriodId === selectedPeriod
         );
-        
+
         if (existing >= 0) {
           const updated = [...prev];
           updated[existing] = clearedGrade;
@@ -1427,7 +1434,7 @@ export default function SaisieNotesAvancee({ currentUser, role, teacherId }: { c
         description: `La note de ${student?.nom || 'l\'élève'} a été marquée pour suppression`,
         variant: "default",
       });
-      
+
       // Debug: Afficher l'état dans la console
       console.log('🗑️ Note effacée - État:', {
         studentId,
@@ -1440,1105 +1447,1103 @@ export default function SaisieNotesAvancee({ currentUser, role, teacherId }: { c
       });
     } else {
       // CORRECTION : Supprimer de l'état local avec l'ID ET le code matricule
-      setGrades(prev => prev.filter(g => 
-        !((g.studentId === studentId || g.studentId === student?.code) && 
-          g.subjectId === selectedSubject && 
+      setGrades(prev => prev.filter(g =>
+        !((g.studentId === studentId || g.studentId === student?.code) &&
+          g.subjectId === selectedSubject &&
           g.evaluationPeriodId === selectedPeriod)
       ));
     }
-    
+
     // Forcer la mise à jour de l'affichage
     setRefreshTrigger(prev => prev + 1);
     console.log('🗑️ Note effacée avec refresh forcé');
   };
 
-   // NOUVELLE FONCTION : Restaurer une note effacée
-   const handleGradeRestore = (studentId: string) => {
-     // Trouver l'élève pour obtenir son code matricule
-     const student = students.find(s => s.id === studentId);
-     
-     // CORRECTION : Chercher la note effacée avec l'ID ET le code matricule
-     const clearedGrade = grades.find(g => 
-       (g.studentId === studentId || g.studentId === student?.code) && 
-       g.subjectId === selectedSubject && 
-       g.evaluationPeriodId === selectedPeriod &&
-       g.isCleared
-     );
+  // NOUVELLE FONCTION : Restaurer une note effacée
+  const handleGradeRestore = (studentId: string) => {
+    // Trouver l'élève pour obtenir son code matricule
+    const student = students.find(s => s.id === studentId);
 
-     if (clearedGrade && clearedGrade.originalScore !== undefined) {
-       // Restaurer la note avec le score original
-       const restoredGrade: Grade = {
-         ...clearedGrade,
-         score: clearedGrade.originalScore,
-         isCleared: false,
-         isModified: false,
-         lastModified: new Date()
-       };
+    // CORRECTION : Chercher la note effacée avec l'ID ET le code matricule
+    const clearedGrade = grades.find(g =>
+      (g.studentId === studentId || g.studentId === student?.code) &&
+      g.subjectId === selectedSubject &&
+      g.evaluationPeriodId === selectedPeriod &&
+      g.isCleared
+    );
 
-       setGrades(prev => prev.map(g => 
-         g === clearedGrade ? restoredGrade : g
-       ));
+    if (clearedGrade && clearedGrade.originalScore !== undefined) {
+      // Restaurer la note avec le score original
+      const restoredGrade: Grade = {
+        ...clearedGrade,
+        score: clearedGrade.originalScore,
+        isCleared: false,
+        isModified: false,
+        lastModified: new Date()
+      };
 
-       toast({
-         title: "Note restaurée",
-         description: `La note de ${student?.nom || 'l\'élève'} a été restaurée`,
-         variant: "default",
-       });
+      setGrades(prev => prev.map(g =>
+        g === clearedGrade ? restoredGrade : g
+      ));
 
-       console.log('🔄 Note restaurée:', restoredGrade);
-     }
-   };
+      toast({
+        title: "Note restaurée",
+        description: `La note de ${student?.nom || 'l\'élève'} a été restaurée`,
+        variant: "default",
+      });
 
-   // NOUVELLE FONCTION : Ouvrir la boîte de dialogue d'édition
-   const handleGradeEdit = (studentId: string, currentScore: number) => {
-     const student = students.find(s => s.id === studentId);
-     const subject = subjects.find(s => s.id === selectedSubject);
-     
-     if (student && subject) {
-       setEditingStudentId(studentId);
-       setEditingStudentName(`${student.nom} ${student.prenom}`);
-       setEditingScore(currentScore.toString());
-       setEditingMaxScore(subject.maxScore);
-       setEditDialogOpen(true);
-     }
-   };
+      console.log('🔄 Note restaurée:', restoredGrade);
+    }
+  };
 
-   // NOUVELLE FONCTION : Confirmer la modification de la note
-   const handleGradeEditConfirm = async () => {
-     if (!editingScore || editingScore.trim() === '') {
-       toast({
-         title: "Note invalide",
-         description: "Veuillez saisir une note valide",
-         variant: "destructive",
-       });
-       return;
-     }
+  // NOUVELLE FONCTION : Ouvrir la boîte de dialogue d'édition
+  const handleGradeEdit = (studentId: string, currentScore: number) => {
+    const student = students.find(s => s.id === studentId);
+    const subject = subjects.find(s => s.id === selectedSubject);
 
-     const numericScore = parseFloat(editingScore);
-     
-     if (isNaN(numericScore) || numericScore < 0 || numericScore > editingMaxScore) {
-       toast({
-         title: "Note invalide",
-         description: `La note doit être comprise entre 0 et ${editingMaxScore}`,
-         variant: "destructive",
-       });
-       return;
-     }
+    if (student && subject) {
+      setEditingStudentId(studentId);
+      setEditingStudentName(`${student.nom} ${student.prenom}`);
+      setEditingScore(currentScore.toString());
+      setEditingMaxScore(subject.maxScore);
+      setEditDialogOpen(true);
+    }
+  };
 
-     try {
-       setIsLoading(true);
-       
-       // Utiliser la fonction existante pour mettre à jour la note dans l'état local
-       handleGradeChange(editingStudentId, editingScore);
-       
-       // Créer la note à sauvegarder
-       const student = students.find(s => s.id === editingStudentId);
-       const subject = subjects.find(s => s.id === selectedSubject);
-       
-       if (!student || !subject) {
-         throw new Error('Données d\'élève ou de matière non trouvées');
-       }
-       
-       const gradeToSave = {
-         studentId: editingStudentId,
-         classId: selectedClassId,
-         schoolYear,
-         subjectId: selectedSubject,
-         evaluationTypeId: selectedEvaluationType,
-         evaluationPeriodId: selectedPeriod,
-         score: numericScore,
-         maxScore: editingMaxScore,
-         coefficient: subject.coefficient,
-         recordedBy: 'admin-001' // Utilisateur par défaut
-       };
-       
-       console.log('💾 Sauvegarde immédiate de la note:', gradeToSave);
-       
-       // Sauvegarder immédiatement en base de données
-       const response = await fetch('/api/grades/', {
-         method: 'POST',
-         headers: {
-           'Content-Type': 'application/json',
-         },
-         body: JSON.stringify({
-           grades: [gradeToSave],
-           recordedBy: 'admin-001'
-         }),
-       });
-       
-       if (response.ok) {
-         const result = await response.json();
-         console.log('✅ Note sauvegardée avec succès:', result);
-         
-         // Marquer la note comme sauvegardée dans l'état local
-         setGrades(prev => prev.map(grade => {
-           if (grade.studentId === editingStudentId && 
-               grade.subjectId === selectedSubject && 
-               grade.evaluationPeriodId === selectedPeriod) {
-             return { ...grade, isSaved: true, isModified: false };
-           }
-           return grade;
-         }));
-         
-         // Recharger les notes depuis la base de données
-         await loadExistingGrades();
-         
-         // Forcer la mise à jour de l'affichage
-         setRefreshTrigger(prev => prev + 1);
-         
-         toast({
-           title: "Note sauvegardée",
-           description: `La note de ${editingStudentName} a été mise à jour et sauvegardée`,
-           variant: "default",
-         });
-       } else {
-         const error = await response.json();
-         throw new Error(error.error || error.details || 'Erreur lors de la sauvegarde');
-       }
-     } catch (error) {
-       console.error('❌ Erreur lors de la sauvegarde de la note:', error);
-       toast({
-         title: "Erreur",
-         description: "La note a été modifiée localement mais n'a pas pu être sauvegardée en base",
-         variant: "destructive",
-       });
-     } finally {
-       setIsLoading(false);
-       
-       // Fermer la boîte de dialogue
-       setEditDialogOpen(false);
-       setEditingStudentId('');
-       setEditingStudentName('');
-       setEditingScore('');
-       setEditingMaxScore(20);
-     }
-   };
+  // NOUVELLE FONCTION : Confirmer la modification de la note
+  const handleGradeEditConfirm = async () => {
+    if (!editingScore || editingScore.trim() === '') {
+      toast({
+        title: "Note invalide",
+        description: "Veuillez saisir une note valide",
+        variant: "destructive",
+      });
+      return;
+    }
 
-   const handleBulkGradeChange = () => {
-     if (!bulkScore || selectedStudents.size === 0) {
-       toast({
-         title: "Action invalide",
-         description: "Veuillez sélectionner des élèves et saisir une note",
-         variant: "destructive",
-       });
-       return;
-     }
+    const numericScore = parseFloat(editingScore);
 
-     const numericScore = parseFloat(bulkScore);
-     const subject = subjects.find(s => s.id === selectedSubject);
-     
-     if (!subject) {
-       toast({
-         title: "Matière non trouvée",
-         description: "Impossible de trouver la matière sélectionnée",
-         variant: "destructive",
-       });
-       return;
-     }
-     
-     if (numericScore < 0 || numericScore > subject.maxScore) {
-       toast({
-         title: "Note invalide",
-         description: `La note doit être comprise entre 0 et ${subject.maxScore}`,
-         variant: "destructive",
-       });
-       return;
-     }
+    if (isNaN(numericScore) || numericScore < 0 || numericScore > editingMaxScore) {
+      toast({
+        title: "Note invalide",
+        description: `La note doit être comprise entre 0 et ${editingMaxScore}`,
+        variant: "destructive",
+      });
+      return;
+    }
 
-     selectedStudents.forEach(studentId => {
-       // Trouver l'élève par son ID pour obtenir son code matricule
-       const student = students.find(s => s.id === studentId);
-       if (student) {
-         handleGradeChange(student.id, bulkScore);
-       }
-     });
+    try {
+      setIsLoading(true);
 
-     setBulkScore('');
-     setSelectedStudents(new Set());
-     setBulkEditMode(false);
+      // Utiliser la fonction existante pour mettre à jour la note dans l'état local
+      handleGradeChange(editingStudentId, editingScore);
 
-     toast({
-       title: "Notes appliquées",
-       description: `${selectedStudents.size} note(s) appliquée(s) avec succès`,
-     });
-   };
+      // Créer la note à sauvegarder
+      const student = students.find(s => s.id === editingStudentId);
+      const subject = subjects.find(s => s.id === selectedSubject);
 
-   const toggleStudentSelection = (studentId: string) => {
-     const newSelected = new Set(selectedStudents);
-     if (newSelected.has(studentId)) {
-       newSelected.delete(studentId);
-     } else {
-       newSelected.add(studentId);
-     }
-     setSelectedStudents(newSelected);
-   };
+      if (!student || !subject) {
+        throw new Error('Données d\'élève ou de matière non trouvées');
+      }
 
-   const selectAllStudents = () => {
-     setSelectedStudents(new Set(currentStudents.map(s => s.id))); // On garde l'ID pour la sélection
-   };
+      const gradeToSave = {
+        studentId: editingStudentId,
+        classId: selectedClassId,
+        schoolYear,
+        subjectId: selectedSubject,
+        evaluationTypeId: selectedEvaluationType,
+        evaluationPeriodId: selectedPeriod,
+        score: numericScore,
+        maxScore: editingMaxScore,
+        coefficient: subject.coefficient,
+        recordedBy: 'admin-001' // Utilisateur par défaut
+      };
 
-   const deselectAllStudents = () => {
-     setSelectedStudents(new Set());
-   };
+      console.log('💾 Sauvegarde immédiate de la note:', gradeToSave);
 
-   // NOUVELLE FONCTION : Télécharger les notes de la classe sélectionnée en PDF avec jsPDF
-   const handleDownloadGrades = async () => {
-     if (!selectedClass || !selectedSubject || !selectedPeriod) {
-       toast({
-         title: "Configuration incomplète",
-         description: "Veuillez sélectionner une classe, une matière et une période",
-         variant: "destructive",
-       });
-       return;
-     }
+      // Sauvegarder immédiatement en base de données
+      const response = await fetch('/api/grades/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          grades: [gradeToSave],
+          recordedBy: 'admin-001'
+        }),
+      });
 
-     try {
-       setIsLoading(true);
-       
-       // CORRECTION : Éliminer les doublons en priorisant les notes locales
-       const localGrades = grades.filter(g => 
-         g.subjectId == selectedSubject && 
-         g.evaluationPeriodId === selectedPeriod
-       );
-       
-       const existingGradesForContext = existingGrades.filter(g => 
-         g.subjectId == selectedSubject && 
-         g.evaluationPeriodId === selectedPeriod
-       );
-       
-       // Créer un Map pour éliminer les doublons (priorité aux notes locales)
-       const uniqueGradesMap = new Map();
-       
-       // D'abord ajouter les notes existantes
-       existingGradesForContext.forEach(grade => {
-         const key = grade.studentId;
-         uniqueGradesMap.set(key, grade);
-       });
-       
-       // Puis remplacer/ajouter les notes locales (priorité)
-       localGrades.forEach(grade => {
-         const key = grade.studentId;
-         uniqueGradesMap.set(key, grade);
-       });
-       
-       // Convertir le Map en tableau
-       const contextGrades = Array.from(uniqueGradesMap.values());
-       
-       console.log('🔍 Notes uniques pour export:', contextGrades);
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ Note sauvegardée avec succès:', result);
 
-       if (contextGrades.length === 0) {
-         toast({
-           title: "Aucune note à télécharger",
-           description: "Aucune note trouvée pour le contexte sélectionné",
-           variant: "destructive",
-         });
-         return;
-       }
+        // Marquer la note comme sauvegardée dans l'état local
+        setGrades(prev => prev.map(grade => {
+          if (grade.studentId === editingStudentId &&
+            grade.subjectId === selectedSubject &&
+            grade.evaluationPeriodId === selectedPeriod) {
+            return { ...grade, isSaved: true, isModified: false };
+          }
+          return grade;
+        }));
 
-       // Préparer les données pour l'export
-       const exportData = contextGrades.map((grade, index) => {
-         // CORRECTION : Utiliser la même logique que les bulletins
-         // grade.studentId contient le nom complet, nous devons trouver l'élève par son nom
-         let student = students.find(s => 
-           `${s.nom} ${s.prenom}` === grade.studentId ||
-           s.id === grade.studentId
-         );
-         
-         const subject = subjects.find(s => s.id === grade.subjectId);
-         const period = periods.find(p => p.id === grade.evaluationPeriodId);
-         
-         // DEBUG : Vérifier les données de l'élève
-         console.log('🔍 Données élève pour export:', {
-           gradeStudentId: grade.studentId,
-           foundStudent: student,
-           studentId: student?.id,
-           studentNom: student?.nom,
-           studentPrenom: student?.prenom,
-           allStudents: students.map(s => ({ id: s.id, nom: s.nom, prenom: s.prenom, fullName: `${s.nom} ${s.prenom}` }))
-         });
-         
-         // CORRECTION : Utiliser student.id comme matricule (même logique que les bulletins)
-         const matricule = student?.id || 'N/A';
-         
-         return {
-           matricule: matricule,
-           nom: student?.nom || 'N/A',
-           prenom: student?.prenom || 'N/A',
-           classe: selectedClass,
-           matiere: subject?.name || '',
-           sequence: period?.name || '',
-           note: grade.score,
-           maxNote: grade.maxScore,
-           coefficient: grade.coefficient,
-           pourcentage: ((grade.score / grade.maxScore) * 100).toFixed(2) + '%',
-           annee: schoolYear
-         };
-       });
-       
-       console.log('🔍 Données d\'export finales:', exportData);
+        // Recharger les notes depuis la base de données
+        await loadExistingGrades();
 
-       // Utiliser jsPDF pour générer un vrai PDF avec le même format que la section finance
-       const doc = new jsPDF('l', 'mm', 'a4'); // Landscape pour une meilleure présentation
+        // Forcer la mise à jour de l'affichage
+        setRefreshTrigger(prev => prev + 1);
 
-       let currentY = 20;
+        toast({
+          title: "Note sauvegardée",
+          description: `La note de ${editingStudentName} a été mise à jour et sauvegardée`,
+          variant: "default",
+        });
+      } else {
+        const error = await response.json();
+        throw new Error(error.error || error.details || 'Erreur lors de la sauvegarde');
+      }
+    } catch (error) {
+      console.error('❌ Erreur lors de la sauvegarde de la note:', error);
+      toast({
+        title: "Erreur",
+        description: "La note a été modifiée localement mais n'a pas pu être sauvegardée en base",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
 
-       // En-tête administratif (même format que la section finance)
-       doc.setFontSize(16);
-       doc.setFont('helvetica', 'bold');
-       doc.text('RAPPORT DES NOTES - ' + (subjects.find(s => s.id === selectedSubject)?.name || '').toUpperCase(), 148, currentY, { align: 'center' });
-       currentY += 8;
+      // Fermer la boîte de dialogue
+      setEditDialogOpen(false);
+      setEditingStudentId('');
+      setEditingStudentName('');
+      setEditingScore('');
+      setEditingMaxScore(20);
+    }
+  };
 
-       doc.setFontSize(14);
-       doc.text('CLASSE: ' + selectedClass.toUpperCase(), 148, currentY, { align: 'center' });
-       currentY += 10;
+  const handleBulkGradeChange = () => {
+    if (!bulkScore || selectedStudents.size === 0) {
+      toast({
+        title: "Action invalide",
+        description: "Veuillez sélectionner des élèves et saisir une note",
+        variant: "destructive",
+      });
+      return;
+    }
 
-       // Informations de base (sans l'établissement)
-       doc.setFontSize(10);
-       doc.setFont('helvetica', 'normal');
-       doc.text(`Année scolaire: ${schoolYear}`, 20, currentY);
-       currentY += 5;
-       doc.text(`Séquence: ${periods.find(p => p.id === selectedPeriod)?.name || ''}`, 20, currentY);
-       currentY += 5;
-       doc.text(`Matière: ${subjects.find(s => s.id === selectedSubject)?.name || ''}`, 20, currentY);
-       currentY += 5;
-       doc.text(`Date de génération: ${new Date().toLocaleDateString('fr-FR', {
-         day: '2-digit',
-         month: '2-digit',
-         year: 'numeric',
-         hour: '2-digit',
-         minute: '2-digit'
-       })}`, 20, currentY);
-       currentY += 8;
+    const numericScore = parseFloat(bulkScore);
+    const subject = subjects.find(s => s.id === selectedSubject);
 
+    if (!subject) {
+      toast({
+        title: "Matière non trouvée",
+        description: "Impossible de trouver la matière sélectionnée",
+        variant: "destructive",
+      });
+      return;
+    }
 
-       // Tableau principal avec autoTable (même format que la section finance)
-       const tableData = exportData.map(student => [
-         student.matricule,
-         student.nom,
-         student.prenom,
-         `${student.note}/${student.maxNote}`,
-         `${((student.note / student.maxNote) * 100).toFixed(1)}%`,
-         student.coefficient.toString(),
-         student.note >= 16 ? 'Excellent' :
-         student.note >= 10 ? 'Réussi' : 'Échec'
-       ]);
+    if (numericScore < 0 || numericScore > subject.maxScore) {
+      toast({
+        title: "Note invalide",
+        description: `La note doit être comprise entre 0 et ${subject.maxScore}`,
+        variant: "destructive",
+      });
+      return;
+    }
 
-       // Créer le tableau avec autoTable
-       autoTable(doc, {
-         head: [['Matricule', 'Nom', 'Prénom', 'Note', 'Pourcentage', 'Coef', 'Statut']],
-         body: tableData,
-         startY: currentY,
-         styles: {
-           fontSize: 8,
-           cellPadding: 2,
-         },
-         headStyles: {
-           fillColor: [51, 51, 51],
-           textColor: [255, 255, 255],
-           fontStyle: 'bold',
-           fontSize: 7,
-         },
-         alternateRowStyles: {
-           fillColor: [248, 249, 250],
-         },
-         columnStyles: {
-           0: { cellWidth: 25 }, // Matricule
-           1: { cellWidth: 45 }, // Nom
-           2: { cellWidth: 45 }, // Prénom
-           3: { cellWidth: 30 }, // Note
-           4: { cellWidth: 30 }, // Pourcentage
-           5: { cellWidth: 20 }, // Coefficient
-           6: { cellWidth: 30 }, // Statut
-         },
-         didDrawPage: function(data: any) {
-           // Ajouter le numéro de page (centré pour le format paysage)
-           doc.setFontSize(8);
-           doc.text(`Page ${data.pageNumber} sur ${doc.internal.getNumberOfPages()}`, 148, doc.internal.pageSize.height - 10, { align: 'center' });
-         }
-       });
+    selectedStudents.forEach(studentId => {
+      // Trouver l'élève par son ID pour obtenir son code matricule
+      const student = students.find(s => s.id === studentId);
+      if (student) {
+        handleGradeChange(student.id, bulkScore);
+      }
+    });
 
-       // Nom du fichier
-       const fileName = `notes_${selectedClass}_${subjects.find(s => s.id === selectedSubject)?.name}_${periods.find(p => p.id === selectedPeriod)?.name}_${schoolYear}.pdf`;
+    setBulkScore('');
+    setSelectedStudents(new Set());
+    setBulkEditMode(false);
 
-       // Télécharger le PDF
-       doc.save(fileName);
+    toast({
+      title: "Notes appliquées",
+      description: `${selectedStudents.size} note(s) appliquée(s) avec succès`,
+    });
+  };
 
-       toast({
-         title: "Téléchargement réussi",
-         description: `${exportData.length} note(s) exportée(s) au format PDF`,
-       });
+  const toggleStudentSelection = (studentId: string) => {
+    const newSelected = new Set(selectedStudents);
+    if (newSelected.has(studentId)) {
+      newSelected.delete(studentId);
+    } else {
+      newSelected.add(studentId);
+    }
+    setSelectedStudents(newSelected);
+  };
 
-     } catch (error) {
-       console.error('❌ Erreur lors du téléchargement:', error);
-       toast({
-         title: "Erreur",
-         description: "Erreur lors du téléchargement des notes",
-         variant: "destructive",
-       });
-     } finally {
-       setIsLoading(false);
-     }
-   };
+  const selectAllStudents = () => {
+    setSelectedStudents(new Set(currentStudents.map(s => s.id))); // On garde l'ID pour la sélection
+  };
 
-   const handleSaveGrades = async () => {
-     if (!selectedClass || !selectedSubject || !selectedPeriod) {
-       toast({
-         title: "Configuration incomplète",
-         description: "Veuillez sélectionner une classe, une matière et une période",
-         variant: "destructive",
-       });
-       return;
-     }
+  const deselectAllStudents = () => {
+    setSelectedStudents(new Set());
+  };
 
-     // Sauvegarder les notes dans localStorage avant l'envoi
-     const gradesToSave = grades.filter(g => 
-       g.subjectId === selectedSubject && 
-       g.evaluationPeriodId === selectedPeriod
-     );
-     
-     console.log('🔍 Notes à sauvegarder:', gradesToSave);
-     console.log('🔍 Contexte actuel:', { selectedClass, selectedSubject, selectedPeriod, selectedClassId, schoolYear });
-     
-     saveGradesToLocalStorage(gradesToSave);
+  // NOUVELLE FONCTION : Télécharger les notes de la classe sélectionnée en PDF avec jsPDF
+  const handleDownloadGrades = async () => {
+    if (!selectedClass || !selectedSubject || !selectedPeriod) {
+      toast({
+        title: "Configuration incomplète",
+        description: "Veuillez sélectionner une classe, une matière et une période",
+        variant: "destructive",
+      });
+      return;
+    }
 
-     const userId = 'admin-001';
+    try {
+      setIsLoading(true);
 
-     if (gradesToSave.length === 0) {
-       toast({
-         title: "Aucune note à sauvegarder",
-         description: "Veuillez saisir au moins une note",
-         variant: "destructive",
-       });
-       return;
-     }
+      // CORRECTION : Éliminer les doublons en priorisant les notes locales
+      const localGrades = grades.filter(g =>
+        g.subjectId == selectedSubject &&
+        g.evaluationPeriodId === selectedPeriod
+      );
 
-     setIsLoading(true);
-     setError('');
-     setSuccess('');
+      const existingGradesForContext = existingGrades.filter(g =>
+        g.subjectId == selectedSubject &&
+        g.evaluationPeriodId === selectedPeriod
+      );
 
-     try {
-       console.log('🔍 Sauvegarde des notes...');
-       console.log('🔍 Données envoyées à l\'API:', { grades: gradesToSave, recordedBy: userId });
-       
-       const response = await fetch('/api/grades/', {
-         method: 'POST',
-         headers: {
-           'Content-Type': 'application/json',
-         },
-         body: JSON.stringify({
-           grades: gradesToSave,
-           recordedBy: userId
-         }),
-       });
+      // Créer un Map pour éliminer les doublons (priorité aux notes locales)
+      const uniqueGradesMap = new Map();
 
-       if (response.ok) {
-         const result = await response.json();
-         console.log('✅ Réponse de l\'API:', result);
-         
-         // Vérifier s'il y a des erreurs dans les résultats
-         const hasErrors = result.results && result.results.some((r: any) => r.action === 'error');
-         
-         if (hasErrors) {
-           // Il y a des erreurs, ne pas afficher le message de succès
-           const errorCount = result.results.filter((r: any) => r.action === 'error').length;
-           const successCount = result.results.filter((r: any) => r.action !== 'error').length;
-           
-           if (errorCount > 0 && successCount === 0) {
-             // Toutes les notes ont échoué
-             throw new Error(`${errorCount} note(s) n'ont pas pu être enregistrées`);
-           } else if (errorCount > 0) {
-             // Certaines notes ont réussi, d'autres ont échoué
-             setError(`${successCount} note(s) enregistrées, ${errorCount} note(s) ont échoué`);
-             toast({
-               title: "Attention",
-               description: `${successCount} note(s) enregistrées, ${errorCount} note(s) ont échoué`,
-               variant: "destructive",
-             });
-             return;
-           }
-         }
-         
-         const message = `${result.results?.length || 0} note(s) enregistrée(s) avec succès`;
-         setSuccessMessage(message);
-         setShowSuccessDialog(true);
-         
-         console.log('🔍 Rechargement des notes après sauvegarde...');
-         
-         // CORRECTION : Marquer les notes comme sauvegardées dans l'état local
-         // Cela permettra au statut de changer correctement
-         setGrades(prev => prev.map(grade => {
-           if (grade.subjectId === selectedSubject && grade.evaluationPeriodId === selectedPeriod) {
-             return { ...grade, isSaved: true };
-           }
-           return grade;
-         }));
-         
-         // Nettoyer le localStorage après sauvegarde réussie
-         clearGradesFromLocalStorage();
-         console.log('🔍 Notes sauvegardées avec succès, statut mis à jour');
-         
-         // CORRECTION : Recharger les notes depuis la base de données pour s'assurer de la cohérence
-         await loadExistingGrades();
-         
-         // CORRECTION : Forcer la mise à jour de l'affichage
-         setRefreshTrigger(prev => prev + 1);
-         
-         // NOUVEAU : Attendre un peu puis recharger pour voir les notes initialisées à 0
-         setTimeout(async () => {
-           console.log('🔄 Rechargement final pour voir les notes initialisées...');
-           await loadExistingGrades();
-           setRefreshTrigger(prev => prev + 1);
-         }, 1000);
-         
-         // Afficher un message de confirmation
-         toast({
-           title: "Succès",
-           description: `${result.results?.length || 0} note(s) enregistrée(s) avec succès`,
-         });
-       } else {
-         const error = await response.json();
-         console.error('❌ Erreur API:', error);
-         throw new Error(error.error || error.details || 'Erreur lors de la sauvegarde');
-       }
-     } catch (error) {
-       console.error('❌ Erreur lors de la sauvegarde:', error);
-       setError(error instanceof Error ? error.message : 'Erreur lors de la sauvegarde des notes');
-       toast({
-         title: "Erreur",
-         description: "Erreur lors de la sauvegarde des notes",
-         variant: "destructive",
-       });
-     } finally {
-       setIsLoading(false);
-     }
-   };
+      // D'abord ajouter les notes existantes
+      existingGradesForContext.forEach(grade => {
+        const key = grade.studentId;
+        uniqueGradesMap.set(key, grade);
+      });
 
-   const canSave = selectedClass && selectedSubject && selectedPeriod && grades.length > 0;
-   const hasChanges = grades.length > 0;
+      // Puis remplacer/ajouter les notes locales (priorité)
+      localGrades.forEach(grade => {
+        const key = grade.studentId;
+        uniqueGradesMap.set(key, grade);
+      });
+
+      // Convertir le Map en tableau
+      const contextGrades = Array.from(uniqueGradesMap.values());
+
+      console.log('🔍 Notes uniques pour export:', contextGrades);
+
+      if (contextGrades.length === 0) {
+        toast({
+          title: "Aucune note à télécharger",
+          description: "Aucune note trouvée pour le contexte sélectionné",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Préparer les données pour l'export
+      const exportData = contextGrades.map((grade, index) => {
+        // CORRECTION : Utiliser la même logique que les bulletins
+        // grade.studentId contient le nom complet, nous devons trouver l'élève par son nom
+        let student = students.find(s =>
+          `${s.nom} ${s.prenom}` === grade.studentId ||
+          s.id === grade.studentId
+        );
+
+        const subject = subjects.find(s => s.id === grade.subjectId);
+        const period = periods.find(p => p.id === grade.evaluationPeriodId);
+
+        // DEBUG : Vérifier les données de l'élève
+        console.log('🔍 Données élève pour export:', {
+          gradeStudentId: grade.studentId,
+          foundStudent: student,
+          studentId: student?.id,
+          studentNom: student?.nom,
+          studentPrenom: student?.prenom,
+          allStudents: students.map(s => ({ id: s.id, nom: s.nom, prenom: s.prenom, fullName: `${s.nom} ${s.prenom}` }))
+        });
+
+        // CORRECTION : Utiliser student.id comme matricule (même logique que les bulletins)
+        const matricule = student?.id || 'N/A';
+
+        return {
+          matricule: matricule,
+          nom: student?.nom || 'N/A',
+          prenom: student?.prenom || 'N/A',
+          classe: selectedClass,
+          matiere: subject?.name || '',
+          sequence: period?.name || '',
+          note: grade.score,
+          maxNote: grade.maxScore,
+          coefficient: grade.coefficient,
+          pourcentage: ((grade.score / grade.maxScore) * 100).toFixed(2) + '%',
+          annee: schoolYear
+        };
+      });
+
+      console.log('🔍 Données d\'export finales:', exportData);
+
+      // Utiliser jsPDF pour générer un vrai PDF avec le même format que la section finance
+      const doc = new jsPDF('l', 'mm', 'a4'); // Landscape pour une meilleure présentation
+
+      let currentY = 20;
+
+      // En-tête administratif (même format que la section finance)
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text('RAPPORT DES NOTES - ' + (subjects.find(s => s.id === selectedSubject)?.name || '').toUpperCase(), 148, currentY, { align: 'center' });
+      currentY += 8;
+
+      doc.setFontSize(14);
+      doc.text('CLASSE: ' + selectedClass.toUpperCase(), 148, currentY, { align: 'center' });
+      currentY += 10;
+
+      // Informations de base (sans l'établissement)
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Année scolaire: ${schoolYear}`, 20, currentY);
+      currentY += 5;
+      doc.text(`Séquence: ${periods.find(p => p.id === selectedPeriod)?.name || ''}`, 20, currentY);
+      currentY += 5;
+      doc.text(`Matière: ${subjects.find(s => s.id === selectedSubject)?.name || ''}`, 20, currentY);
+      currentY += 5;
+      doc.text(`Date de génération: ${new Date().toLocaleDateString('fr-FR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })}`, 20, currentY);
+      currentY += 8;
 
 
+      // Tableau principal avec autoTable (même format que la section finance)
+      const tableData = exportData.map(student => [
+        student.matricule,
+        student.nom,
+        student.prenom,
+        `${student.note}/${student.maxNote}`,
+        `${((student.note / student.maxNote) * 100).toFixed(1)}%`,
+        student.coefficient.toString(),
+        student.note >= 16 ? 'Excellent' :
+          student.note >= 10 ? 'Réussi' : 'Échec'
+      ]);
 
-   return (
-     <div className="space-y-6">
-       {/* Messages d'erreur et de succès */}
-       {error && (
-         <Alert variant="destructive">
-           <AlertCircle className="h-4 w-4" />
-           <AlertDescription>{error}</AlertDescription>
-         </Alert>
-       )}
+      // Créer le tableau avec autoTable
+      autoTable(doc, {
+        head: [['Matricule', 'Nom', 'Prénom', 'Note', 'Pourcentage', 'Coef', 'Statut']],
+        body: tableData,
+        startY: currentY,
+        styles: {
+          fontSize: 8,
+          cellPadding: 2,
+        },
+        headStyles: {
+          fillColor: [51, 51, 51],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          fontSize: 7,
+        },
+        alternateRowStyles: {
+          fillColor: [248, 249, 250],
+        },
+        columnStyles: {
+          0: { cellWidth: 25 }, // Matricule
+          1: { cellWidth: 45 }, // Nom
+          2: { cellWidth: 45 }, // Prénom
+          3: { cellWidth: 30 }, // Note
+          4: { cellWidth: 30 }, // Pourcentage
+          5: { cellWidth: 20 }, // Coefficient
+          6: { cellWidth: 30 }, // Statut
+        },
+        didDrawPage: function (data: any) {
+          // Ajouter le numéro de page (centré pour le format paysage)
+          doc.setFontSize(8);
+          doc.text(`Page ${data.pageNumber} sur ${doc.internal.getNumberOfPages()}`, 148, doc.internal.pageSize.height - 10, { align: 'center' });
+        }
+      });
 
-       {/* Sélecteurs */}
-       <Card>
-         <CardContent className="space-y-4 pt-6">
-           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                          {/* Sélection de l'année scolaire */}
-             <div className="space-y-2">
-               <Label htmlFor="year-select" className="text-sm font-medium">Année Scolaire</Label>
-               <SchoolYearSelect
-                 value={schoolYear}
-                 onValueChange={setSchoolYear}
-                 availableYears={availableSchoolYears}
-                 currentSchoolYear={schoolYear}
-                 placeholder="Sélectionner l'année scolaire..."
-                 className="h-10"
-               />
-             </div>
+      // Nom du fichier
+      const fileName = `notes_${selectedClass}_${subjects.find(s => s.id === selectedSubject)?.name}_${periods.find(p => p.id === selectedPeriod)?.name}_${schoolYear}.pdf`;
 
-             {/* Sélection de niveau */}
-             <div className="space-y-2">
-               <Label htmlFor="level-select" className="text-sm font-medium">Niveau</Label>
-               <Select value={selectedLevel} onValueChange={setSelectedLevel} disabled={!schoolYear}>
-                 <SelectTrigger id="level-select" className="h-10">
-                   <SelectValue placeholder="Sélectionner un niveau" />
-                 </SelectTrigger>
-                 <SelectContent>
-                   {availableLevels.map((level, index) => (
-                     <SelectItem key={`level-${level}-${index}`} value={level}>
-                       {index + 1}. {level}
-                     </SelectItem>
-                   ))}
-                 </SelectContent>
-               </Select>
-             </div>
+      // Télécharger le PDF
+      doc.save(fileName);
 
-             {/* Sélection de classe */}
-             <div className="space-y-2">
-               <Label htmlFor="class-select" className="text-sm font-medium">Classe</Label>
-               <Select value={selectedClassId} onValueChange={(value) => {
-                 setSelectedClassId(value);
-                 const selectedClassObj = classes.find(c => c.id === value);
-                 setSelectedClass(selectedClassObj?.name || '');
-               }} disabled={!selectedLevel}>
-                 <SelectTrigger id="class-select" className="h-10">
-                   <SelectValue placeholder="Sélectionner une classe" />
-                 </SelectTrigger>
-                 <SelectContent>
-                   {classes.map((classObj, index) => (
-                     <SelectItem key={`class-${classObj.id}-${index}`} value={classObj.id}>
-                       {classObj.name}
-                     </SelectItem>
-                   ))}
-                 </SelectContent>
-               </Select>
-             </div>
+      toast({
+        title: "Téléchargement réussi",
+        description: `${exportData.length} note(s) exportée(s) au format PDF`,
+      });
 
-             {/* Sélection de matière */}
-             <div className="space-y-2">
-               <Label htmlFor="subject-select" className="text-sm font-medium">Matière</Label>
-               <Select value={selectedSubject} onValueChange={setSelectedSubject} disabled={!selectedClassId}>
-                 <SelectTrigger id="subject-select" className="h-10">
-                   <SelectValue placeholder="Sélectionner une matière" />
-                 </SelectTrigger>
-                 <SelectContent>
-                   {subjects.map((subject, index) => (
-                     <SelectItem key={`subject-${subject.id}-${index}`} value={subject.id}>
-                       {subject.name} (Coef: {subject.coefficient || 1}, Max: {subject.maxScore || 20})
-                     </SelectItem>
-                   ))}
-                 </SelectContent>
-               </Select>
+    } catch (error) {
+      console.error('❌ Erreur lors du téléchargement:', error);
+      toast({
+        title: "Erreur",
+        description: "Erreur lors du téléchargement des notes",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSaveGrades = async () => {
+    if (!selectedClass || !selectedSubject || !selectedPeriod) {
+      toast({
+        title: "Configuration incomplète",
+        description: "Veuillez sélectionner une classe, une matière et une période",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Sauvegarder les notes dans localStorage avant l'envoi
+    const gradesToSave = grades.filter(g =>
+      g.subjectId === selectedSubject &&
+      g.evaluationPeriodId === selectedPeriod
+    );
+
+    console.log('🔍 Notes à sauvegarder:', gradesToSave);
+    console.log('🔍 Contexte actuel:', { selectedClass, selectedSubject, selectedPeriod, selectedClassId, schoolYear });
+
+    saveGradesToLocalStorage(gradesToSave);
+
+    const userId = 'admin-001';
+
+    if (gradesToSave.length === 0) {
+      toast({
+        title: "Aucune note à sauvegarder",
+        description: "Veuillez saisir au moins une note",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      console.log('🔍 Sauvegarde des notes...');
+      console.log('🔍 Données envoyées à l\'API:', { grades: gradesToSave, recordedBy: userId });
+
+      const response = await fetch('/api/grades/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          grades: gradesToSave,
+          recordedBy: userId
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ Réponse de l\'API:', result);
+
+        // Vérifier s'il y a des erreurs dans les résultats
+        const hasErrors = result.results && result.results.some((r: any) => r.action === 'error');
+
+        if (hasErrors) {
+          // Il y a des erreurs, ne pas afficher le message de succès
+          const errorCount = result.results.filter((r: any) => r.action === 'error').length;
+          const successCount = result.results.filter((r: any) => r.action !== 'error').length;
+
+          if (errorCount > 0 && successCount === 0) {
+            // Toutes les notes ont échoué
+            throw new Error(`${errorCount} note(s) n'ont pas pu être enregistrées`);
+          } else if (errorCount > 0) {
+            // Certaines notes ont réussi, d'autres ont échoué
+            setError(`${successCount} note(s) enregistrées, ${errorCount} note(s) ont échoué`);
+            toast({
+              title: "Attention",
+              description: `${successCount} note(s) enregistrées, ${errorCount} note(s) ont échoué`,
+              variant: "destructive",
+            });
+            return;
+          }
+        }
+
+        const message = `${result.results?.length || 0} note(s) enregistrée(s) avec succès`;
+        setSuccessMessage(message);
+        setShowSuccessDialog(true);
+
+        console.log('🔍 Rechargement des notes après sauvegarde...');
+
+        // CORRECTION : Marquer les notes comme sauvegardées dans l'état local
+        // Cela permettra au statut de changer correctement
+        setGrades(prev => prev.map(grade => {
+          if (grade.subjectId === selectedSubject && grade.evaluationPeriodId === selectedPeriod) {
+            return { ...grade, isSaved: true };
+          }
+          return grade;
+        }));
+
+        // Nettoyer le localStorage après sauvegarde réussie
+        clearGradesFromLocalStorage();
+        console.log('🔍 Notes sauvegardées avec succès, statut mis à jour');
+
+        // CORRECTION : Recharger les notes depuis la base de données pour s'assurer de la cohérence
+        await loadExistingGrades();
+
+        // CORRECTION : Forcer la mise à jour de l'affichage
+        setRefreshTrigger(prev => prev + 1);
+
+        // NOUVEAU : Attendre un peu puis recharger pour voir les notes initialisées à 0
+        setTimeout(async () => {
+          console.log('🔄 Rechargement final pour voir les notes initialisées...');
+          await loadExistingGrades();
+          setRefreshTrigger(prev => prev + 1);
+        }, 1000);
+
+        // Afficher un message de confirmation
+        toast({
+          title: "Succès",
+          description: `${result.results?.length || 0} note(s) enregistrée(s) avec succès`,
+        });
+      } else {
+        const error = await response.json();
+        console.error('❌ Erreur API:', error);
+        throw new Error(error.error || error.details || 'Erreur lors de la sauvegarde');
+      }
+    } catch (error) {
+      console.error('❌ Erreur lors de la sauvegarde:', error);
+      setError(error instanceof Error ? error.message : 'Erreur lors de la sauvegarde des notes');
+      toast({
+        title: "Erreur",
+        description: "Erreur lors de la sauvegarde des notes",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const canSave = selectedClass && selectedSubject && selectedPeriod && grades.length > 0;
+  const hasChanges = grades.length > 0;
+
+
+
+  return (
+    <div className="space-y-6">
+      {/* Messages d'erreur et de succès */}
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {/* Sélecteurs */}
+      <Card>
+        <CardContent className="space-y-4 pt-6">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            {/* Sélection de l'année scolaire */}
+            <div className="space-y-2">
+              <Label htmlFor="year-select" className="text-sm font-medium">Année Scolaire</Label>
+              <SchoolYearSelect
+                value={schoolYear}
+                onValueChange={setSchoolYear}
+                availableYears={availableSchoolYears}
+                currentSchoolYear={schoolYear}
+                placeholder="Sélectionner l'année scolaire..."
+                className="h-10"
+              />
+            </div>
+
+            {/* Sélection de niveau */}
+            <div className="space-y-2">
+              <Label htmlFor="level-select" className="text-sm font-medium">Niveau</Label>
+              <Select value={selectedLevel} onValueChange={setSelectedLevel} disabled={!schoolYear}>
+                <SelectTrigger id="level-select" className="h-10">
+                  <SelectValue placeholder="Sélectionner un niveau" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableLevels.map((level, index) => (
+                    <SelectItem key={`level-${level}-${index}`} value={level}>
+                      {index + 1}. {level}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Sélection de classe */}
+            <div className="space-y-2">
+              <Label htmlFor="class-select" className="text-sm font-medium">Classe</Label>
+              <Select value={selectedClassId} onValueChange={(value) => {
+                setSelectedClassId(value);
+                const selectedClassObj = classes.find(c => c.id === value);
+                setSelectedClass(selectedClassObj?.name || '');
+              }} disabled={!selectedLevel}>
+                <SelectTrigger id="class-select" className="h-10">
+                  <SelectValue placeholder="Sélectionner une classe" />
+                </SelectTrigger>
+                <SelectContent>
+                  {classes.map((classObj, index) => (
+                    <SelectItem key={`class-${classObj.id}-${index}`} value={classObj.id}>
+                      {classObj.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Sélection de matière */}
+            <div className="space-y-2">
+              <Label htmlFor="subject-select" className="text-sm font-medium">Matière</Label>
+              <Select value={selectedSubject} onValueChange={setSelectedSubject} disabled={!selectedClassId}>
+                <SelectTrigger id="subject-select" className="h-10">
+                  <SelectValue placeholder="Sélectionner une matière" />
+                </SelectTrigger>
+                <SelectContent>
+                  {subjects.map((subject, index) => (
+                    <SelectItem key={`subject-${subject.id}-${index}`} value={subject.id}>
+                      {subject.name} (Coef: {subject.coefficient || 1}, Max: {subject.maxScore || 20})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               {subjects.length === 0 && teacherAssignments && teacherAssignments.length > 0 && (
                 <div className="text-sm text-yellow-700 mt-2">Aucune matière disponible pour cette classe selon vos affectations — vérifiez vos affectations ou contactez l'administration.</div>
               )}
               {error && (
                 <div className="text-sm text-red-600 mt-2">{error}</div>
               )}
-             </div>
+            </div>
 
-             {/* Sélection de séquence */}
-             <div className="space-y-2">
-               <Label htmlFor="period-select" className="text-sm font-medium">Séquence</Label>
-               <Select value={selectedPeriod} onValueChange={setSelectedPeriod} disabled={!selectedSubject}>
-                 <SelectTrigger id="period-select" className="h-10">
-                   <SelectValue placeholder="Sélectionner une séquence" />
-                 </SelectTrigger>
-                 <SelectContent>
-                   {periods.map((period, index) => (
-                     <SelectItem key={`period-${period.id}-${index}`} value={period.id}>
-                       {period.name}
-                     </SelectItem>
-                   ))}
-                 </SelectContent>
-               </Select>
-             </div>
-           </div>
-           
-           {/* Boutons Charger... et Debug sur la même ligne */}
-           {selectedClass && selectedSubject && selectedPeriod && (
-             <div className="flex justify-end mt-4 gap-2">
-               <Button 
-                 onClick={handleDownloadGrades}
-                 variant="outline"
-                 size="default"
-                 className="border-green-500 text-green-600 hover:bg-green-50"
-                 disabled={isLoading}
-               >
-                 {isLoading ? (
-                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                 ) : (
-                   <Download className="h-4 w-4 mr-2" />
-                 )}
-                 Télécharger en PDF
-               </Button>
-               
-               <Button 
-                 onClick={async () => {
-                   console.log('🔄 Chargement forcé des données depuis la base...');
-                   
-                   // CORRECTION : Forcer le rechargement en vidant d'abord l'état local
-                   setGrades([]);
-                   setExistingGrades([]);
-                   
-                   // Attendre un peu pour que l'état soit vidé
-                   await new Promise(resolve => setTimeout(resolve, 100));
-                   
-                   // Recharger depuis la base de données
-                   await loadExistingGrades();
-                   
-                   // Nettoyer le localStorage pour ce contexte
-                   clearGradesFromLocalStorage();
-                   
-                   toast({
-                     title: "Rechargé",
-                     description: "Données mises à jour depuis la base de données",
-                   });
-                 }}
-                 variant="default"
-                 size="default"
-                 className="bg-green-600 hover:bg-green-700 text-white"
-               >
-                 <RefreshCw className="h-4 w-4 mr-2" />
-                 Recharger
-               </Button>
-               
+            {/* Sélection de séquence */}
+            <div className="space-y-2">
+              <Label htmlFor="period-select" className="text-sm font-medium">Séquence</Label>
+              <Select value={selectedPeriod} onValueChange={setSelectedPeriod} disabled={!selectedSubject}>
+                <SelectTrigger id="period-select" className="h-10">
+                  <SelectValue placeholder="Sélectionner une séquence" />
+                </SelectTrigger>
+                <SelectContent>
+                  {periods.map((period, index) => (
+                    <SelectItem key={`period-${period.id}-${index}`} value={period.id}>
+                      {period.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
 
-             </div>
-           )}
-         </CardContent>
-       </Card>
+          {/* Boutons Charger... et Debug sur la même ligne */}
+          {selectedClass && selectedSubject && selectedPeriod && (
+            <div className="flex justify-end mt-4 gap-2">
+              <Button
+                onClick={handleDownloadGrades}
+                variant="outline"
+                size="default"
+                className="border-green-500 text-green-600 hover:bg-green-50"
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <Download className="h-4 w-4 mr-2" />
+                )}
+                Télécharger en PDF
+              </Button>
 
-       {/* Bouton de sauvegarde */}
-       {selectedClass && selectedSubject && selectedPeriod && (
-         <div className="flex justify-end">
-           <Button 
-             onClick={handleSaveGrades} 
-             disabled={!canSave || isLoading}
-             size="default"
-           >
-             {isLoading ? (
-               <Loader2 className="h-4 w-4 animate-spin mr-2" />
-             ) : (
-               <Save className="h-4 w-4 mr-2" />
-             )}
-             Sauvegarder ({grades.length} notes)
-           </Button>
-         </div>
-       )}
+              <Button
+                onClick={async () => {
+                  console.log('🔄 Chargement forcé des données depuis la base...');
 
-       {/* Tableau de saisie des notes */}
-       {selectedClass && selectedSubject && selectedPeriod && students.length > 0 && (
-         <Card>
-           <CardHeader className="pb-4">
-             <div className="flex items-center justify-between">
-               <div className="flex items-center gap-4">
-                 <Badge variant="outline">
-                   {students.length} élève(s)
-                 </Badge>
-                 <Badge variant="secondary">
-                   {periods.find(p => p.id === selectedPeriod)?.name}
-                 </Badge>
-                 {hasChanges && (
-                   <>
-                     <Badge variant="default">
-                       {grades.length} note(s) saisie(s)
-                     </Badge>
-                     {grades.some(g => g.isModified) && (
-                       <Badge variant="destructive">
-                         {grades.filter(g => g.isModified).length} modification(s)
-                       </Badge>
-                     )}
-                     {grades.some(g => !g.isSaved) && (
-                       <Badge variant="secondary">
-                         {grades.filter(g => !g.isSaved).length} non sauvegardée(s)
-                       </Badge>
-                     )}
-                   </>
-                 )}
-               </div>
-               
-               <div className="flex items-center gap-2">
-                 <Button
-                   variant="outline"
-                   size="sm"
-                   onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-                 >
-                   <Filter className="h-4 w-4 mr-2" />
-                   Filtres
-                 </Button>
-                 
-                 <Select value={gradeFilter} onValueChange={(value: 'all' | 'graded' | 'ungraded') => setGradeFilter(value)}>
-                   <SelectTrigger className="w-32 h-8">
-                     <SelectValue />
-                   </SelectTrigger>
-                   <SelectContent>
-                     <SelectItem value="all">Tous</SelectItem>
-                     <SelectItem value="graded">Notés</SelectItem>
-                     <SelectItem value="ungraded">Non notés</SelectItem>
-                   </SelectContent>
-                 </Select>
-               </div>
-             </div>
-           </CardHeader>
-           
-           <CardContent className="space-y-4">
-             {/* Filtres avancés */}
-             {showAdvancedFilters && (
-               <div className="p-4 bg-gray-50 rounded-lg space-y-4">
-                 <div className="flex items-center gap-4">
-                   <div className="flex-1">
-                     <Label className="text-sm">Recherche</Label>
-                     <div className="relative">
-                       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                       <Input
-                         type="text"
-                         placeholder="Rechercher un élève..."
-                         value={searchTerm}
-                         onChange={(e) => setSearchTerm(e.target.value)}
-                         className="pl-10"
-                       />
-                     </div>
-                   </div>
-                   
-                   <div className="space-y-1">
-                     <Label className="text-sm">Tri par</Label>
-                     <Select value={sortField} onValueChange={(value: 'name' | 'score' | 'percentage') => setSortField(value)}>
-                       <SelectTrigger className="w-32 h-8">
-                         <SelectValue />
-                       </SelectTrigger>
-                       <SelectContent>
-                         <SelectItem value="name">Nom</SelectItem>
-                         <SelectItem value="score">Note</SelectItem>
-                         <SelectItem value="percentage">Pourcentage</SelectItem>
-                       </SelectContent>
-                     </Select>
-                   </div>
-                   
-                   <div className="space-y-1">
-                     <Label className="text-sm">Ordre</Label>
-                     <Button
-                       variant="outline"
-                       size="sm"
-                       onClick={() => setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')}
-                       className="w-32 h-8"
-                     >
-                       {sortDirection === 'asc' ? <SortAsc className="h-4 w-4 mr-2" /> : <SortDesc className="h-4 w-4 mr-2" />}
-                       {sortDirection === 'asc' ? 'Croissant' : 'Décroissant'}
-                     </Button>
-                   </div>
-                 </div>
-                 
-                 {bulkEditMode && (
-                   <div className="flex items-center gap-4">
-                     <Button size="sm" variant="outline" onClick={selectAllStudents}>
-                       <CheckSquare className="h-4 w-4 mr-2" />
-                       Tout sélectionner
-                     </Button>
-                     <Button size="sm" variant="outline" onClick={deselectAllStudents}>
-                       <Square className="h-4 w-4 mr-2" />
-                       Tout désélectionner
-                     </Button>
-                     <span className="text-sm text-gray-500">
-                       {selectedStudents.size} élève(s) sélectionné(s)
-                     </span>
-                   </div>
-                 )}
-               </div>
-             )}
+                  // CORRECTION : Forcer le rechargement en vidant d'abord l'état local
+                  setGrades([]);
+                  setExistingGrades([]);
 
-             {/* Informations de débogage */}
-             {selectedClass && selectedSubject && selectedPeriod && (
-               <div className="bg-gray-100 p-3 rounded-lg mb-4">
-                 <div className="text-sm text-gray-700">
-                   <div className="grid grid-cols-4 gap-4">
-                     <div><span className="font-medium">📊 Notes locales:</span> {grades.length}</div>
-                     <div><span className="font-medium">💾 Notes en base:</span> {existingGrades.length}</div>
-                     <div><span className="font-medium">🔄 Refresh:</span> {refreshTrigger}</div>
-                     <div><span className="font-medium">👥 Élèves:</span> {students.length}</div>
-                   </div>
-                   <div className="mt-2 text-xs text-gray-500">
-                     Contexte: {selectedClass} | {selectedSubject} | {selectedPeriod} | {schoolYear}
-                   </div>
-                 </div>
-               </div>
-             )}
+                  // Attendre un peu pour que l'état soit vidé
+                  await new Promise(resolve => setTimeout(resolve, 100));
 
-             
+                  // Recharger depuis la base de données
+                  await loadExistingGrades();
 
-             {/* Vue tableau */}
-             {viewMode === 'table' && (
-               <div className="border rounded-lg overflow-hidden">
-                 <div className="bg-gray-50 px-4 py-3 border-b">
-                   <div className="grid grid-cols-12 gap-4 text-sm font-medium text-gray-700">
-                     {bulkEditMode && <div className="col-span-1">Sélection</div>}
-                     <div className="col-span-4">Élève</div>
-                     <div className="col-span-2 text-center">Note</div>
-                     <div className="col-span-2 text-center">Max</div>
-                     <div className="col-span-2 text-center">%</div>
-                     <div className="col-span-1 text-center">Statut</div>
-                   </div>
-                 </div>
-                 <div className="divide-y">
-                   {filteredStudents
-                     .slice((currentPage - 1) * studentsPerPage, (currentPage - 1) * studentsPerPage + studentsPerPage)
-                     .map((student, index) => {
-                       // CORRECTION : Utiliser la même logique que le composant de débogage
-                       // Récupérer toutes les notes disponibles (locales + base de données)
-                       const allGrades = [...grades, ...existingGrades];
-                       
-                       // DEBUG : Vérifier la correspondance des IDs
-                       console.log('🔍 DEBUG - Correspondance des IDs pour élève:', {
-                         studentId: student.id,
-                         studentCode: student.code,
-                         allGrades: allGrades.map(g => ({ studentId: g.studentId, subjectId: g.subjectId, periodId: g.evaluationPeriodId })),
-                         existingGrades: existingGrades.map(g => ({ studentId: g.studentId, subjectId: g.subjectId, periodId: g.evaluationPeriodId }))
-                       });
-                       
-                       // Essayer d'abord avec l'ID de l'élève, puis avec le code matricule
-                       const studentGrades = allGrades.filter(g =>
-                         (g.studentId === student.id || (student.code && g.studentId === student.code)) &&
-                         g.subjectId == selectedSubject &&
-                         g.evaluationPeriodId === selectedPeriod
-                       );
-                       
-                       // Priorité aux notes locales (modifications en cours)
-                       const localGrade = grades.find(g => 
-                         (g.studentId === student.id || g.studentId === student.code) && 
-                         g.subjectId == selectedSubject && 
-                         g.evaluationPeriodId === selectedPeriod
-                       );
-                       
-                       // Note à afficher (priorité aux notes locales)
-                       const grade = localGrade || studentGrades[0];
-                       
-                       // Note originale pour comparaison
-                       const originalGrade = existingGrades.find(g => 
-                         (g.studentId === student.id || g.studentId === student.code) && 
-                         g.subjectId == selectedSubject && 
-                         g.evaluationPeriodId === selectedPeriod
-                       );
-                       
-                       const maxScore = subjects.find(s => s.id === selectedSubject)?.maxScore || 20;
-                       const percentage = grade ? (grade.score / maxScore) * 100 : 0;
-                       
-                       // Utiliser la nouvelle fonction de statut
-                       const statusInfo = getGradeStatus(grade, originalGrade);
-                       
-                       // DEBUG: Log détaillé pour chaque élève
-                       console.log('🔍 Rendu élève:', {
-                         nom: student.nom,
-                         id: student.id,
-                         code: student.code,
-                         grade,
-                         percentage,
-                         gradesLength: grades.length,
-                         existingGradesLength: existingGrades.length,
-                         refreshTrigger,
-                         // Vérifier si la note existe dans l'état local
-                         hasLocalGrade: grades.some(g => g.studentId === student.id && g.subjectId === selectedSubject && g.evaluationPeriodId === selectedPeriod),
-                         // Vérifier si la note existe dans l'état existant
-                         hasExistingGrade: existingGrades.some(g => g.studentId === student.id && g.subjectId === selectedSubject && g.evaluationPeriodId === selectedPeriod),
-                         // Détail des notes trouvées
-                         localGrades: grades.filter(g => g.studentId === student.id && g.subjectId === selectedSubject && g.evaluationPeriodId === selectedPeriod),
-                         existingGrades: existingGrades.filter(g => g.studentId === student.id && g.subjectId === selectedSubject && g.evaluationPeriodId === selectedPeriod)
-                       });
-                       
-                       const isSelected = selectedStudents.has(student.id);
-                       
-                       const displayLast = (student.nom || (student.name ? String(student.name).split(' ')[0] : '')) as string;
-                       const displayFirst = (student.prenom || (student.name ? String(student.name).split(' ').slice(1).join(' ') : '')) as string;
-                       const displayFull = [displayLast, displayFirst].filter(Boolean).join(' ').trim() || (student.code || student.id);
-                       
-                       return (
-                         <div key={student.id} className="grid grid-cols-12 gap-4 p-3">
-                           {bulkEditMode && (
-                             <div className="col-span-1">
-                               <input
-                                 type="checkbox"
-                                 checked={isSelected}
-                                 onChange={() => toggleStudentSelection(student.id)}
-                                 className="rounded border-gray-300"
-                               />
-                             </div>
-                           )}
-                           <div className="col-span-4 font-medium">
-                             {displayFull}
-                           </div>
-                           <div className="col-span-2 flex items-center justify-center gap-2">
-                             <div className="relative">
-                               <Input
-                                 type="number"
-                                 min="0"
-                                 max={maxScore}
-                                 step="0.1"
-                                 value={grade?.isCleared ? '' : (grade?.score || '')}
-                                 onChange={(e) => handleGradeChange(student.id, e.target.value)}
-                                 placeholder="0"
-                                 className={`w-20 h-8 text-sm ${
-                                   grade?.isCleared ? 'border-red-500 bg-red-50' :
-                                   grade?.isModified ? 'border-orange-500 bg-orange-50' : ''
-                                 }`}
-                                 disabled={grade?.isCleared}
-                               />
-                               {/* Indicateur de modification */}
-                               {grade?.isModified && !grade?.isCleared && (
-                                 <div className="absolute -top-1 -right-1 w-3 h-3 bg-orange-500 rounded-full flex items-center justify-center">
-                                   <span className="text-xs text-white">M</span>
-                                 </div>
-                               )}
-                               {/* Indicateur d'effacement */}
-                               {grade?.isCleared && (
-                                 <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full flex items-center justify-center">
-                                   <span className="text-xs text-white">E</span>
-                                 </div>
-                               )}
-                             </div>
-                             {/* Bouton d'édition */}
-                             {grade && !grade.isCleared && (
-                               <Button
-                                 variant="outline"
-                                 size="sm"
-                                 onClick={() => handleGradeEdit(student.id, grade.score)}
-                                 className="h-8 w-8 p-0 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
-                                 title="Modifier la note"
-                               >
-                                 <Edit className="h-4 w-4" />
-                               </Button>
-                             )}
-                             {/* Bouton de restauration */}
-                             {grade?.isCleared && (
-                               <Button
-                                 variant="outline"
-                                 size="sm"
-                                 onClick={() => handleGradeRestore(student.id)}
-                                 className="h-8 w-8 p-0 text-green-600 hover:bg-green-50 hover:text-green-700"
-                                 title="Restaurer la note"
-                               >
-                                 <RefreshCw className="h-4 w-4" />
-                               </Button>
-                             )}
-                           </div>
-                           <div className="col-span-2 text-center text-sm text-gray-500">
-                             / {maxScore}
-                           </div>
-                           <div className="col-span-2 text-center">
-                             <span className={`inline-block px-2 py-1 rounded text-sm font-medium ${
-                               percentage >= 50 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                             }`}>
-                               {percentage.toFixed(1)}%
-                             </span>
-                           </div>
-                           <div className="col-span-1 text-center">
-                             <span className={`inline-block px-2 py-1 rounded text-sm font-medium ${statusInfo.class}`}>
-                               {statusInfo.icon} {statusInfo.text}
-                             </span>
-                           </div>
-                         </div>
-                       );
-                     })}
-                           </div>
-                           </div>
-                         )}
+                  // Nettoyer le localStorage pour ce contexte
+                  clearGradesFromLocalStorage();
 
-             {/* Pagination */}
-             {filteredStudents && filteredStudents.length > studentsPerPage && (
-               <div className="flex items-center justify-between mt-4 text-sm">
-                 <div>
-                   Page {currentPage} sur {Math.ceil(filteredStudents.length / studentsPerPage)}
-                       </div>
-                 <div className="flex items-center gap-2">
-                   <span>Par page</span>
-                   <select className="border rounded h-8 px-2 text-sm" value={studentsPerPage} onChange={e => { setStudentsPerPage(parseInt(e.target.value) || 10); setCurrentPage(1); }}>
-                     {[5,10,15,20,25,50].map(n => <option key={n} value={n}>{n}</option>)}
-                   </select>
-                   <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p-1))} disabled={currentPage === 1}>Précédent</Button>
-                   {Array.from({ length: Math.ceil(filteredStudents.length / studentsPerPage) }, (_, i) => i + 1).map(page => (
-                     <Button
-                       key={`pg-${page}`}
-                       variant={page === currentPage ? 'default' : 'outline'}
-                       size="sm"
-                       onClick={() => setCurrentPage(page)}
-                     >
-                       {page}
-                     </Button>
-                   ))}
-                   <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.min(Math.ceil(filteredStudents.length / studentsPerPage), p+1))} disabled={currentPage === Math.ceil(filteredStudents.length / studentsPerPage)}>Suivant</Button>
-                 </div>
-               </div>
-             )}
-           </CardContent>
-         </Card>
-       )}
-     </div>
-   );
- }
+                  toast({
+                    title: "Rechargé",
+                    description: "Données mises à jour depuis la base de données",
+                  });
+                }}
+                variant="default"
+                size="default"
+                className="bg-green-600 hover:bg-green-700 text-white"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Recharger
+              </Button>
+
+
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Bouton de sauvegarde */}
+      {selectedClass && selectedSubject && selectedPeriod && (
+        <div className="flex justify-end">
+          <Button
+            onClick={handleSaveGrades}
+            disabled={!canSave || isLoading}
+            size="default"
+          >
+            {isLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            ) : (
+              <Save className="h-4 w-4 mr-2" />
+            )}
+            Sauvegarder ({grades.length} notes)
+          </Button>
+        </div>
+      )}
+
+      {/* Tableau de saisie des notes */}
+      {selectedClass && selectedSubject && selectedPeriod && students.length > 0 && (
+        <Card>
+          <CardHeader className="pb-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <Badge variant="outline">
+                  {students.length} élève(s)
+                </Badge>
+                <Badge variant="secondary">
+                  {periods.find(p => p.id === selectedPeriod)?.name}
+                </Badge>
+                {hasChanges && (
+                  <>
+                    <Badge variant="default">
+                      {grades.length} note(s) saisie(s)
+                    </Badge>
+                    {grades.some(g => g.isModified) && (
+                      <Badge variant="destructive">
+                        {grades.filter(g => g.isModified).length} modification(s)
+                      </Badge>
+                    )}
+                    {grades.some(g => !g.isSaved) && (
+                      <Badge variant="secondary">
+                        {grades.filter(g => !g.isSaved).length} non sauvegardée(s)
+                      </Badge>
+                    )}
+                  </>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                >
+                  <Filter className="h-4 w-4 mr-2" />
+                  Filtres
+                </Button>
+
+                <Select value={gradeFilter} onValueChange={(value: 'all' | 'graded' | 'ungraded') => setGradeFilter(value)}>
+                  <SelectTrigger className="w-32 h-8">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tous</SelectItem>
+                    <SelectItem value="graded">Notés</SelectItem>
+                    <SelectItem value="ungraded">Non notés</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </CardHeader>
+
+          <CardContent className="space-y-4">
+            {/* Filtres avancés */}
+            {showAdvancedFilters && (
+              <div className="p-4 bg-gray-50 rounded-lg space-y-4">
+                <div className="flex items-center gap-4">
+                  <div className="flex-1">
+                    <Label className="text-sm">Recherche</Label>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Input
+                        type="text"
+                        placeholder="Rechercher un élève..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label className="text-sm">Tri par</Label>
+                    <Select value={sortField} onValueChange={(value: 'name' | 'score' | 'percentage') => setSortField(value)}>
+                      <SelectTrigger className="w-32 h-8">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="name">Nom</SelectItem>
+                        <SelectItem value="score">Note</SelectItem>
+                        <SelectItem value="percentage">Pourcentage</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label className="text-sm">Ordre</Label>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')}
+                      className="w-32 h-8"
+                    >
+                      {sortDirection === 'asc' ? <SortAsc className="h-4 w-4 mr-2" /> : <SortDesc className="h-4 w-4 mr-2" />}
+                      {sortDirection === 'asc' ? 'Croissant' : 'Décroissant'}
+                    </Button>
+                  </div>
+                </div>
+
+                {bulkEditMode && (
+                  <div className="flex items-center gap-4">
+                    <Button size="sm" variant="outline" onClick={selectAllStudents}>
+                      <CheckSquare className="h-4 w-4 mr-2" />
+                      Tout sélectionner
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={deselectAllStudents}>
+                      <Square className="h-4 w-4 mr-2" />
+                      Tout désélectionner
+                    </Button>
+                    <span className="text-sm text-gray-500">
+                      {selectedStudents.size} élève(s) sélectionné(s)
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Informations de débogage */}
+            {selectedClass && selectedSubject && selectedPeriod && (
+              <div className="bg-gray-100 p-3 rounded-lg mb-4">
+                <div className="text-sm text-gray-700">
+                  <div className="grid grid-cols-4 gap-4">
+                    <div><span className="font-medium">📊 Notes locales:</span> {grades.length}</div>
+                    <div><span className="font-medium">💾 Notes en base:</span> {existingGrades.length}</div>
+                    <div><span className="font-medium">🔄 Refresh:</span> {refreshTrigger}</div>
+                    <div><span className="font-medium">👥 Élèves:</span> {students.length}</div>
+                  </div>
+                  <div className="mt-2 text-xs text-gray-500">
+                    Contexte: {selectedClass} | {selectedSubject} | {selectedPeriod} | {schoolYear}
+                  </div>
+                </div>
+              </div>
+            )}
+
+
+
+            {/* Vue tableau */}
+            {viewMode === 'table' && (
+              <div className="border rounded-lg overflow-hidden">
+                <div className="bg-gray-50 px-4 py-3 border-b">
+                  <div className="grid grid-cols-12 gap-4 text-sm font-medium text-gray-700">
+                    {bulkEditMode && <div className="col-span-1">Sélection</div>}
+                    <div className="col-span-4">Élève</div>
+                    <div className="col-span-2 text-center">Note</div>
+                    <div className="col-span-2 text-center">Max</div>
+                    <div className="col-span-2 text-center">%</div>
+                    <div className="col-span-1 text-center">Statut</div>
+                  </div>
+                </div>
+                <div className="divide-y">
+                  {filteredStudents
+                    .slice((currentPage - 1) * studentsPerPage, (currentPage - 1) * studentsPerPage + studentsPerPage)
+                    .map((student, index) => {
+                      // CORRECTION : Utiliser la même logique que le composant de débogage
+                      // Récupérer toutes les notes disponibles (locales + base de données)
+                      const allGrades = [...grades, ...existingGrades];
+
+                      // DEBUG : Vérifier la correspondance des IDs
+                      console.log('🔍 DEBUG - Correspondance des IDs pour élève:', {
+                        studentId: student.id,
+                        studentCode: student.code,
+                        allGrades: allGrades.map(g => ({ studentId: g.studentId, subjectId: g.subjectId, periodId: g.evaluationPeriodId })),
+                        existingGrades: existingGrades.map(g => ({ studentId: g.studentId, subjectId: g.subjectId, periodId: g.evaluationPeriodId }))
+                      });
+
+                      // Essayer d'abord avec l'ID de l'élève, puis avec le code matricule
+                      const studentGrades = allGrades.filter(g =>
+                        (g.studentId === student.id || (student.code && g.studentId === student.code)) &&
+                        g.subjectId == selectedSubject &&
+                        g.evaluationPeriodId === selectedPeriod
+                      );
+
+                      // Priorité aux notes locales (modifications en cours)
+                      const localGrade = grades.find(g =>
+                        (g.studentId === student.id || g.studentId === student.code) &&
+                        g.subjectId == selectedSubject &&
+                        g.evaluationPeriodId === selectedPeriod
+                      );
+
+                      // Note à afficher (priorité aux notes locales)
+                      const grade = localGrade || studentGrades[0];
+
+                      // Note originale pour comparaison
+                      const originalGrade = existingGrades.find(g =>
+                        (g.studentId === student.id || g.studentId === student.code) &&
+                        g.subjectId == selectedSubject &&
+                        g.evaluationPeriodId === selectedPeriod
+                      );
+
+                      const maxScore = subjects.find(s => s.id === selectedSubject)?.maxScore || 20;
+                      const percentage = grade ? (grade.score / maxScore) * 100 : 0;
+
+                      // Utiliser la nouvelle fonction de statut
+                      const statusInfo = getGradeStatus(grade, originalGrade);
+
+                      // DEBUG: Log détaillé pour chaque élève
+                      console.log('🔍 Rendu élève:', {
+                        nom: student.nom,
+                        id: student.id,
+                        code: student.code,
+                        grade,
+                        percentage,
+                        gradesLength: grades.length,
+                        existingGradesLength: existingGrades.length,
+                        refreshTrigger,
+                        // Vérifier si la note existe dans l'état local
+                        hasLocalGrade: grades.some(g => g.studentId === student.id && g.subjectId === selectedSubject && g.evaluationPeriodId === selectedPeriod),
+                        // Vérifier si la note existe dans l'état existant
+                        hasExistingGrade: existingGrades.some(g => g.studentId === student.id && g.subjectId === selectedSubject && g.evaluationPeriodId === selectedPeriod),
+                        // Détail des notes trouvées
+                        localGrades: grades.filter(g => g.studentId === student.id && g.subjectId === selectedSubject && g.evaluationPeriodId === selectedPeriod),
+                        existingGrades: existingGrades.filter(g => g.studentId === student.id && g.subjectId === selectedSubject && g.evaluationPeriodId === selectedPeriod)
+                      });
+
+                      const isSelected = selectedStudents.has(student.id);
+
+                      const displayLast = (student.nom || (student.name ? String(student.name).split(' ')[0] : '')) as string;
+                      const displayFirst = (student.prenom || (student.name ? String(student.name).split(' ').slice(1).join(' ') : '')) as string;
+                      const displayFull = [displayLast, displayFirst].filter(Boolean).join(' ').trim() || (student.code || student.id);
+
+                      return (
+                        <div key={student.id} className="grid grid-cols-12 gap-4 p-3">
+                          {bulkEditMode && (
+                            <div className="col-span-1">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => toggleStudentSelection(student.id)}
+                                className="rounded border-gray-300"
+                              />
+                            </div>
+                          )}
+                          <div className="col-span-4 font-medium">
+                            {displayFull}
+                          </div>
+                          <div className="col-span-2 flex items-center justify-center gap-2">
+                            <div className="relative">
+                              <Input
+                                type="number"
+                                min="0"
+                                max={maxScore}
+                                step="0.1"
+                                value={grade?.isCleared ? '' : (grade?.score || '')}
+                                onChange={(e) => handleGradeChange(student.id, e.target.value)}
+                                placeholder="0"
+                                className={`w-20 h-8 text-sm ${grade?.isCleared ? 'border-red-500 bg-red-50' :
+                                    grade?.isModified ? 'border-orange-500 bg-orange-50' : ''
+                                  }`}
+                                disabled={grade?.isCleared}
+                              />
+                              {/* Indicateur de modification */}
+                              {grade?.isModified && !grade?.isCleared && (
+                                <div className="absolute -top-1 -right-1 w-3 h-3 bg-orange-500 rounded-full flex items-center justify-center">
+                                  <span className="text-xs text-white">M</span>
+                                </div>
+                              )}
+                              {/* Indicateur d'effacement */}
+                              {grade?.isCleared && (
+                                <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full flex items-center justify-center">
+                                  <span className="text-xs text-white">E</span>
+                                </div>
+                              )}
+                            </div>
+                            {/* Bouton d'édition */}
+                            {grade && !grade.isCleared && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleGradeEdit(student.id, grade.score)}
+                                className="h-8 w-8 p-0 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                                title="Modifier la note"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {/* Bouton de restauration */}
+                            {grade?.isCleared && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleGradeRestore(student.id)}
+                                className="h-8 w-8 p-0 text-green-600 hover:bg-green-50 hover:text-green-700"
+                                title="Restaurer la note"
+                              >
+                                <RefreshCw className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                          <div className="col-span-2 text-center text-sm text-gray-500">
+                            / {maxScore}
+                          </div>
+                          <div className="col-span-2 text-center">
+                            <span className={`inline-block px-2 py-1 rounded text-sm font-medium ${percentage >= 50 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                              }`}>
+                              {percentage.toFixed(1)}%
+                            </span>
+                          </div>
+                          <div className="col-span-1 text-center">
+                            <span className={`inline-block px-2 py-1 rounded text-sm font-medium ${statusInfo.class}`}>
+                              {statusInfo.icon} {statusInfo.text}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
+
+            {/* Pagination */}
+            {filteredStudents && filteredStudents.length > studentsPerPage && (
+              <div className="flex items-center justify-between mt-4 text-sm">
+                <div>
+                  Page {currentPage} sur {Math.ceil(filteredStudents.length / studentsPerPage)}
+                </div>
+                <div className="flex items-center gap-2">
+                  <span>Par page</span>
+                  <select className="border rounded h-8 px-2 text-sm" value={studentsPerPage} onChange={e => { setStudentsPerPage(parseInt(e.target.value) || 10); setCurrentPage(1); }}>
+                    {[5, 10, 15, 20, 25, 50].map(n => <option key={n} value={n}>{n}</option>)}
+                  </select>
+                  <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>Précédent</Button>
+                  {Array.from({ length: Math.ceil(filteredStudents.length / studentsPerPage) }, (_, i) => i + 1).map(page => (
+                    <Button
+                      key={`pg-${page}`}
+                      variant={page === currentPage ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setCurrentPage(page)}
+                    >
+                      {page}
+                    </Button>
+                  ))}
+                  <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.min(Math.ceil(filteredStudents.length / studentsPerPage), p + 1))} disabled={currentPage === Math.ceil(filteredStudents.length / studentsPerPage)}>Suivant</Button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
