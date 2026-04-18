@@ -8530,7 +8530,13 @@ function PersonnelTab({ role, currentUser }: { role: string, currentUser?: User 
   );
 }
 
-function GradesTab({ role, currentUser, schoolInfo }: { role: string, currentUser: User, schoolInfo: SchoolInfo | null }) {
+function GradesTab({ role, currentUser, schoolInfo, cachedSubjects, cachedSequences }: {
+  role: string,
+  currentUser: User,
+  schoolInfo: SchoolInfo | null,
+  cachedSubjects?: any[],
+  cachedSequences?: any[]
+}) {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -8542,7 +8548,14 @@ function GradesTab({ role, currentUser, schoolInfo }: { role: string, currentUse
         </div>
       </div>
 
-      <SaisieNotesAvancee currentUser={currentUser} role={role} teacherId={role === 'Enseignant' ? currentUser?.id : undefined} schoolInfo={schoolInfo} />
+      <SaisieNotesAvancee
+        currentUser={currentUser}
+        role={role}
+        teacherId={role === 'Enseignant' ? currentUser?.id : undefined}
+        schoolInfo={schoolInfo}
+        cachedSubjects={cachedSubjects}
+        cachedSequences={cachedSequences}
+      />
     </div>
   );
 }
@@ -8553,6 +8566,46 @@ function TableauDeBord({ role, currentUser }: { role: string, currentUser: User 
   const [schoolInfo, setSchoolInfo] = useState<SchoolInfo | null>(null);
   const [currentThemeId, setCurrentThemeId] = useState('light');
   const { toast } = useToast();
+
+  // Cache global pour les données maîtres (Matières et Séquences)
+  const [allSubjects, setAllSubjects] = useState<any[]>([]);
+  const [allSequences, setAllSequences] = useState<any[]>([]);
+  const [isMasterDataLoading, setIsMasterDataLoading] = useState(false);
+
+  // Fonction pour rafraîchir les données maîtres
+  const refreshMasterData = async (year?: string) => {
+    const yearToFetch = year || schoolInfo?.currentSchoolYear;
+    if (!yearToFetch) return;
+
+    setIsMasterDataLoading(true);
+    try {
+      console.log(`🔄 Chargement global des données maîtres pour ${yearToFetch}...`);
+      const [subsRes, seqsRes] = await Promise.all([
+        fetch(`/api/subject-coefficients?schoolYear=${encodeURIComponent(yearToFetch)}`),
+        fetch(`/api/evaluation-periods/sequences?schoolYear=${encodeURIComponent(yearToFetch)}`)
+      ]);
+
+      if (subsRes.ok) {
+        const subs = await subsRes.json();
+        setAllSubjects(Array.isArray(subs) ? subs : []);
+      }
+      if (seqsRes.ok) {
+        const seqs = await seqsRes.json();
+        setAllSequences(Array.isArray(seqs) ? seqs : []);
+      }
+    } catch (err) {
+      console.error("❌ Erreur lors du chargement des données maîtres:", err);
+    } finally {
+      setIsMasterDataLoading(false);
+    }
+  };
+
+  // Charger les données initiales au montage ou changement d'année
+  useEffect(() => {
+    if (schoolInfo?.currentSchoolYear) {
+      refreshMasterData(schoolInfo.currentSchoolYear);
+    }
+  }, [schoolInfo?.currentSchoolYear]);
 
   useEffect(() => {
     getSchoolInfo().then(setSchoolInfo);
@@ -8645,7 +8698,7 @@ function TableauDeBord({ role, currentUser }: { role: string, currentUser: User 
       case 'finances':
         return <FinanceTab role={role} currentUser={currentUser} schoolInfo={schoolInfo} />;
       case 'gestionnotes':
-        return <GradesTab role={role} currentUser={currentUser} schoolInfo={schoolInfo} />;
+        return <GradesTab role={role} currentUser={currentUser} schoolInfo={schoolInfo} cachedSubjects={allSubjects} cachedSequences={allSequences} />;
       case 'mesclasses':
         // Vue "Mes classes" pour enseignant, avec fallback de résolution utilisateur
         return <MyClasses teacherId={(resolvedTeacherId || currentUser?.id) as string} currentUser={currentUser} />;
@@ -8717,7 +8770,11 @@ function TableauDeBord({ role, currentUser }: { role: string, currentUser: User 
                   Configurez les matières enseignées dans chaque classe. Définissez les coefficients et les types d'évaluation.
                 </p>
               </div>
-              <GestionMatieresV2 schoolInfo={schoolInfo} />
+              <GestionMatieresV2
+                schoolInfo={schoolInfo}
+                cachedSubjects={allSubjects}
+                onRefresh={refreshMasterData}
+              />
             </div>
           </div>
         );
@@ -8732,7 +8789,11 @@ function TableauDeBord({ role, currentUser }: { role: string, currentUser: User 
                 </p>
               </div>
               {/* Séquences dédiée */}
-              {React.createElement(require('./GestionSequences').default, { schoolInfo })}
+              {React.createElement(require('./GestionSequences').default, {
+                schoolInfo,
+                cachedSequences: allSequences,
+                onRefresh: refreshMasterData
+              })}
             </div>
           </div>
         );

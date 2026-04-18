@@ -15,12 +15,12 @@ export async function GET() {
       ORDER BY schoolYear DESC
     `) as any[];
 
-    const availableYears = rows.map(row => row.schoolYear);
+    const availableYears = rows.map((row: any) => row.schoolYear as string);
 
     // S'assurer que l'année courante est dans la liste
     if (!availableYears.includes(currentSchoolYear)) {
       availableYears.push(currentSchoolYear);
-      availableYears.sort((a, b) => b.localeCompare(a));
+      availableYears.sort((a: string, b: string) => b.localeCompare(a));
     }
 
     return NextResponse.json({

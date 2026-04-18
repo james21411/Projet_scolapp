@@ -12,10 +12,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  Loader2, BookOpen, Users, Calendar, FileText, Save, AlertCircle,
+  Loader2, BookOpen, Users, User, Calendar, FileText, Save, AlertCircle,
   CheckCircle, Search, TrendingUp, BarChart3, PieChart, Download,
   Upload, Filter, SortAsc, SortDesc, Eye, EyeOff, Calculator,
-  Target, Award, Clock, CheckSquare, Square, Star, RefreshCw, Trash2, Edit
+  Target, Award, Clock, CheckSquare, Square, Star, RefreshCw, Trash2, Edit,
+  FileSpreadsheet, ChevronUp, ChevronDown, Layers, Home
 } from 'lucide-react';
 import { SchoolYearSelect } from '@/components/ui/school-year-select';
 import { useToast } from '@/hooks/use-toast';
@@ -33,6 +34,7 @@ interface Student {
   levelName: string;
   schoolYear: string;
   status: string;
+  sexe?: string;
 }
 
 interface Subject {
@@ -83,7 +85,14 @@ interface User { id?: string; username?: string; fullName?: string; role?: strin
 
 import { SchoolInfo } from '@/services/schoolInfoService';
 
-export default function SaisieNotesAvancee({ currentUser, role, teacherId, schoolInfo }: { currentUser?: User; role?: string; teacherId?: string, schoolInfo?: SchoolInfo | null } = {}) {
+export default function SaisieNotesAvancee({ currentUser, role, teacherId, schoolInfo, cachedSubjects, cachedSequences }: {
+  currentUser?: User;
+  role?: string;
+  teacherId?: string,
+  schoolInfo?: SchoolInfo | null,
+  cachedSubjects?: any[],
+  cachedSequences?: any[]
+} = {}) {
   const { toast } = useToast();
 
   // États principaux
@@ -102,6 +111,9 @@ export default function SaisieNotesAvancee({ currentUser, role, teacherId, schoo
   const [isLoading, setIsLoading] = useState(false);
   const [classes, setClasses] = useState<{ id: string, name: string }[]>([]);
   const [teacherAssignments, setTeacherAssignments] = useState<any[]>([]);
+  const [isLoadingAssignments, setIsLoadingAssignments] = useState(false);
+  const [isLoadingSubjects, setIsLoadingSubjects] = useState(false);
+  const [showFilters, setShowFilters] = useState(true);
   const [existingGrades, setExistingGrades] = useState<any[]>([]);
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<string>('');
@@ -220,7 +232,7 @@ export default function SaisieNotesAvancee({ currentUser, role, teacherId, schoo
         };
       } else {
         return {
-          text: 'Sauvegardée',
+          text: '', // Masquer le texte "Sauvegardée"
           class: 'bg-green-100 text-green-800',
           icon: '✅'
         };
@@ -317,66 +329,47 @@ export default function SaisieNotesAvancee({ currentUser, role, teacherId, schoo
     loadInitialData();
   }, [schoolInfo, schoolYear]);
 
-  // Gestion du resolvedTeacherId (même logique que Mes Classes)
+  // Gestion du chargement des affectations pour les enseignants
   useEffect(() => {
-    const teacherIdToUse = resolvedTeacherId || teacherId || currentUser?.id;
-    if (!teacherIdToUse) return;
+    const currentUserId = currentUser?.id;
+    const currentUserRole = currentUser?.role || role;
+    const isTeacher = currentUserRole === 'Enseignant' || role === 'Enseignant';
 
-    console.log('🔍 SAISIE NOTES - Rechargement avec teacherId:', teacherIdToUse);
-    console.log('🔍 SAISIE NOTES - DEBUG IDs:', {
-      resolvedTeacherId,
-      teacherId,
-      currentUserId: currentUser?.id,
-      currentUserUsername: currentUser?.username,
-      currentUserFullName: currentUser?.fullName,
-      role
-    });
+    // Pour les Admins, on ne bloque pas sur les affectations
+    if (!isTeacher) {
+      console.log('🔓 SAISIE NOTES - Mode Admin détecté, pas de blocage sur les affectations');
+      setIsLoadingAssignments(false);
+      setTeacherAssignments([]); // Reset affectations pour éviter tout filtrage résiduel
+      return;
+    }
 
-    // Recharger les affectations avec le nouvel ID
+    const teacherIdToUse = resolvedTeacherId || teacherId || currentUserId;
+    if (!teacherIdToUse) {
+      console.warn('⚠️ SAISIE NOTES - Mode enseignant actif mais aucun ID trouvé');
+      setIsLoadingAssignments(false);
+      return;
+    }
+
     const reloadAssignments = async () => {
+      setIsLoadingAssignments(true);
       try {
-        console.log('🔍 SAISIE NOTES - Appel API affectations pour:', teacherIdToUse);
-        if (!teacherIdToUse) {
-          console.warn('🔍 SAISIE NOTES - ATTENTION: Aucun teacherId trouvé pour charger les affectations!');
-          return;
-        }
+        console.log('🔍 SAISIE NOTES - Chargement des affectations pour Enseignant:', teacherIdToUse);
         const { getTeacherAssignments } = await import('@/services/personnelService');
         const assignments = await getTeacherAssignments(teacherIdToUse);
-        const assignmentsArray = Array.isArray(assignments) ? assignments : [];
-        console.log('🔍 SAISIE NOTES - Affectations rechargées:', assignmentsArray);
-        console.log('🔍 SAISIE NOTES - Nombre d\'affectations:', assignmentsArray.length);
+        const assignmentsData = assignments as any;
+        const assignmentsArray = Array.isArray(assignmentsData) ? assignmentsData : (assignmentsData && Array.isArray(assignmentsData.data) ? assignmentsData.data : []);
 
-        if (assignmentsArray.length === 0) {
-          console.warn('🔍 SAISIE NOTES - ATTENTION: Aucune affectation trouvée pour cet enseignant!');
-          console.log('🔍 SAISIE NOTES - Tentative de vérification manuelle...');
-
-          // Vérification manuelle de l'API
-          try {
-            const manualCheck = await fetch(`/api/personnel/assignments/${teacherIdToUse}`);
-            if (manualCheck.ok) {
-              const manualData = await manualCheck.json();
-              console.log('🔍 SAISIE NOTES - Vérification manuelle API:', manualData);
-            } else {
-              console.error('🔍 SAISIE NOTES - Erreur vérification manuelle:', manualCheck.status);
-            }
-          } catch (manualError) {
-            console.error('🔍 SAISIE NOTES - Exception vérification manuelle:', manualError);
-          }
-        }
-
-        // IMPORTANT: Toujours mettre à jour les affectations, même si vide
         setTeacherAssignments(assignmentsArray);
-        console.log('🔍 SAISIE NOTES - État teacherAssignments mis à jour:', assignmentsArray);
+        console.log('🔍 SAISIE NOTES - Affectations chargées avec succès:', assignmentsArray.length);
       } catch (e) {
-        console.error('🔍 SAISIE NOTES - Erreur rechargement affectations:', e);
-        console.error('🔍 SAISIE NOTES - Détails erreur:', e);
-        // En cas d'erreur, ne pas vider les affectations existantes
-        console.log('🔍 SAISIE NOTES - Conservation des affectations existantes en cas d\'erreur');
+        console.error('❌ SAISIE NOTES - Erreur lors du chargement des affectations:', e);
+      } finally {
+        setIsLoadingAssignments(false);
       }
     };
 
     reloadAssignments();
-  }, [resolvedTeacherId, teacherId, currentUser?.id]);
+  }, [resolvedTeacherId, teacherId, currentUser?.id, role]);
 
   // Recharger les notes quand on revient à cette section ou change de contexte
   useEffect(() => {
@@ -413,184 +406,90 @@ export default function SaisieNotesAvancee({ currentUser, role, teacherId, schoo
 
   // Charger les matières pour la classe sélectionnée, en filtrant par affectations si nécessaire
   const loadSubjectsForClass = async (classId: string) => {
-    console.log('🔍 LOAD SUBJECTS - Début chargement pour classId:', classId);
-    console.log('🔍 LOAD SUBJECTS - isTeacherUser:', isTeacherUser);
-    console.log('🔍 LOAD SUBJECTS - teacherAssignments:', teacherAssignments);
-    console.log('🔍 LOAD SUBJECTS - Nombre d\'affectations:', getAssignmentsArray(teacherAssignments).length);
-    console.log('🔍 LOAD SUBJECTS - État actuel:', {
-      selectedClass,
-      selectedClassId: selectedClassId,
-      classId,
-      teacherId,
-      currentUserId: currentUser?.id,
-      role
-    });
-
     if (!classId) {
-      console.log('🔍 LOAD SUBJECTS - classId vide, vidage des matières');
       setSubjects([]);
       return;
     }
-    // Si utilisateur enseignant sans affectation pour cette classe: bloquer immédiatement
-    if (isTeacherUser) {
-      let arr = getAssignmentsArray(teacherAssignments);
-      console.log('🔍 LOAD SUBJECTS - Array d\'affectations:', arr);
-      console.log('🔍 LOAD SUBJECTS - selectedClass:', selectedClass);
-      console.log('🔍 LOAD SUBJECTS - classId:', classId);
-      console.log('🔍 LOAD SUBJECTS - teacherId:', teacherId);
-      console.log('🔍 LOAD SUBJECTS - currentUser:', currentUser);
-      console.log('🔍 LOAD SUBJECTS - role:', role);
-      console.log('🔍 LOAD SUBJECTS - Vérification des affectations pour cette classe...');
 
-      // Vérifier si les affectations sont vides ou nulles
-      if (!arr || arr.length === 0) {
-        console.log('⚠️ LOAD SUBJECTS - ATTENTION: Aucune affectation trouvée dans l\'état local!');
-        console.log('🔄 LOAD SUBJECTS - Tentative de rechargement des affectations...');
+    setIsLoadingSubjects(true);
+    setError('');
 
-        // Tenter de recharger les affectations
-        try {
-          const teacherIdToUse = resolvedTeacherId || teacherId || currentUser?.id;
-          if (teacherIdToUse) {
-            const { getTeacherAssignments } = await import('@/services/personnelService');
-            const freshAssignments = await getTeacherAssignments(teacherIdToUse);
-            const freshArray = Array.isArray(freshAssignments) ? freshAssignments : [];
-            console.log('🔄 LOAD SUBJECTS - Affectations rechargées:', freshArray);
+    try {
+      console.log('🔍 LOAD SUBJECTS - Début chargement pour classId:', classId);
 
-            if (freshArray.length > 0) {
-              setTeacherAssignments(freshArray);
-              // Utiliser les affectations fraîchement chargées
-              arr = getAssignmentsArray(freshArray);
-              console.log('🔄 LOAD SUBJECTS - Utilisation des affectations fraîchement chargées:', arr.length);
-            } else {
-              console.log('❌ LOAD SUBJECTS - Échec du rechargement, blocage de l\'accès');
-              setSubjects([]);
-              setError(`Vous n'êtes pas autorisé à voir les matières de cette classe. (Debug: 0 affectations trouvées)`);
-              return;
-            }
-          } else {
-            console.log('❌ LOAD SUBJECTS - Aucun teacherId disponible pour recharger');
-            setSubjects([]);
-            setError(`Vous n'êtes pas autorisé à voir les matières de cette classe. (Debug: 0 affectations trouvées)`);
-            return;
-          }
-        } catch (reloadError) {
-          console.error('❌ LOAD SUBJECTS - Erreur lors du rechargement des affectations:', reloadError);
+      // Filtrage par affectations si Enseignant
+      let assignments = [];
+      if (isTeacherUser) {
+        assignments = getAssignmentsArray(teacherAssignments);
+        console.log('🔍 LOAD SUBJECTS - Mode Enseignant, affectations:', assignments.length);
+
+        // Si vide, on ne charge rien (le useEffect parent gère le re-trigger quand chargé)
+        if (assignments.length === 0) {
+          console.warn('⚠️ LOAD SUBJECTS - Aucune affectation, bloqué');
           setSubjects([]);
-          setError(`Vous n'êtes pas autorisé à voir les matières de cette classe. (Debug: 0 affectations trouvées)`);
           return;
         }
       }
 
-      // Vérifier les affectations pour cette classe spécifique
-      const classAssignments = arr.filter((a: any) => {
-        const byId = a?.classId && a.classId === classId;
-        const byName = a?.className && a.className === selectedClass;
-        console.log('🔍 LOAD SUBJECTS - Vérification affectation:', {
-          assignment: a,
-          byId,
-          byName,
-          classId,
-          selectedClass,
-          assignmentClassId: a?.classId,
-          assignmentClassName: a?.className,
-          assignmentSubject: a?.subject,
-          assignmentTeacherId: a?.teacherId
-        });
-        return byId || byName;
-      });
+      // 1. Essayer le cache global
+      if (cachedSubjects && cachedSubjects.length > 0) {
+        let list = cachedSubjects.filter(s => String(s.classId) === String(classId));
+        console.log('📦 LOAD SUBJECTS - Cache global utilisé:', list.length);
 
-      console.log('🔍 LOAD SUBJECTS - Affectations pour cette classe:', classAssignments);
-      console.log('🔍 LOAD SUBJECTS - Nombre d\'affectations trouvées:', classAssignments.length);
-
-      if (classAssignments.length === 0) {
-        console.log('🔍 LOAD SUBJECTS - Aucune affectation trouvée pour cette classe - ACCÈS REFUSÉ');
-        console.log('🔍 LOAD SUBJECTS - DEBUG INFO:', {
-          isTeacherUser,
-          teacherAssignments,
-          selectedClass,
-          classId,
-          teacherId,
-          currentUser,
-          role
-        });
-        setSubjects([]);
-        setError(`Vous n'êtes pas autorisé à voir les matières de cette classe. (Debug: ${classAssignments.length} affectations trouvées)`);
-        return;
-      }
-    }
-    try {
-      const resp = await fetch(`/api/subjects?classId=${encodeURIComponent(classId)}&schoolYear=${encodeURIComponent(schoolYear)}`);
-      if (!resp.ok) {
-        setSubjects([]);
-        return;
-      }
-      const list = await resp.json();
-      if (isTeacherUser) {
-        const arr = getAssignmentsArray(teacherAssignments);
-        const classAssignments = arr.filter((a: any) => (a?.classId && a.classId === classId) || (a?.className && a.className === selectedClass));
-
-        // DEBUG: Log des affectations et matières pour déboguer
-        console.log('🔍 DEBUG - Affectations pour cette classe:', {
-          classId,
-          selectedClass,
-          teacherAssignments: arr,
-          classAssignments,
-          classAssignmentsSubjects: classAssignments.map((a: any) => ({ subject: a.subject, subjectName: a.subjectName }))
-        });
-
-        // Créer un ensemble des matières assignées avec leurs IDs pour une correspondance plus précise
-        const assignedSubjectsMap = new Map<string, any>();
-        classAssignments.forEach((assignment: any) => {
-          const subjectName = normalize(assignment.subject || assignment.subjectName);
-          const subjectId = assignment.subjectId;
-          assignedSubjectsMap.set(subjectName, { subjectId, assignment });
-        });
-
-        const allSubjects = Array.isArray(list) ? list : (Array.isArray(list?.data) ? list.data : []);
-
-        console.log('🔍 DEBUG - Matières disponibles:', {
-          allSubjects: allSubjects.map((s: any) => ({ id: s.id, name: s.name })),
-          assignedSubjectsMap: Array.from(assignedSubjectsMap.entries()),
-          normalizedSubjects: allSubjects.map((s: any) => normalize(s?.name))
-        });
-
-        // Filtrer les matières en vérifiant si l'enseignant est assigné à cette matière dans cette classe
-        const filtered = (allSubjects || []).filter((s: any) => {
-          const subjectName = normalize(s?.name);
-          const subjectId = s?.id;
-
-          // Vérifier par nom normalisé
-          if (assignedSubjectsMap.has(subjectName)) {
-            return true;
-          }
-
-          // Vérifier par ID si disponible
-          for (const [name, data] of assignedSubjectsMap.entries()) {
-            if (data.subjectId === subjectId) {
-              return true;
-            }
-          }
-
-          return false;
-        });
-
-        // Ne conserver que les matières actives
-        const onlyActive = filtered.filter((s: any) => s.isActive === 1 || s.isActive === true);
-        setSubjects(onlyActive.map((s: any) => ({ id: s.id, name: s.name, coefficient: s.coefficient || 1, maxScore: s.maxScore || 20, classId: classId, schoolYear })));
-        if (filtered.length === 0) {
-          setError("Vous n'êtes pas autorisé à voir les matières de cette classe.");
-        } else {
-          setError('');
+        if (isTeacherUser) {
+          const classAssignments = assignments.filter((a: any) =>
+            (a?.classId && String(a.classId) === String(classId)) ||
+            (a?.className && a.className === selectedClass)
+          );
+          const assignedSet = new Set(classAssignments.map((a: any) => normalize(a.subject || a.subjectName)));
+          list = list.filter((s: any) => assignedSet.has(normalize(s.name)));
         }
-      } else {
-        const allSubjects = Array.isArray(list) ? list : (Array.isArray(list?.data) ? list.data : []);
-        const onlyActive = (allSubjects || []).filter((s: any) => s.isActive === 1 || s.isActive === true);
-        setSubjects(onlyActive.map((s: any) => ({ id: s.id, name: s.name, coefficient: s.coefficient || 1, maxScore: s.maxScore || 20, classId: classId, schoolYear })));
-        setError('');
+
+        setSubjects(list);
+        if (isTeacherUser && list.length === 0) {
+          setError("Aucune matière assignée trouvée pour cette classe.");
+        }
+        return;
       }
+
+      // 2. Sinon, appel API
+      console.log('🌐 LOAD SUBJECTS - Appel API concaténé');
+      const resp = await fetch(`/api/subjects?classId=${encodeURIComponent(classId)}&schoolYear=${encodeURIComponent(schoolYear)}`);
+      if (!resp.ok) throw new Error('Erreur API sujets');
+
+      const list = await resp.json();
+      const allSubjects = Array.isArray(list) ? list : (Array.isArray(list?.data) ? list.data : []);
+
+      let filtered = allSubjects.filter((s: any) => s.isActive === 1 || s.isActive === true);
+
+      if (isTeacherUser) {
+        const classAssignments = assignments.filter((a: any) =>
+          (a?.classId && String(a.classId) === String(classId)) ||
+          (a?.className && a.className === selectedClass)
+        );
+        const assignedSet = new Set(classAssignments.map((a: any) => normalize(a.subject || a.subjectName)));
+        filtered = filtered.filter((s: any) => assignedSet.has(normalize(s.name)));
+      }
+
+      setSubjects(filtered.map((s: any) => ({
+        id: s.id,
+        name: s.name,
+        coefficient: s.coefficient || 1,
+        maxScore: s.maxScore || 20,
+        classId: classId,
+        schoolYear
+      })));
+
+      if (isTeacherUser && filtered.length === 0) {
+        setError("Votre compte n'est pas assigné aux matières de cette classe.");
+      }
+
     } catch (e) {
-      console.error('Erreur chargement matières:', e);
+      console.error('❌ LOAD SUBJECTS ERROR:', e);
+      setError('Erreur lors du chargement des matières');
       setSubjects([]);
+    } finally {
+      setIsLoadingSubjects(false);
     }
   };
 
@@ -677,13 +576,19 @@ export default function SaisieNotesAvancee({ currentUser, role, teacherId, schoo
         setSchoolYear(schoolInfo.currentSchoolYear);
       }
 
-      const periodsResponse = await fetch(`/api/evaluation-periods/sequences?schoolYear=${encodeURIComponent(yearToUse)}`);
-      if (!periodsResponse.ok) {
-        throw new Error('Impossible de charger les périodes d\'évaluation');
+      if (cachedSequences && cachedSequences.length > 0) {
+        console.log(`📦 SaisieNotes: Utilisation du cache (${cachedSequences.length} séquences)`);
+        // Filtrer uniquement les séquences actives
+        setPeriods(cachedSequences.filter((p: any) => p.isActive === 1 || p.isActive === true));
+      } else {
+        const periodsResponse = await fetch(`/api/evaluation-periods/sequences?schoolYear=${encodeURIComponent(yearToUse)}`);
+        if (periodsResponse.ok) {
+          const segments = await periodsResponse.json();
+          const allSegments = Array.isArray(segments) ? segments : [];
+          // Filtrer uniquement les séquences actives
+          setPeriods(allSegments.filter((p: any) => p.isActive === 1 || p.isActive === true));
+        }
       }
-      const segments = await periodsResponse.json();
-      const sequences = Array.isArray(segments) ? segments : [];
-      setPeriods(sequences);
 
       toast({
         title: "Données chargées",
@@ -837,30 +742,31 @@ export default function SaisieNotesAvancee({ currentUser, role, teacherId, schoo
   }, [selectedClass, schoolYear]);
 
   // Charger les matières quand une classe est sélectionnée
-  // Use selectedClassId (the real class identifier) to load subjects.
   useEffect(() => {
-    if (selectedClassId && teacherAssignments && teacherAssignments.length > 0) {
-      console.log('🔄 USEEFFECT - Chargement des matières avec affectations:', teacherAssignments.length);
-      loadSubjects();
-    } else if (selectedClassId) {
-      console.log('⏳ USEEFFECT - Attente des affectations avant chargement des matières...');
-      // Attendre un peu que les affectations soient chargées
-      const timer = setTimeout(() => {
-        if (teacherAssignments && teacherAssignments.length > 0) {
-          console.log('✅ USEEFFECT - Affectations maintenant disponibles, chargement des matières');
-          loadSubjects();
-        } else {
-          console.log('❌ USEEFFECT - Toujours pas d\'affectations après timeout');
-          setSubjects([]);
-          setSelectedSubject('');
-        }
-      }, 1000);
-      return () => clearTimeout(timer);
-    } else {
+    if (!selectedClassId) {
       setSubjects([]);
       setSelectedSubject('');
+      return;
     }
-  }, [selectedClassId, schoolYear, teacherAssignments]);
+
+    // Cas 1: Admin ou autre rôle -> On charge tout immédiatement
+    if (!isTeacherUser) {
+      console.log('🔓 UI - Mode Admin: Chargement immédiat des matières');
+      loadSubjects();
+      return;
+    }
+
+    // Cas 2: Enseignant -> On attend les affectations
+    if (isLoadingAssignments) {
+      console.log('⏳ UI - Mode Enseignant: Attente des affectations...');
+      return;
+    }
+
+    // Cas 3: Affectations chargées (même si vides) -> On charge et on laisse loadSubjects filtrer
+    console.log('✅ UI - Affectations confirmées, chargement des matières');
+    loadSubjects();
+
+  }, [selectedClassId, schoolYear, isTeacherUser, isLoadingAssignments]);
 
   // Helper: déterminer si un élève est actif selon plusieurs conventions possibles
   const isStudentActive = (stu: any): boolean => {
@@ -900,7 +806,9 @@ export default function SaisieNotesAvancee({ currentUser, role, teacherId, schoo
           }
           const periodsData = await response.json();
           const sequences = periodsData.filter((period: any) => period.name && period.name.includes('Séquence'));
-          setPeriods(sequences);
+          // Filtrer uniquement les séquences actives
+          const activeSequences = sequences.filter((s: any) => s.isActive === 1 || s.isActive === true);
+          setPeriods(activeSequences);
 
           if (sequences.length === 0) {
             toast({
@@ -1578,14 +1486,31 @@ export default function SaisieNotesAvancee({ currentUser, role, teacherId, schoo
         console.log('✅ Note sauvegardée avec succès:', result);
 
         // Marquer la note comme sauvegardée dans l'état local
-        setGrades(prev => prev.map(grade => {
-          if (grade.studentId === editingStudentId &&
-            grade.subjectId === selectedSubject &&
-            grade.evaluationPeriodId === selectedPeriod) {
-            return { ...grade, isSaved: true, isModified: false };
-          }
-          return grade;
-        }));
+        // Mettre à jour l'état local immédiatement
+        const numericScore = parseFloat(editingScore);
+        setGrades(prev => {
+          const filtered = prev.filter(g =>
+            !(g.studentId === editingStudentId && g.subjectId === selectedSubject && g.evaluationPeriodId === selectedPeriod)
+          );
+
+          const updatedGrade: Grade = {
+            studentId: editingStudentId,
+            classId: selectedClassId,
+            schoolYear,
+            subjectId: selectedSubject,
+            evaluationTypeId: selectedEvaluationType,
+            evaluationPeriodId: selectedPeriod,
+            score: numericScore,
+            maxScore: editingMaxScore,
+            coefficient: subjects.find(s => s.id === selectedSubject)?.coefficient || 1,
+            isSaved: true,
+            isModified: false,
+            isCleared: false,
+            lastModified: new Date()
+          };
+
+          return [...filtered, updatedGrade];
+        });
 
         // Recharger les notes depuis la base de données
         await loadExistingGrades();
@@ -2035,202 +1960,165 @@ export default function SaisieNotesAvancee({ currentUser, role, teacherId, schoo
         </Alert>
       )}
 
-      {/* Sélecteurs */}
-      <Card>
-        <CardContent className="space-y-4 pt-6">
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-            {/* Sélection de l'année scolaire */}
-            <div className="space-y-2">
-              <Label htmlFor="year-select" className="text-sm font-medium">Année Scolaire</Label>
-              <SchoolYearSelect
-                value={schoolYear}
-                onValueChange={setSchoolYear}
-                availableYears={availableSchoolYears}
-                currentSchoolYear={schoolYear}
-                placeholder="Sélectionner l'année scolaire..."
-                className="h-10"
-              />
-            </div>
-
-            {/* Sélection de niveau */}
-            <div className="space-y-2">
-              <Label htmlFor="level-select" className="text-sm font-medium">Niveau</Label>
-              <Select value={selectedLevel} onValueChange={setSelectedLevel} disabled={!schoolYear}>
-                <SelectTrigger id="level-select" className="h-10">
-                  <SelectValue placeholder="Sélectionner un niveau" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableLevels.map((level, index) => (
-                    <SelectItem key={`level-${level}-${index}`} value={level}>
-                      {index + 1}. {level}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Sélection de classe */}
-            <div className="space-y-2">
-              <Label htmlFor="class-select" className="text-sm font-medium">Classe</Label>
-              <Select value={selectedClassId} onValueChange={(value) => {
-                setSelectedClassId(value);
-                const selectedClassObj = classes.find(c => c.id === value);
-                setSelectedClass(selectedClassObj?.name || '');
-              }} disabled={!selectedLevel}>
-                <SelectTrigger id="class-select" className="h-10">
-                  <SelectValue placeholder="Sélectionner une classe" />
-                </SelectTrigger>
-                <SelectContent>
-                  {classes.map((classObj, index) => (
-                    <SelectItem key={`class-${classObj.id}-${index}`} value={classObj.id}>
-                      {classObj.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Sélection de matière */}
-            <div className="space-y-2">
-              <Label htmlFor="subject-select" className="text-sm font-medium">Matière</Label>
-              <Select value={selectedSubject} onValueChange={setSelectedSubject} disabled={!selectedClassId}>
-                <SelectTrigger id="subject-select" className="h-10">
-                  <SelectValue placeholder="Sélectionner une matière" />
-                </SelectTrigger>
-                <SelectContent>
-                  {subjects.map((subject, index) => (
-                    <SelectItem key={`subject-${subject.id}-${index}`} value={subject.id}>
-                      {subject.name} (Coef: {subject.coefficient || 1}, Max: {subject.maxScore || 20})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {subjects.length === 0 && teacherAssignments && teacherAssignments.length > 0 && (
-                <div className="text-sm text-yellow-700 mt-2">Aucune matière disponible pour cette classe selon vos affectations — vérifiez vos affectations ou contactez l'administration.</div>
-              )}
-              {error && (
-                <div className="text-sm text-red-600 mt-2">{error}</div>
-              )}
-            </div>
-
-            {/* Sélection de séquence */}
-            <div className="space-y-2">
-              <Label htmlFor="period-select" className="text-sm font-medium">Séquence</Label>
-              <Select value={selectedPeriod} onValueChange={setSelectedPeriod} disabled={!selectedSubject}>
-                <SelectTrigger id="period-select" className="h-10">
-                  <SelectValue placeholder="Sélectionner une séquence" />
-                </SelectTrigger>
-                <SelectContent>
-                  {periods.map((period, index) => (
-                    <SelectItem key={`period-${period.id}-${index}`} value={period.id}>
-                      {period.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+      {/* En-tête avec bouton de réduction des filtres */}
+      <div className="flex justify-between items-center bg-white p-4 rounded-none border border-slate-200 shadow-sm">
+        <div className="flex items-center gap-2">
+          <div className="bg-blue-600 p-2 rounded-none">
+            <FileSpreadsheet className="h-5 w-5 text-white" />
           </div>
-
-          {/* Boutons Charger... et Debug sur la même ligne */}
-          {selectedClass && selectedSubject && selectedPeriod && (
-            <div className="flex justify-end mt-4 gap-2">
-              <Button
-                onClick={handleDownloadGrades}
-                variant="outline"
-                size="default"
-                className="border-green-500 text-green-600 hover:bg-green-50"
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : (
-                  <Download className="h-4 w-4 mr-2" />
-                )}
-                Télécharger en PDF
-              </Button>
-
-              <Button
-                onClick={async () => {
-                  console.log('🔄 Chargement forcé des données depuis la base...');
-
-                  // CORRECTION : Forcer le rechargement en vidant d'abord l'état local
-                  setGrades([]);
-                  setExistingGrades([]);
-
-                  // Attendre un peu pour que l'état soit vidé
-                  await new Promise(resolve => setTimeout(resolve, 100));
-
-                  // Recharger depuis la base de données
-                  await loadExistingGrades();
-
-                  // Nettoyer le localStorage pour ce contexte
-                  clearGradesFromLocalStorage();
-
-                  toast({
-                    title: "Rechargé",
-                    description: "Données mises à jour depuis la base de données",
-                  });
-                }}
-                variant="default"
-                size="default"
-                className="bg-green-600 hover:bg-green-700 text-white"
-              >
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Recharger
-              </Button>
-
-
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Bouton de sauvegarde */}
-      {selectedClass && selectedSubject && selectedPeriod && (
-        <div className="flex justify-end">
+          <h2 className="text-lg font-bold text-slate-800">Saisie des Notes</h2>
+        </div>
+        <div className="flex items-center gap-2">
           <Button
-            onClick={handleSaveGrades}
-            disabled={!canSave || isLoading}
-            size="default"
+            variant="outline"
+            size="sm"
+            onClick={() => setShowFilters(!showFilters)}
+            className="flex items-center gap-2 border-slate-200 text-slate-600 hover:bg-slate-50"
           >
-            {isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            ) : (
-              <Save className="h-4 w-4 mr-2" />
-            )}
-            Sauvegarder ({grades.length} notes)
+            {showFilters ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            <span className="hidden md:inline">{showFilters ? "Masquer les sélecteurs" : "Afficher les sélecteurs"}</span>
           </Button>
         </div>
+      </div>
+
+      {/* Sélecteurs */}
+      {showFilters && (
+        <Card className="border-slate-200 shadow-sm overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300 rounded-none">
+          <CardContent className="space-y-6 pt-6">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+              {/* Sélection de l'année scolaire */}
+              <div className="space-y-2">
+                <Label htmlFor="year-select" className="text-sm font-medium">Année Scolaire</Label>
+                <SchoolYearSelect
+                  value={schoolYear}
+                  onValueChange={setSchoolYear}
+                  availableYears={availableSchoolYears}
+                  currentSchoolYear={schoolYear}
+                  placeholder="Sélectionner l'année scolaire..."
+                  className="h-10"
+                />
+              </div>
+
+              {/* Sélection de niveau */}
+              <div className="space-y-2">
+                <Label htmlFor="level-select" className="text-sm font-medium">Niveau</Label>
+                <Select value={selectedLevel} onValueChange={setSelectedLevel} disabled={!schoolYear}>
+                  <SelectTrigger id="level-select" className="h-10">
+                    <SelectValue placeholder="Sélectionner un niveau" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableLevels.map((level, index) => (
+                      <SelectItem key={`level-${level}-${index}`} value={level}>
+                        {index + 1}. {level}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Sélection de classe */}
+              <div className="space-y-2">
+                <Label htmlFor="class-select" className="text-sm font-medium">Classe</Label>
+                <Select
+                  value={selectedClassId}
+                  onValueChange={(value) => {
+                    setSelectedClassId(value);
+                    const selectedClassObj = classes.find(c => c.id === value);
+                    setSelectedClass(selectedClassObj?.name || '');
+                  }}
+                  disabled={!selectedLevel}
+                >
+                  <SelectTrigger id="class-select" className="h-10">
+                    <SelectValue placeholder="Sélectionner une classe" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {classes.map((classObj, index) => (
+                      <SelectItem key={`class-${classObj.id}-${index}`} value={classObj.id}>
+                        {classObj.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Sélection de matière - RESTAURÉE EN SELECT */}
+              <div className="col-span-full md:col-span-1 space-y-3">
+                <Label className="text-sm font-semibold flex items-center gap-2">
+                  <BookOpen className="h-4 w-4 text-blue-600" />
+                  Matière
+                </Label>
+                <Select
+                  value={selectedSubject}
+                  onValueChange={setSelectedSubject}
+                  disabled={!selectedClassId || isLoadingSubjects}
+                >
+                  <SelectTrigger className="w-full h-11 bg-white border-slate-200">
+                    <SelectValue placeholder={isLoadingSubjects ? "Chargement des matières..." : "Sélectionner une matière"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {subjects.length > 0 ? (
+                      subjects.map((subject, index) => (
+                        <SelectItem key={`subject-${subject.id}-${index}`} value={subject.id}>
+                          {subject.name} {subject.coefficient ? `(Coef: ${subject.coefficient})` : ''}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="none" disabled>Aucune matière disponible</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+                {error && <p className="text-[10px] text-red-500 font-medium px-1">{error}</p>}
+              </div>
+
+              {/* Sélection de séquence - RESTAURÉE EN SELECT */}
+              <div className="col-span-full md:col-span-1 space-y-3">
+                <Label className="text-sm font-semibold flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-orange-600" />
+                  Séquence
+                </Label>
+                <Select
+                  value={selectedPeriod}
+                  onValueChange={setSelectedPeriod}
+                  disabled={!selectedClassId || !selectedSubject}
+                >
+                  <SelectTrigger className="w-full h-11 bg-white border-slate-200">
+                    <SelectValue placeholder="Sélectionner une séquence" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {periods.length > 0 ? (
+                      periods.map((period, index) => (
+                        <SelectItem key={`period-${period.id}-${index}`} value={period.id}>
+                          {period.name}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="none" disabled>Aucune séquence disponible</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+          </CardContent>
+        </Card>
       )}
 
       {/* Tableau de saisie des notes */}
       {selectedClass && selectedSubject && selectedPeriod && students.length > 0 && (
-        <Card>
-          <CardHeader className="pb-4">
+        <Card className="shadow-none border-slate-200 rounded-none w-full border-x-0 sm:border-x">
+          <CardHeader className="pb-4 bg-slate-50/50 border-b border-slate-100 rounded-none">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <Badge variant="outline">
+                <Badge variant="outline" className="bg-white rounded-none">
                   {students.length} élève(s)
                 </Badge>
-                <Badge variant="secondary">
+                <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-100 rounded-none">
                   {periods.find(p => p.id === selectedPeriod)?.name}
                 </Badge>
                 {hasChanges && (
-                  <>
-                    <Badge variant="default">
-                      {grades.length} note(s) saisie(s)
-                    </Badge>
-                    {grades.some(g => g.isModified) && (
-                      <Badge variant="destructive">
-                        {grades.filter(g => g.isModified).length} modification(s)
-                      </Badge>
-                    )}
-                    {grades.some(g => !g.isSaved) && (
-                      <Badge variant="secondary">
-                        {grades.filter(g => !g.isSaved).length} non sauvegardée(s)
-                      </Badge>
-                    )}
-                  </>
+                  <Badge variant="default" className="bg-orange-100 text-orange-700 border-orange-200 rounded-none">
+                    Modifications non sauvegardées
+                  </Badge>
                 )}
               </div>
 
@@ -2239,29 +2127,55 @@ export default function SaisieNotesAvancee({ currentUser, role, teacherId, schoo
                   variant="outline"
                   size="sm"
                   onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                  className="rounded-none"
                 >
                   <Filter className="h-4 w-4 mr-2" />
                   Filtres
                 </Button>
 
                 <Select value={gradeFilter} onValueChange={(value: 'all' | 'graded' | 'ungraded') => setGradeFilter(value)}>
-                  <SelectTrigger className="w-32 h-8">
+                  <SelectTrigger className="w-32 h-8 rounded-none">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="rounded-none">
                     <SelectItem value="all">Tous</SelectItem>
                     <SelectItem value="graded">Notés</SelectItem>
                     <SelectItem value="ungraded">Non notés</SelectItem>
                   </SelectContent>
                 </Select>
+
+                <div className="w-px h-6 bg-slate-200 mx-1" />
+
+                <Button
+                  onClick={handleDownloadGrades}
+                  variant="outline"
+                  size="sm"
+                  className="border-slate-200 text-slate-600 hover:bg-slate-50 flex items-center gap-2 rounded-none"
+                  disabled={isLoading || !selectedClass || !selectedSubject}
+                >
+                  <Download className="h-4 w-4" />
+                  <span className="hidden sm:inline">Télécharger</span>
+                </Button>
+
+                <Button
+                  onClick={handleSaveGrades}
+                  disabled={!canSave || isLoading}
+                  variant="default"
+                  size="sm"
+                  className="bg-green-600 hover:bg-green-700 text-white shadow-sm flex items-center gap-2 rounded-none"
+                >
+                  {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                  <span className="hidden sm:inline">Sauvegarder ({grades.length})</span>
+                  <span className="sm:hidden">Enregistrer</span>
+                </Button>
               </div>
             </div>
           </CardHeader>
 
-          <CardContent className="space-y-4">
+          <CardContent className="p-0 sm:p-0 space-y-4">
             {/* Filtres avancés */}
             {showAdvancedFilters && (
-              <div className="p-4 bg-gray-50 rounded-lg space-y-4">
+              <div className="p-4 bg-gray-50 rounded-none space-y-4">
                 <div className="flex items-center gap-4">
                   <div className="flex-1">
                     <Label className="text-sm">Recherche</Label>
@@ -2323,53 +2237,26 @@ export default function SaisieNotesAvancee({ currentUser, role, teacherId, schoo
               </div>
             )}
 
-            {/* Informations de débogage */}
-            {selectedClass && selectedSubject && selectedPeriod && (
-              <div className="bg-gray-100 p-3 rounded-lg mb-4">
-                <div className="text-sm text-gray-700">
-                  <div className="grid grid-cols-4 gap-4">
-                    <div><span className="font-medium">📊 Notes locales:</span> {grades.length}</div>
-                    <div><span className="font-medium">💾 Notes en base:</span> {existingGrades.length}</div>
-                    <div><span className="font-medium">🔄 Refresh:</span> {refreshTrigger}</div>
-                    <div><span className="font-medium">👥 Élèves:</span> {students.length}</div>
-                  </div>
-                  <div className="mt-2 text-xs text-gray-500">
-                    Contexte: {selectedClass} | {selectedSubject} | {selectedPeriod} | {schoolYear}
-                  </div>
-                </div>
-              </div>
-            )}
-
-
-
-            {/* Vue tableau */}
+            {/* Vue tableau style Excel */}
             {viewMode === 'table' && (
-              <div className="border rounded-lg overflow-hidden">
-                <div className="bg-gray-50 px-4 py-3 border-b">
-                  <div className="grid grid-cols-12 gap-4 text-sm font-medium text-gray-700">
-                    {bulkEditMode && <div className="col-span-1">Sélection</div>}
-                    <div className="col-span-4">Élève</div>
-                    <div className="col-span-2 text-center">Note</div>
-                    <div className="col-span-2 text-center">Max</div>
-                    <div className="col-span-2 text-center">%</div>
-                    <div className="col-span-1 text-center">Statut</div>
+              <div className="border-y border-slate-300 rounded-none overflow-hidden bg-white w-full">
+                <div className="bg-slate-100 border-b border-slate-300">
+                  <div className="grid grid-cols-12 text-[11px] font-bold text-slate-700 uppercase tracking-tight">
+                    {bulkEditMode && <div className="col-span-1 border-r border-slate-300 px-2 py-2 text-center">Sél.</div>}
+                    <div className="col-span-1 border-r border-slate-300 px-2 py-2">Matr.</div>
+                    <div className={`${bulkEditMode ? "col-span-4" : "col-span-5"} border-r border-slate-300 px-2 py-2`}>Élève</div>
+                    <div className="col-span-1 border-r border-slate-300 px-2 py-2 text-center">Sexe</div>
+                    <div className="col-span-2 border-r border-slate-300 px-2 py-2 text-center">Note</div>
+                    <div className="col-span-1 border-r border-slate-300 px-2 py-2 text-center">Max</div>
+                    <div className="col-span-1 border-r border-slate-300 px-2 py-2 text-center">%</div>
+                    <div className="col-span-1 px-2 py-2 text-center">Statut</div>
                   </div>
                 </div>
                 <div className="divide-y">
                   {filteredStudents
                     .slice((currentPage - 1) * studentsPerPage, (currentPage - 1) * studentsPerPage + studentsPerPage)
                     .map((student, index) => {
-                      // CORRECTION : Utiliser la même logique que le composant de débogage
-                      // Récupérer toutes les notes disponibles (locales + base de données)
                       const allGrades = [...grades, ...existingGrades];
-
-                      // DEBUG : Vérifier la correspondance des IDs
-                      console.log('🔍 DEBUG - Correspondance des IDs pour élève:', {
-                        studentId: student.id,
-                        studentCode: student.code,
-                        allGrades: allGrades.map(g => ({ studentId: g.studentId, subjectId: g.subjectId, periodId: g.evaluationPeriodId })),
-                        existingGrades: existingGrades.map(g => ({ studentId: g.studentId, subjectId: g.subjectId, periodId: g.evaluationPeriodId }))
-                      });
 
                       // Essayer d'abord avec l'ID de l'élève, puis avec le code matricule
                       const studentGrades = allGrades.filter(g =>
@@ -2398,50 +2285,45 @@ export default function SaisieNotesAvancee({ currentUser, role, teacherId, schoo
                       const maxScore = subjects.find(s => s.id === selectedSubject)?.maxScore || 20;
                       const percentage = grade ? (grade.score / maxScore) * 100 : 0;
 
-                      // Utiliser la nouvelle fonction de statut
                       const statusInfo = getGradeStatus(grade, originalGrade);
-
-                      // DEBUG: Log détaillé pour chaque élève
-                      console.log('🔍 Rendu élève:', {
-                        nom: student.nom,
-                        id: student.id,
-                        code: student.code,
-                        grade,
-                        percentage,
-                        gradesLength: grades.length,
-                        existingGradesLength: existingGrades.length,
-                        refreshTrigger,
-                        // Vérifier si la note existe dans l'état local
-                        hasLocalGrade: grades.some(g => g.studentId === student.id && g.subjectId === selectedSubject && g.evaluationPeriodId === selectedPeriod),
-                        // Vérifier si la note existe dans l'état existant
-                        hasExistingGrade: existingGrades.some(g => g.studentId === student.id && g.subjectId === selectedSubject && g.evaluationPeriodId === selectedPeriod),
-                        // Détail des notes trouvées
-                        localGrades: grades.filter(g => g.studentId === student.id && g.subjectId === selectedSubject && g.evaluationPeriodId === selectedPeriod),
-                        existingGrades: existingGrades.filter(g => g.studentId === student.id && g.subjectId === selectedSubject && g.evaluationPeriodId === selectedPeriod)
-                      });
 
                       const isSelected = selectedStudents.has(student.id);
 
                       const displayLast = (student.nom || (student.name ? String(student.name).split(' ')[0] : '')) as string;
                       const displayFirst = (student.prenom || (student.name ? String(student.name).split(' ').slice(1).join(' ') : '')) as string;
-                      const displayFull = [displayLast, displayFirst].filter(Boolean).join(' ').trim() || (student.code || student.id);
+
+                      // Déduplication des noms/prénoms si identiques
+                      const nameParts = new Set<string>();
+                      if (displayLast) nameParts.add(displayLast.trim());
+                      if (displayFirst) nameParts.add(displayFirst.trim());
+                      const displayName = Array.from(nameParts).join(' ');
+
+                      const sexeRaw = String(student.sexe || '').toLowerCase();
+                      const displaySexe = sexeRaw.startsWith('m') ? 'M' : (sexeRaw.startsWith('f') ? 'F' : '-');
 
                       return (
-                        <div key={student.id} className="grid grid-cols-12 gap-4 p-3">
+                        <div key={student.id} className="grid grid-cols-12 items-center text-[11px] hover:bg-slate-50 transition-colors border-b border-slate-200 last:border-b-0">
                           {bulkEditMode && (
-                            <div className="col-span-1">
+                            <div className="col-span-1 border-r border-slate-200 flex justify-center py-2">
                               <input
                                 type="checkbox"
                                 checked={isSelected}
                                 onChange={() => toggleStudentSelection(student.id)}
-                                className="rounded border-gray-300"
+                                className="h-4 w-4 rounded-none text-blue-600 focus:ring-blue-500"
                               />
                             </div>
                           )}
-                          <div className="col-span-4 font-medium">
-                            {displayFull}
+                          <div className="col-span-1 border-r border-slate-200 px-2 py-1.5 font-mono text-blue-600 font-bold truncate">
+                            {student.id || '---'}
                           </div>
-                          <div className="col-span-2 flex items-center justify-center gap-2">
+                          <div className={`${bulkEditMode ? "col-span-4" : "col-span-5"} border-r border-slate-200 px-2 py-1.5 font-semibold text-slate-800 truncate`}>
+                            {displayName}
+                          </div>
+                          <div className="col-span-1 border-r border-slate-200 px-2 py-1.5 text-center font-medium text-slate-500">
+                            {displaySexe}
+                          </div>
+
+                          <div className="col-span-2 border-r border-slate-200 px-2 py-1.5 flex items-center justify-center gap-1">
                             <div className="relative">
                               <Input
                                 type="number"
@@ -2450,63 +2332,49 @@ export default function SaisieNotesAvancee({ currentUser, role, teacherId, schoo
                                 step="0.1"
                                 value={grade?.isCleared ? '' : (grade?.score || '')}
                                 onChange={(e) => handleGradeChange(student.id, e.target.value)}
-                                placeholder="0"
-                                className={`w-20 h-8 text-sm ${grade?.isCleared ? 'border-red-500 bg-red-50' :
-                                    grade?.isModified ? 'border-orange-500 bg-orange-50' : ''
+                                className={`w-16 h-8 text-[11px] text-center font-bold px-1 ${grade?.isCleared ? 'border-red-300 bg-red-50 text-red-600' :
+                                  grade?.isModified ? 'border-orange-300 bg-orange-50 text-orange-700' :
+                                    'border-slate-200'
                                   }`}
                                 disabled={grade?.isCleared}
                               />
-                              {/* Indicateur de modification */}
                               {grade?.isModified && !grade?.isCleared && (
-                                <div className="absolute -top-1 -right-1 w-3 h-3 bg-orange-500 rounded-full flex items-center justify-center">
-                                  <span className="text-xs text-white">M</span>
-                                </div>
-                              )}
-                              {/* Indicateur d'effacement */}
-                              {grade?.isCleared && (
-                                <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full flex items-center justify-center">
-                                  <span className="text-xs text-white">E</span>
+                                <div className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-orange-500 rounded-none flex items-center justify-center border border-white shadow-sm">
+                                  <span className="text-[7px] text-white font-bold">M</span>
                                 </div>
                               )}
                             </div>
-                            {/* Bouton d'édition */}
                             {grade && !grade.isCleared && (
                               <Button
-                                variant="outline"
+                                variant="ghost"
                                 size="sm"
                                 onClick={() => handleGradeEdit(student.id, grade.score)}
-                                className="h-8 w-8 p-0 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
-                                title="Modifier la note"
+                                className="h-7 w-7 p-0 text-slate-400 hover:text-blue-600 hover:bg-blue-50"
                               >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                            )}
-                            {/* Bouton de restauration */}
-                            {grade?.isCleared && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleGradeRestore(student.id)}
-                                className="h-8 w-8 p-0 text-green-600 hover:bg-green-50 hover:text-green-700"
-                                title="Restaurer la note"
-                              >
-                                <RefreshCw className="h-4 w-4" />
+                                <Edit className="h-3.5 w-3.5" />
                               </Button>
                             )}
                           </div>
-                          <div className="col-span-2 text-center text-sm text-gray-500">
+
+                          <div className="col-span-1 border-r border-slate-200 px-2 py-1.5 text-center text-slate-400 font-medium">
                             / {maxScore}
                           </div>
-                          <div className="col-span-2 text-center">
-                            <span className={`inline-block px-2 py-1 rounded text-sm font-medium ${percentage >= 50 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+
+                          <div className="col-span-1 border-r border-slate-200 px-2 py-1.5 text-center">
+                            <span className={`inline-block px-2 py-0.5 rounded-none text-[10px] font-bold ${percentage >= 50 ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
                               }`}>
-                              {percentage.toFixed(1)}%
+                              {percentage.toFixed(0)}%
                             </span>
                           </div>
-                          <div className="col-span-1 text-center">
-                            <span className={`inline-block px-2 py-1 rounded text-sm font-medium ${statusInfo.class}`}>
-                              {statusInfo.icon} {statusInfo.text}
-                            </span>
+
+                          <div className="col-span-1 px-2 py-1.5 flex justify-center">
+                            <div className={`flex items-center justify-center h-5 w-5 rounded-none ${statusInfo.class} border border-transparent`}>
+                              {statusInfo.icon ? (
+                                <span className="text-[12px]">
+                                  {statusInfo.icon}
+                                </span>
+                              ) : null}
+                            </div>
                           </div>
                         </div>
                       );
@@ -2523,7 +2391,7 @@ export default function SaisieNotesAvancee({ currentUser, role, teacherId, schoo
                 </div>
                 <div className="flex items-center gap-2">
                   <span>Par page</span>
-                  <select className="border rounded h-8 px-2 text-sm" value={studentsPerPage} onChange={e => { setStudentsPerPage(parseInt(e.target.value) || 10); setCurrentPage(1); }}>
+                  <select className="border rounded-none h-8 px-2 text-sm" value={studentsPerPage} onChange={e => { setStudentsPerPage(parseInt(e.target.value) || 10); setCurrentPage(1); }}>
                     {[5, 10, 15, 20, 25, 50].map(n => <option key={n} value={n}>{n}</option>)}
                   </select>
                   <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>Précédent</Button>
@@ -2544,6 +2412,81 @@ export default function SaisieNotesAvancee({ currentUser, role, teacherId, schoo
           </CardContent>
         </Card>
       )}
+
+      {/* Boîte de dialogue pour modifier une note individuelle */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="sm:max-w-[425px] rounded-none border-slate-300 shadow-xl">
+          <DialogHeader>
+            <DialogTitle className="text-slate-800 font-bold">Modifier la note</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Élève</Label>
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-none text-slate-800 font-medium">
+                {editingStudentName}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Note (sur {editingMaxScore})</Label>
+              <Input
+                type="number"
+                step="0.1"
+                min="0"
+                max={editingMaxScore}
+                value={editingScore}
+                onChange={(e) => setEditingScore(e.target.value)}
+                className="border-slate-300 focus:ring-blue-500 rounded-none h-12 text-xl font-bold bg-white"
+                autoFocus
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-3 mt-2">
+            <Button
+              variant="outline"
+              onClick={() => setEditDialogOpen(false)}
+              className="rounded-none border-slate-200 text-slate-600 hover:bg-slate-50 px-6"
+            >
+              Annuler
+            </Button>
+            <Button
+              onClick={handleGradeEditConfirm}
+              disabled={isLoading || !editingScore}
+              className="bg-blue-600 hover:bg-blue-700 text-white rounded-none px-6 shadow-sm flex items-center gap-2"
+            >
+              {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              Confirmer
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Boîte de dialogue de succès */}
+      <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
+        <DialogContent className="sm:max-w-[425px] rounded-none border-emerald-200 shadow-xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-emerald-600 font-bold">
+              <CheckCircle className="h-5 w-5" />
+              Opération réussie
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-6 text-center">
+            <div className="bg-emerald-50 text-emerald-700 p-6 border border-emerald-100 mb-4 inline-block rounded-none shadow-inner">
+              <Save className="h-10 w-10 mx-auto" aria-hidden="true" />
+            </div>
+            <p className="text-slate-600 font-medium">
+              Toutes les notes ont été sauvegardées avec succès dans la base de données.
+            </p>
+          </div>
+          <div className="flex justify-center pb-2">
+            <Button
+              onClick={() => setShowSuccessDialog(false)}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white min-w-[140px] rounded-none shadow-md"
+            >
+              D'accord
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

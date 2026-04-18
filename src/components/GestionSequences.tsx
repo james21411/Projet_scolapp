@@ -9,7 +9,11 @@ import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 
-export default function GestionSequences({ schoolInfo }: { schoolInfo?: SchoolInfo | null }) {
+export default function GestionSequences({ schoolInfo, cachedSequences, onRefresh }: {
+  schoolInfo?: SchoolInfo | null,
+  cachedSequences?: any[],
+  onRefresh?: (year?: string) => Promise<void>
+}) {
   const [selectedSchoolYear, setSelectedSchoolYear] = useState<string>('');
   const [availableYears, setAvailableYears] = useState<string[]>([]);
   const [sequences, setSequences] = useState<any[]>([]);
@@ -47,6 +51,14 @@ export default function GestionSequences({ schoolInfo }: { schoolInfo?: SchoolIn
   }, [selectedSchoolYear]);
 
   const loadSequences = async () => {
+    // Utilisation du cache global si disponible
+    if (cachedSequences && cachedSequences.length > 0) {
+      console.log(`📦 GestionSequences: Utilisation du cache (${cachedSequences.length} séquences)`);
+      setSequences(cachedSequences);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
       const resp = await fetch(`/api/evaluation-periods/sequences?schoolYear=${encodeURIComponent(selectedSchoolYear)}`);
@@ -124,6 +136,7 @@ export default function GestionSequences({ schoolInfo }: { schoolInfo?: SchoolIn
         });
       }
 
+      if (onRefresh) onRefresh(selectedSchoolYear);
       await loadSequences();
       setEditedDates({});
       setEditedActive({});
@@ -154,6 +167,7 @@ export default function GestionSequences({ schoolInfo }: { schoolInfo?: SchoolIn
               const resp = await fetch('/api/evaluation-periods/sequences', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'create-default', schoolYear: selectedSchoolYear }) });
               const json = await resp.json().catch(() => ({}));
               if (resp.ok) {
+                if (onRefresh) onRefresh(selectedSchoolYear);
                 await loadSequences();
                 const count = Array.isArray(sequences) ? sequences.length : 0;
                 const msg = json.message || `Création par défaut effectuée (${json.inserted ?? '0'} insérées)`;
@@ -251,7 +265,12 @@ export default function GestionSequences({ schoolInfo }: { schoolInfo?: SchoolIn
               if (!copyYears.source || !copyYears.target) return;
               await fetch('/api/evaluation-periods/sequences', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'reconduct', previousYear: copyYears.source, schoolYear: copyYears.target }) });
               setShowReconductionModal(false);
-              if (copyYears.target === selectedSchoolYear) loadSequences();
+              if (copyYears.target === selectedSchoolYear) {
+                if (onRefresh) onRefresh(selectedSchoolYear);
+                loadSequences();
+              } else if (onRefresh) {
+                onRefresh(copyYears.target);
+              }
             }}>Reconduire</Button>
           </div>
         </DialogContent>

@@ -44,7 +44,13 @@ interface SchoolClass {
   levelId: string;
 }
 
-export default function GestionMatieresV2({ currentUser, role, schoolInfo }: { currentUser?: { id?: string; username?: string; fullName?: string }; role?: string, schoolInfo?: SchoolInfo | null } = {}) {
+export default function GestionMatieresV2({ currentUser, role, schoolInfo, cachedSubjects, onRefresh }: {
+  currentUser?: { id?: string; username?: string; fullName?: string };
+  role?: string,
+  schoolInfo?: SchoolInfo | null,
+  cachedSubjects?: Subject[],
+  onRefresh?: (year?: string) => Promise<void>
+} = {}) {
   // États pour la sélection
   const [selectedLevel, setSelectedLevel] = useState<string>('');
   const [selectedClass, setSelectedClass] = useState<string>('');
@@ -253,6 +259,26 @@ export default function GestionMatieresV2({ currentUser, role, schoolInfo }: { c
     }
 
     const requestId = ++lastRequestRef.current;
+
+    // Si on a des données en cache pour la bonne année, on les utilise
+    if (cachedSubjects && cachedSubjects.length > 0) {
+      console.log(`📦 Utilisation du cache global (${cachedSubjects.length} matières)`);
+      let filtered = cachedSubjects.filter(s => s.classId === selectedClass);
+
+      // Appliquer le filtrage enseignant
+      if (isTeacherUser && teacherAssignments.length > 0) {
+        const arr = getAssignmentsArray(teacherAssignments);
+        const className = getClassNameById(selectedClass);
+        const classAssignments = arr.filter((a: any) => (a?.classId && String(a.classId) === String(selectedClass)) || (a?.className && normalize(a.className) === normalize(className)));
+        const assignedSet = new Set<string>(classAssignments.map((a: any) => normalize(a.subject || a.subjectName)));
+        filtered = filtered.filter((s: Subject) => assignedSet.has(normalize(s.name)));
+      }
+
+      setSubjects(filtered);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -385,7 +411,8 @@ export default function GestionMatieresV2({ currentUser, role, schoolInfo }: { c
           isActive: true
         });
 
-        // Recharger les matières pour s'assurer de la synchronisation
+        // Recharger les matières localement et rafraîchir le cache global
+        if (onRefresh) onRefresh(selectedSchoolYear);
         await loadSubjects();
       } else {
         const errorData = await response.json().catch(() => ({}));
@@ -432,7 +459,8 @@ export default function GestionMatieresV2({ currentUser, role, schoolInfo }: { c
         // Réinitialiser l'état d'édition
         setEditingSubject(null);
 
-        // Recharger les matières pour s'assurer de la synchronisation
+        // Recharger les matières localement et rafraîchir le cache global
+        if (onRefresh) onRefresh(selectedSchoolYear);
         await loadSubjects();
       } else {
         const errorData = await response.json().catch(() => ({}));
@@ -452,6 +480,7 @@ export default function GestionMatieresV2({ currentUser, role, schoolInfo }: { c
 
       if (response.ok) {
         setSubjects(subjects.filter(s => s.id !== subjectId));
+        if (onRefresh) onRefresh(selectedSchoolYear);
         toast.success('Matière supprimée avec succès');
       } else {
         toast.error('Erreur lors de la suppression de la matière');
