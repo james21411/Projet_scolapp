@@ -2,24 +2,20 @@ import { getPoolFromRequest } from '@/lib/pool-from-request';
 import PDFDocument from 'pdfkit';
 
 // Fonction pour formater les rangs en français
-function formatRank(rank) {
-  if (rank === 1) return '1er';
-  if (rank === 2) return '2ème';
-  if (rank === 3) return '3ème';
-  return `${rank}ème`;
+function formatRank(rank, total) {
+  if (!rank || rank === 'N/A') return 'N/A';
+  const r = parseInt(rank);
+  if (isNaN(r)) return rank;
+  const suffix = (r === 1) ? 'er' : 'ème';
+  return `${r}${suffix}/${total || '?'}`;
 }
 
 // Fonction pour dessiner l'emblème officiel
 function drawOfficialEmblem(doc, x, y, size) {
-  // Cercle extérieur
-  doc.circle(x + size / 2, y + size / 2, size / 2).stroke('#1e40af', 2);
-
-  // Cercle intérieur
-  doc.circle(x + size / 2, y + size / 2, size / 3).stroke('#1e40af', 1);
-
-  // Étoile au centre
+  doc.circle(x + size / 2, y + size / 2, size / 2).stroke('#1e40af', 1);
+  doc.circle(x + size / 2, y + size / 2, size / 3).stroke('#1e40af', 0.5);
   doc.fontSize(size / 4).font('Helvetica-Bold').fillColor('#1e40af')
-    .text('★', x + size / 2 - 8, y + size / 2 - 8);
+    .text('★', x + size / 2 - 4, y + size / 2 - 4);
 }
 
 export default async function handler(req, res) {
@@ -29,202 +25,202 @@ export default async function handler(req, res) {
 
   try {
     const pool = await getPoolFromRequest(req, res);
-    const { studentId, classId, schoolYear } = req.body;
+    const { studentId, classId, schoolYear, decision, targetClass } = req.body;
 
     if (!studentId || !classId || !schoolYear) {
       return res.status(400).json({ error: 'Paramètres manquants' });
     }
 
-    console.log('🚀 === GÉNÉRATION BULLETIN ANNUEL INDIVIDUEL ===');
-    console.log(`👤 Élève: ${studentId}, Classe: ${classId}, Année: ${schoolYear}`);
     const connection = pool;
-    // Récupérer l'élève
+
+    // 1. Récupérer l'élève
     const [students] = await connection.query(`
-      SELECT * FROM students 
-      WHERE id = ? AND anneeScolaire = ?
-    `, [studentId, schoolYear]);
+      SELECT * FROM students WHERE id = ?
+    `, [studentId]);
 
-    if (students.length === 0) {
-      return res.status(404).json({ error: 'Élève non trouvé' });
-    }
-
+    if (students.length === 0) return res.status(404).json({ error: 'Élève non trouvé' });
     const student = students[0];
-    console.log(`👤 Élève trouvé: ${student.nom} ${student.prenom}`);
 
-    // Récupérer les informations de la classe
-    const [classInfo] = await connection.query(
-      'SELECT name FROM school_classes WHERE id = ?',
-      [classId]
-    );
-
+    // 2. Récupérer les informations de la classe et de l'école
+    const [classInfo] = await connection.query('SELECT name FROM school_classes WHERE id = ?', [classId]);
     const className = classInfo.length > 0 ? classInfo[0].name : classId;
+    const [schoolInfoArr] = await connection.query('SELECT * FROM school_info LIMIT 1');
+    const schoolInfo = schoolInfoArr[0] || {};
 
-    // Récupérer les informations de l'école
-    const [schoolInfo] = await connection.query('SELECT * FROM school_info LIMIT 1');
+    // 3. Récupérer TOUTES les séquences de l'année
+    const [sequences] = await connection.query(`
+      SELECT id, name FROM evaluation_periods 
+      WHERE schoolYear = ? AND name LIKE '%Séquence%'
+      ORDER BY name ASC
+    `, [schoolYear]);
 
-    // Récupérer les résultats des 3 trimestres
-    const [trimesterResults] = await connection.query(`
-      SELECT 
-        rc.studentId,
-        rc.averageScore,
-        rc.studentRank,
-        rc.totalStudents,
-        rc.mention,
-        ep.name as periodName,
-        ep.id as periodId
-      FROM report_cards rc
-      JOIN evaluation_periods ep ON rc.evaluationPeriodId = ep.id
-      WHERE rc.studentId = ? 
-        AND rc.schoolYear = ?
-        AND ep.name LIKE '%trimestre%'
-      ORDER BY ep.name
+    // 4. Récupérer TOUTES les matières de la classe
+    const [subjects] = await connection.query(`
+      SELECT id, name, coefficient 
+      FROM subjects 
+      WHERE classId = ? AND schoolYear = ?
+      ORDER BY name ASC
+    `, [classId, schoolYear]);
+
+    // 5. Récupérer TOUTES les notes de l'élève pour l'année
+    const [grades] = await connection.query(`
+      SELECT subjectId, evaluationPeriodId, score, maxScore, coefficient 
+      FROM grades 
+      WHERE studentId = ? AND schoolYear = ?
     `, [studentId, schoolYear]);
 
-    console.log(`📊 Résultats trimestres trouvés:`, trimesterResults);
+    // 6. Récupérer les bulletins (pour les rangs généraux par séquence)
+    const [reportCards] = await connection.query(`
+      SELECT evaluationPeriodId, \`rank\`, totalStudents, averageScore
+      FROM report_cards
+      WHERE studentId = ? AND schoolYear = ?
+    `, [studentId, schoolYear]);
 
-    if (trimesterResults.length < 3) {
-      return res.status(400).json({
-        error: `Données incomplètes. ${trimesterResults.length}/3 trimestres disponibles.`
-      });
-    }
-
-    // Calculer la moyenne annuelle
-    const totalAverage = trimesterResults.reduce((sum, t) => sum + parseFloat(t.averageScore || 0), 0);
-    const annualAverage = totalAverage / 3;
-
-    // Décision finale
-    let finalDecision = 'NON ADMIS';
-    if (annualAverage >= 10) {
-      finalDecision = 'ADMIS EN CLASSE SUPÉRIEURE';
-    } else if (annualAverage >= 8) {
-      finalDecision = 'ADMIS AVEC RÉSERVES';
-    }
-
-    // Créer le PDF
-    const doc = new PDFDocument({
-      size: 'A4',
-      margins: {
-        top: 20,
-        bottom: 20,
-        left: 20,
-        right: 20
-      }
+    // Organiser les données
+    const gradesMap = {}; // subjectId -> periodId -> score
+    grades.forEach(g => {
+      if (!gradesMap[g.subjectId]) gradesMap[g.subjectId] = {};
+      const score = parseFloat(g.score) || 0;
+      const maxScore = parseFloat(g.maxScore) || 20;
+      const normalizedScore = maxScore > 0 ? (score / maxScore) * 20 : score;
+      gradesMap[g.subjectId][g.evaluationPeriodId] = normalizedScore;
     });
 
-    // Définir le type de contenu
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="bulletin-annuel-${student.nom}-${student.prenom}-${schoolYear}.pdf"`);
+    const sequenceRanks = {}; // periodId -> {rank, total}
+    reportCards.forEach(rc => {
+      sequenceRanks[rc.evaluationPeriodId] = { rank: rc.rank, total: rc.totalStudents, avg: rc.averageScore };
+    });
 
-    // Pipes le PDF vers la réponse
+    // Créer le PDF (En paysage pour faire tenir toutes les colonnes)
+    const doc = new PDFDocument({ size: 'A4', layout: 'landscape', margin: 30 });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="Bulletin_Annuel_${student.nom}.pdf"`);
     doc.pipe(res);
 
-    // En-tête de l'école
-    const schoolName = schoolInfo && schoolInfo[0] ? schoolInfo[0].name : 'École Secondaire';
-    const schoolAddress = schoolInfo && schoolInfo[0] ? schoolInfo[0].address : 'Yaoundé';
-    const schoolEmail = schoolInfo && schoolInfo[0] ? schoolInfo[0].email : 'contact@ecole.cm';
+    // En-tête (Style réduit pour laisser place au tableau)
+    doc.fontSize(14).font('Helvetica-Bold').text(schoolInfo.name || 'SCOLAPP ACADEMY', { align: 'center' });
+    doc.fontSize(8).font('Helvetica').text(schoolInfo.address || '', { align: 'center' });
+    doc.moveDown(1);
 
-    doc.fontSize(16).font('Helvetica-Bold').fillColor('#1e40af')
-      .text(schoolName, 40, 20, { align: 'center', width: 515 });
+    doc.fontSize(16).font('Helvetica-Bold').fillColor('#1e40af').text('BILAN ANNUEL DES RÉSULTATS', { align: 'center' });
+    doc.fontSize(10).fillColor('#475569').text(`Année Scolaire: ${schoolYear}`, { align: 'center' });
+    doc.moveDown(1);
 
-    doc.fontSize(10).font('Helvetica').fillColor('#374151')
-      .text(schoolAddress, 40, 40, { align: 'center', width: 515 })
-      .text(schoolEmail, 40, 55, { align: 'center', width: 515 });
+    // Infos élève
+    const infoY = doc.y;
+    doc.fontSize(10).font('Helvetica-Bold').fillColor('#1e40af').text('ÉLÈVE:', 30, infoY);
+    doc.font('Helvetica').fillColor('#000').text(`${student.nom} ${student.prenom}`, 80, infoY);
+    doc.fontSize(10).font('Helvetica-Bold').fillColor('#1e40af').text('CLASSE:', 350, infoY);
+    doc.font('Helvetica').fillColor('#000').text(className, 410, infoY);
+    doc.fontSize(10).font('Helvetica-Bold').fillColor('#1e40af').text('MATRICULE:', 600, infoY);
+    doc.font('Helvetica').fillColor('#000').text(student.id, 680, infoY);
 
-    // Logo de l'école
-    const logoX = 250;
-    const logoY = 15;
-    const logoSize = 40;
+    doc.moveDown(1.5);
 
-    if (schoolInfo && schoolInfo[0] && schoolInfo[0].logoUrl) {
-      try {
-        doc.image(schoolInfo[0].logoUrl, logoX, logoY, { width: logoSize, height: logoSize });
-      } catch (error) {
-        drawOfficialEmblem(doc, logoX, logoY, logoSize);
-      }
-    } else {
-      drawOfficialEmblem(doc, logoX, logoY, logoSize);
-    }
+    // Tableau des résultats
+    const tableTop = doc.y;
 
-    // Titre principal
-    doc.fontSize(18).font('Helvetica-Bold').fillColor('#1e40af')
-      .text('BULLETIN ANNUEL', 40, 80, { align: 'center', width: 515 })
-      .fontSize(14).fillColor('#374151')
-      .text('ANNUAL REPORT CARD', 40, 100, { align: 'center', width: 515 });
+    // Header du tableau
+    doc.rect(30, tableTop, 780, 25).fill('#f1f5f9');
+    doc.strokeColor('#cbd5e1').lineWidth(0.5);
+    doc.rect(30, tableTop, 780, 25).stroke();
 
-    // Informations de l'élève
-    doc.fontSize(12).font('Helvetica-Bold').fillColor('#1e40af')
-      .text('INFORMATIONS DE L\'ÉLÈVE / STUDENT INFORMATION', 15, 130);
+    doc.fontSize(8).font('Helvetica-Bold').fillColor('#1e40af');
+    doc.text('MATIÈRES', 35, tableTop + 8);
+    doc.text('COEF', 170, tableTop + 8);
 
-    doc.fontSize(10).font('Helvetica').fillColor('#374151');
-    doc.text(`Nom / Last Name: ${student.nom || 'N/A'}`, 15, 150);
-    doc.text(`Prénom / First Name: ${student.prenom || 'N/A'}`, 15, 170);
-    doc.text(`Classe / Class: ${student.classe || 'N/A'}`, 15, 190);
-    doc.text(`Année scolaire / School Year: ${schoolYear}`, 15, 210);
+    sequences.forEach((seq, i) => {
+      const shortName = seq.name.replace('Séquence ', 'SEQ ');
+      doc.text(shortName, 200 + (i * 75), tableTop + 8, { width: 70, align: 'center' });
+    });
 
-    // Résultats par trimestre
-    doc.fontSize(12).font('Helvetica-Bold').fillColor('#1e40af')
-      .text('RÉSULTATS PAR TRIMESTRE / TRIMESTER RESULTS', 15, 250);
+    doc.text('MOY. ANN.', 650 + 5, tableTop + 8, { width: 60, align: 'center' });
+    doc.text('RANG', 715 + 5, tableTop + 8, { width: 60, align: 'center' });
 
-    let currentY = 270;
-    trimesterResults.forEach((trimester, index) => {
-      const trimesterNumber = index + 1;
-      const average = parseFloat(trimester.averageScore) || 0;
-      const rank = parseInt(trimester.studentRank) || 1;
-      const totalStudents = parseInt(trimester.totalStudents) || 1;
-      const mention = trimester.mention || 'N/A';
+    let currentY = tableTop + 25;
+    let totalAnnWeight = 0;
+    let totalCoef = 0;
 
-      doc.fontSize(10).font('Helvetica-Bold').fillColor('#1e40af')
-        .text(`${trimesterNumber}ème Trimestre / ${trimesterNumber}nd Trimester`, 15, currentY);
+    subjects.forEach((subject) => {
+      doc.rect(30, currentY, 780, 20).stroke();
+      doc.fontSize(8).font('Helvetica-Bold').fillColor('#334155').text(subject.name.substring(0, 25), 35, currentY + 6);
+      doc.font('Helvetica').text(subject.coefficient.toString(), 170, currentY + 6, { width: 30, align: 'center' });
+
+      let rowSum = 0;
+      let count = 0;
+
+      sequences.forEach((seq, i) => {
+        const score = gradesMap[subject.id]?.[seq.id];
+        const displayScore = score !== undefined ? score.toFixed(2) : '-';
+        doc.text(displayScore, 200 + (i * 75), currentY + 6, { width: 70, align: 'center' });
+        if (score !== undefined) {
+          rowSum += score;
+          count++;
+        }
+      });
+
+      const annAvg = count > 0 ? rowSum / count : 0;
+      const coef = parseFloat(subject.coefficient) || 1;
+      totalAnnWeight += annAvg * coef;
+      totalCoef += coef;
+
+      doc.font('Helvetica-Bold').fillColor('#1e40af').text(annAvg.toFixed(2), 650 + 5, currentY + 6, { width: 60, align: 'center' });
+      doc.font('Helvetica').fillColor('#475569').text('-', 715 + 5, currentY + 6, { width: 60, align: 'center' });
 
       currentY += 20;
-
-      doc.fontSize(9).font('Helvetica').fillColor('#374151');
-      doc.text(`Moyenne / Average: ${average.toFixed(2)}/20`, 25, currentY);
-      doc.text(`Rang / Rank: ${formatRank(rank)}/${totalStudents}`, 25, currentY + 15);
-      doc.text(`Mention: ${mention}`, 25, currentY + 30);
-
-      currentY += 50;
     });
 
-    // Résultat annuel
-    doc.fontSize(14).font('Helvetica-Bold').fillColor('#1e40af')
-      .text('RÉSULTAT ANNUEL / ANNUAL RESULT', 15, currentY);
+    // Pied de tableau : Moyennes Générales
+    const finalAnnAvg = totalCoef > 0 ? totalAnnWeight / totalCoef : 0;
 
-    currentY += 25;
+    doc.moveDown(1);
+    currentY = doc.y;
+    doc.rect(30, currentY, 780, 50).fill('#f8fafc');
+    doc.rect(30, currentY, 780, 50).stroke();
 
-    doc.fontSize(12).font('Helvetica-Bold').fillColor('#1e40af')
-      .text(`Moyenne Annuelle / Annual Average: ${annualAverage.toFixed(2)}/20`, 25, currentY);
+    doc.fontSize(10).font('Helvetica-Bold').fillColor('#1e40af');
+    doc.text('RÉSUMÉ DES PERFORMANCES PAR SÉQUENCE', 40, currentY + 10);
 
-    currentY += 25;
+    doc.fontSize(8).fillColor('#475569');
+    sequences.forEach((seq, i) => {
+      const data = sequenceRanks[seq.id];
+      const text = data ? `MOY: ${parseFloat(data.avg).toFixed(2)} | RG: ${data.rank}/${data.total}` : 'N/A';
+      doc.text(text, 200 + (i * 75), currentY + 30, { width: 70, align: 'center' });
+    });
 
-    doc.fontSize(12).font('Helvetica-Bold').fillColor('#1e40af')
-      .text(`Décision Finale / Final Decision: ${finalDecision}`, 25, currentY);
+    doc.fontSize(12).font('Helvetica-Bold').fillColor('#1e40af');
+    doc.text(`MOYENNE ANNUELLE : ${finalAnnAvg.toFixed(2)} / 20`, 580, currentY + 18, { align: 'right', width: 200 });
 
-    // Signature et cachet
-    currentY += 50;
-    doc.fontSize(10).font('Helvetica').fillColor('#6b7280');
-    doc.text('Signature du Directeur / Director Signature:', 15, currentY);
-    doc.rect(15, currentY + 10, 150, 40).stroke('#9ca3af', 1);
+    // Décision finale
+    doc.moveDown(2.5);
+    const decisionY = doc.y;
+    doc.rect(30, decisionY, 780, 45).strokeColor('#1e40af').lineWidth(1.5).stroke();
 
-    doc.text('Cachet de l\'établissement / School Stamp:', 200, currentY);
-    doc.rect(200, currentY + 10, 150, 40).stroke('#9ca3af', 1);
+    const displayDecision = (decision === 'pass' ? 'ADMIS(E) EN CLASSE SUPÉRIEURE' : (decision === 'exclude' ? 'EXCLU(E) DE L\'ÉTABLISSEMENT' : 'REDOUBLE LA CLASSE'));
+    const displayTarget = targetClass || className;
 
-    doc.text('Date:', 400, currentY);
-    doc.text(new Date().toLocaleDateString('fr-FR'), 400, currentY + 20);
+    doc.fontSize(11).font('Helvetica-Bold').fillColor('#1e40af').text('DÉCISION DU CONSEIL DE CLASSE :', 45, decisionY + 10);
+    doc.fontSize(14).fillColor('#b91c1c').text(displayDecision, 250, decisionY + 8);
 
-    // Finaliser le PDF
+    if (decision === 'pass') {
+      doc.fontSize(11).fillColor('#1e40af').text(`PROMU(E) EN :`, 510, decisionY + 10);
+      doc.fontSize(14).fillColor('#15803d').text(displayTarget, 610, decisionY + 8);
+    }
+
+    // Signatures
+    doc.moveDown(3);
+    const signY = doc.y;
+    doc.fontSize(9).font('Helvetica-Bold').fillColor('#334155');
+    doc.text("Signature du Parent", 100, signY);
+    doc.text("Le Titulaire de la Classe", 350, signY);
+    doc.text("Le Chef d'Établissement", 600, signY);
+
     doc.end();
 
-    console.log(`✅ Bulletin annuel généré pour ${student.nom} ${student.prenom}`);
-
-    // Fermer la connexion
-    console.log('🔌 Connexion fermée');
-
   } catch (error) {
-    console.error('❌ Erreur lors de la génération du bulletin annuel:', error);
-    return res.status(500).json({
-      error: 'Erreur lors de la génération du bulletin annuel',
-      details: error.message
-    });
+    console.error('❌ Error generating annual report:', error);
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Internal Server Error', details: error.message });
+    }
   }
 }

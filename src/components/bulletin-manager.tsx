@@ -25,10 +25,12 @@ import {
   Filter,
   Settings2,
   ChevronUp,
-  ChevronDown
+  ChevronDown,
+  Printer,
+  Users
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 import { processClassAdvancement } from "@/services/studentService";
 import { SchoolYearSelect } from '@/components/ui/school-year-select';
 
@@ -58,7 +60,9 @@ interface Grade {
   score: number;
   maxScore: number;
   coefficient: number;
-  schoolYear: string;
+  schoolYear: string,
+  advancementDecisions: Record<string, any>,
+  setAdvancementDecisions: React.Dispatch<React.SetStateAction<Record<string, any>>>;
   seq1?: number;
   seq2?: number;
   periodAverage?: number;
@@ -78,7 +82,9 @@ interface EvaluationPeriod {
   order: number;
   startDate: string;
   endDate: string;
-  schoolYear: string;
+  schoolYear: string,
+  advancementDecisions: Record<string, any>,
+  setAdvancementDecisions: React.Dispatch<React.SetStateAction<Record<string, any>>>;
   isActive?: boolean;
 }
 
@@ -86,7 +92,9 @@ interface Bulletin {
   id: string;
   studentId: string;
   classId: string;
-  schoolYear: string;
+  schoolYear: string,
+  advancementDecisions: Record<string, any>,
+  setAdvancementDecisions: React.Dispatch<React.SetStateAction<Record<string, any>>>;
   evaluationPeriodId: string;
   averageScore: number;
   totalCoefficient: number;
@@ -105,27 +113,68 @@ function ClassAdvancementView({
   students,
   classes,
   currentClassId,
-  getStudentAverage
+  schoolYear,
+  advancementDecisions,
+  setAdvancementDecisions
 }: {
   students: any[],
   classes: { id: string, name: string }[],
   currentClassId: string,
-  getStudentAverage: (id: string) => number | null
+  schoolYear: string,
+  advancementDecisions: Record<string, any>,
+  setAdvancementDecisions: React.Dispatch<React.SetStateAction<Record<string, any>>>
 }) {
-  const [advancementDecisions, setAdvancementDecisions] = React.useState<Record<string, { decision: 'pass' | 'repeat' | 'exclude', targetClass: string }>>({});
+  
   const [isLoading, setIsLoading] = React.useState(false);
   const currentClassName = classes.find(c => String(c.id) === String(currentClassId))?.name || '---';
   const availableClasses = classes.map(c => c.name);
 
+  const [annualAverages, setAnnualAverages] = React.useState<Record<string, number>>({});
+  const [isAveragesLoading, setIsAveragesLoading] = React.useState(false);
+
   React.useEffect(() => {
-    const defaultDecisions: Record<string, { decision: 'pass' | 'repeat' | 'exclude', targetClass: string }> = {};
-    students.forEach(student => {
-      const avg = getStudentAverage(student.id);
-      const decision = avg !== null && avg >= 10 ? 'pass' : 'repeat';
-      defaultDecisions[student.id] = { decision, targetClass: currentClassName }; // Par défaut, classe cible reste la même si on ne trouve pas dynamiquement
-    });
-    setAdvancementDecisions(defaultDecisions);
-  }, [students, getStudentAverage, currentClassName]);
+    const fetchAverages = async () => {
+      setIsAveragesLoading(true);
+      try {
+        const response = await fetch(`/api/grades?classId=${encodeURIComponent(currentClassId)}&schoolYear=${schoolYear}`);
+        const allGrades = await response.json();
+
+        // Calculate annual average for each student (weighted by coefficients)
+        const studentData: Record<string, { totalWeighted: number, totalCoef: number }> = {};
+        allGrades.forEach((g: any) => {
+          if (!studentData[g.studentId]) studentData[g.studentId] = { totalWeighted: 0, totalCoef: 0 };
+          const coef = g.subjectCoefficient || g.coefficient || 1;
+          const normalized = g.maxScore > 0 ? (g.score / g.maxScore) * 20 : g.score;
+          studentData[g.studentId].totalWeighted += normalized * coef;
+          studentData[g.studentId].totalCoef += coef;
+        });
+
+        const averages: Record<string, number> = {};
+        students.forEach(s => {
+          if (studentData[s.id] && studentData[s.id].totalCoef > 0) {
+            averages[s.id] = studentData[s.id].totalWeighted / studentData[s.id].totalCoef;
+          }
+        });
+        setAnnualAverages(averages);
+
+        // Set default decisions based on annual averages
+        const defaultDecisions: Record<string, { decision: 'pass' | 'repeat' | 'exclude', targetClass: string }> = {};
+        students.forEach(student => {
+          const avg = averages[student.id];
+          const decision = avg !== undefined && avg >= 10 ? 'pass' : 'repeat';
+          defaultDecisions[student.id] = { decision, targetClass: currentClassName };
+        });
+        setAdvancementDecisions(defaultDecisions);
+      } catch (err) {
+        console.error(err);
+      }
+      setIsAveragesLoading(false);
+    };
+
+    if (currentClassId && schoolYear) {
+      fetchAverages();
+    }
+  }, [students, currentClassId, schoolYear, currentClassName]);
 
   const handleDecisionChange = (studentId: string, decision: 'pass' | 'repeat' | 'exclude') => {
     setAdvancementDecisions(prev => ({
@@ -158,7 +207,7 @@ function ClassAdvancementView({
     } catch (e) {
       toast.error("Échec de la mise à jour des passages.");
     }
-        setIsLoading(false);
+    setIsLoading(false);
   };
 
   const printAnnualBulletin = async (student: any) => {
@@ -170,7 +219,7 @@ function ClassAdvancementView({
         body: JSON.stringify({
           studentId: student.id,
           classId: currentClassId,
-          schoolYear: "2025-2026", // Should use state
+          schoolYear: schoolYear,
           decision: advancementDecisions[student.id]?.decision || 'repeat',
           targetClass: advancementDecisions[student.id]?.targetClass || currentClassName
         })
@@ -228,7 +277,7 @@ function ClassAdvancementView({
               <tr><td colSpan={4} className="p-6 text-center text-slate-500 font-medium text-sm">Veuillez sélectionner une classe active avec des élèves évalués.</td></tr>
             ) : null}
             {students.map(student => {
-              const avg = getStudentAverage(student.id);
+              const avg = annualAverages[student.id];
               const decision = advancementDecisions[student.id]?.decision || 'repeat';
               const targetClass = advancementDecisions[student.id]?.targetClass || currentClassName;
 
@@ -240,7 +289,7 @@ function ClassAdvancementView({
                   </td>
                   <td className="px-4 py-2 border-r border-slate-200 text-center font-bold">
                     <span className={avg && avg >= 10 ? 'text-green-600' : 'text-red-500'}>
-                      {avg !== null ? `${avg.toFixed(2)}/20` : '---'}
+                      {typeof avg === 'number' ? `${avg.toFixed(2)}/20` : '---'}
                     </span>
                   </td>
                   <td className="px-4 py-2 border-r border-slate-200 text-center">
@@ -344,6 +393,7 @@ export default function BulletinManager({ schoolInfo }: { schoolInfo?: SchoolInf
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [evaluationPeriods, setEvaluationPeriods] = useState<EvaluationPeriod[]>([]);
   const [grades, setGrades] = useState<GradesByStudent>({});
+  const [advancementDecisions, setAdvancementDecisions] = useState<Record<string, { decision: 'pass' | 'repeat' | 'exclude', targetClass: string }>>({});
   const [bulletins, setBulletins] = useState<Bulletin[]>([]);
   const [classes, setClasses] = useState<{ id: string, name: string }[]>([]);
   const [availableLevels, setAvailableLevels] = useState<string[]>([]);
@@ -2146,733 +2196,724 @@ export default function BulletinManager({ schoolInfo }: { schoolInfo?: SchoolInf
             CONSEIL DE CLASSE
           </Button>
         </div>
-        
+
         <div className="flex items-center gap-2 px-2">
-           <div className="bg-blue-600 p-1.5 rounded-none">
-             <FileText className="h-4 w-4 text-white" />
-           </div>
-           <h2 className="text-sm font-black text-slate-800 uppercase tracking-tighter">
-             {currentView === 'bulletins' ? "Gestion des Bulletins & Saisie" : "Décisions de Fin d'Année"}
-           </h2>
+          <div className="bg-blue-600 p-1.5 rounded-none">
+            <FileText className="h-4 w-4 text-white" />
+          </div>
+          <h2 className="text-sm font-black text-slate-800 uppercase tracking-tighter">
+            {currentView === 'bulletins' ? "Gestion des Bulletins & Saisie" : "Décisions de Fin d'Année"}
+          </h2>
         </div>
       </div>
 
       {currentView === 'bulletins' ? (
         <div className="space-y-6 mt-0">
 
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-2">
-          <div className="bg-blue-600 p-2 rounded-none">
-            <FileText className="h-5 w-5 text-white" />
+
+
+
+          {/* En-tête avec bouton de réduction des filtres */}
+          <div className="flex justify-end items-center bg-white p-4 rounded-none border border-slate-200 shadow-sm mb-6">
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowConfig(!showConfig)}
+                className="flex items-center gap-2 border-slate-200 text-slate-600 hover:bg-slate-50 rounded-none"
+              >
+                {showConfig ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                <span className="hidden md:inline">{showConfig ? "Masquer les sélecteurs" : "Afficher les sélecteurs"}</span>
+              </Button>
+            </div>
           </div>
-          <h2 className="text-lg font-bold text-slate-800">Tableau de Bord Académique</h2>
-        </div>
-        <TabsList className="rounded-none h-10 bg-slate-100 p-1 border border-slate-200">
-          <TabsTrigger value="bulletins" className="rounded-none text-xs font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm">Saisie & Bulletins</TabsTrigger>
-          <TabsTrigger value="advancement" className="rounded-none text-xs font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm">Conseil de Classe</TabsTrigger>
-        </TabsList>
-      </div>
 
-      
-        {/* En-tête avec bouton de réduction des filtres */}
-        <div className="flex justify-end items-center bg-white p-4 rounded-none border border-slate-200 shadow-sm mb-6">
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowConfig(!showConfig)}
-              className="flex items-center gap-2 border-slate-200 text-slate-600 hover:bg-slate-50 rounded-none"
-            >
-              {showConfig ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-              <span className="hidden md:inline">{showConfig ? "Masquer les sélecteurs" : "Afficher les sélecteurs"}</span>
-            </Button>
-          </div>
-        </div>
-
-        {/* Sélecteurs */}
-        {showConfig && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Configuration</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="space-y-1.5">
-                  <Label className="text-[11px] font-bold text-slate-500 uppercase">Année Scolaire</Label>
-                  <SchoolYearSelect
-                    value={schoolYear}
-                    onValueChange={setSchoolYear}
-                    availableYears={availableYears}
-                    currentSchoolYear={currentSchoolYear}
-                    placeholder="Sélectionner l'année scolaire"
-                    className="w-full rounded-none h-9 border-slate-300"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-[11px] font-bold text-slate-500 uppercase">Niveau</Label>
-                  <Select value={selectedLevel} onValueChange={(value) => {
-                    setSelectedLevel(value);
-                    setSelectedClass(''); // Réinitialiser la classe sélectionnée
-                  }}>
-                    <SelectTrigger className="rounded-none h-9 border-slate-300">
-                      <SelectValue placeholder="Sélectionner un niveau" />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-none">
-                      {availableLevels.map((level) => (
-                        <SelectItem key={level} value={level}>
-                          {level}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-[11px] font-bold text-slate-500 uppercase">Classe</Label>
-                  <Select value={selectedClass} onValueChange={setSelectedClass} disabled={!selectedLevel}>
-                    <SelectTrigger className="rounded-none h-9 border-slate-300">
-                      <SelectValue placeholder={selectedLevel ? "Sélectionner une classe" : "---"} />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-none">
-                      {classes.map((cls) => (
-                        <SelectItem key={cls.id} value={cls.id}>
-                          {cls.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-[11px] font-bold text-slate-500 uppercase">Période d'Évaluation</Label>
-                  <div className="flex gap-2">
-                    <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
-                      <SelectTrigger className="rounded-none h-9 border-slate-300">
-                        <SelectValue placeholder="Sélectionner..." />
-                      </SelectTrigger>
-                      <SelectContent className="rounded-none">
-                        {/* Grouper les périodes par type */}
-                        {(() => {
-                          const sequences = evaluationPeriods.filter(p =>
-                            p.name.toLowerCase().includes('seq') || p.name.toLowerCase().includes('séquence')
-                          );
-                          const trimesters = evaluationPeriods.filter(p =>
-                            p.name.toLowerCase().includes('trim')
-                          );
-                          const others = evaluationPeriods.filter(p =>
-                            !p.name.toLowerCase().includes('seq') &&
-                            !p.name.toLowerCase().includes('séquence') &&
-                            !p.name.toLowerCase().includes('trim')
-                          );
-
-                          return (
-                            <>
-                              {/* Séquences */}
-                              {sequences.length > 0 && (
-                                <>
-                                  <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground bg-muted/50">
-                                    📚 Séquences
-                                  </div>
-                                  {sequences.map((period) => (
-                                    <SelectItem key={period.id} value={period.id}>
-                                      {period.name}
-                                    </SelectItem>
-                                  ))}
-                                </>
-                              )}
-
-                              {/* Trimestres */}
-                              {trimesters.length > 0 && (
-                                <>
-                                  <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground bg-muted/50">
-                                    📊 Trimestres
-                                  </div>
-                                  {trimesters.map((period) => (
-                                    <SelectItem key={period.id} value={period.id}>
-                                      {period.name}
-                                    </SelectItem>
-                                  ))}
-                                </>
-                              )}
-
-                              {/* Autres périodes */}
-                              {others.length > 0 && (
-                                <>
-                                  <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground bg-muted/50">
-                                    📅 Autres Périodes
-                                  </div>
-                                  {others.map((period) => (
-                                    <SelectItem key={period.id} value={period.id}>
-                                      {period.name}
-                                    </SelectItem>
-                                  ))}
-                                </>
-                              )}
-                            </>
-                          );
-                        })()}
-                      </SelectContent>
-                    </Select>
-
-                    <Button
-                      onClick={async () => {
-                        await reloadAllDataWithRanks();
-                        if (!selectedPeriod?.toLowerCase().includes('trim')) {
-                          calculateTrueRanks();
-                        }
-                      }}
-                      variant="default"
-                      disabled={!selectedClass || !selectedPeriod}
-                      className="bg-blue-600 hover:bg-blue-700 text-white rounded-none h-9 px-6 font-bold shadow-sm"
-                    >
-                      Charger
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-
-
-
-        )}
-
-        {/* Liste des élèves */}
-        {selectedClass && selectedPeriod && selectedLevel ? (
-          <Card>
-            <CardHeader className="pb-4 bg-slate-50/50 border-b border-slate-100 rounded-none">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <Badge variant="outline" className="bg-white rounded-none">
-                    {filteredStudents.length} élève(s)
-                  </Badge>
-                  <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-100 rounded-none">
-                    {evaluationPeriods.find(p => p.id === selectedPeriod)?.name || 'Période'}
-                  </Badge>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowFilters(!showFilters)}
-                    className="rounded-none h-8"
-                  >
-                    <Filter className="h-4 w-4 mr-2" />
-                    Filtres
-                  </Button>
-
-                  <Select value={statusFilter} onValueChange={(value: any) => setStatusFilter(value)}>
-                    <SelectTrigger className="w-40 h-8 rounded-none">
-                      <SelectValue placeholder="Filtrer par statut" />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-none">
-                      <SelectItem value="all">Tous les élèves</SelectItem>
-                      <SelectItem value="graded">Élèves notés</SelectItem>
-                      <SelectItem value="ungraded">Élèves non notés</SelectItem>
-                    </SelectContent>
-                  </Select>
-
-                  <Select value={sortOrder} onValueChange={(value: any) => setSortOrder(value)}>
-                    <SelectTrigger className="w-44 h-8 rounded-none bg-white">
-                      <SelectValue placeholder="Trier par..." />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-none">
-                      <SelectItem value="alpha_asc">Nom (A-Z)</SelectItem>
-                      <SelectItem value="alpha_desc">Nom (Z-A)</SelectItem>
-                      <SelectItem value="rank_asc">Rang (Croissant)</SelectItem>
-                      <SelectItem value="rank_desc">Rang (Décroissant)</SelectItem>
-                    </SelectContent>
-                  </Select>
-
-                  <div className="w-px h-6 bg-slate-200 mx-1" />
-
-                  <Button
-                    onClick={generateAllBulletins}
-                    disabled={loading || !selectedClass || !selectedPeriod}
-                    className="bg-green-600 hover:bg-green-700 rounded-none shadow-sm flex items-center gap-2 h-8"
-                  >
-                    {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                    <span className="hidden sm:inline">Générer Tout</span>
-                  </Button>
-                </div>
-              </div>
-
-              {showFilters && (
-                <div className="mt-4 pt-4 border-t border-slate-200">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                    <Input
-                      placeholder="Rechercher un élève..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10 rounded-none h-9 border-slate-300 focus:ring-blue-500"
+          {/* Sélecteurs */}
+          {showConfig && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Configuration</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-[11px] font-bold text-slate-500 uppercase">Année Scolaire</Label>
+                    <SchoolYearSelect
+                      value={schoolYear}
+                      onValueChange={setSchoolYear}
+                      availableYears={availableYears}
+                      currentSchoolYear={currentSchoolYear}
+                      placeholder="Sélectionner l'année scolaire"
+                      className="w-full rounded-none h-9 border-slate-300"
                     />
                   </div>
-                </div>
-              )}
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <div className="text-center py-8">
-                  <div className="animate-spin rounded-none h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-                  <p>Chargement...</p>
-                </div>
-              ) : (
-                <Table className="border-t border-l border-slate-200 w-full overflow-hidden">
-                  <TableHeader>
-                    <TableRow className="bg-slate-100 divide-x divide-slate-200 border-b border-slate-200 group hover:bg-slate-100">
-                      <TableHead className="w-24 text-[11px] font-bold text-slate-800 uppercase px-2 py-2">Matricule</TableHead>
-                      <TableHead className="text-[11px] font-bold text-slate-800 uppercase px-2 py-2">Élève</TableHead>
-                      <TableHead className="w-16 text-[11px] font-bold text-slate-800 uppercase px-2 py-2 text-center">Sexe</TableHead>
-                      <TableHead className="w-32 text-[11px] font-bold text-slate-800 uppercase px-2 py-2 text-center">Moyenne</TableHead>
-                      <TableHead className="w-24 text-[11px] font-bold text-slate-800 uppercase px-2 py-2 text-center">Rang</TableHead>
-                      <TableHead className="w-32 text-[11px] font-bold text-slate-800 uppercase px-2 py-2 text-center">Mention</TableHead>
-                      <TableHead className="w-40 text-[11px] font-bold text-slate-800 uppercase px-2 py-2 text-center">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {currentStudents.map((student) => {
-                      const average = getStudentAverage(student.id);
-                      const rank = average !== null ? getStudentRank(student.id) : null;
-                      const mention = average !== null ? getMention(average) : null;
-                      const bulletin = bulletins.find(b => b.studentId === student.id);
-                      const ranksBySubject = getStudentRanksBySubject(student.id);
+                  <div className="space-y-1.5">
+                    <Label className="text-[11px] font-bold text-slate-500 uppercase">Niveau</Label>
+                    <Select value={selectedLevel} onValueChange={(value) => {
+                      setSelectedLevel(value);
+                      setSelectedClass(''); // Réinitialiser la classe sélectionnée
+                    }}>
+                      <SelectTrigger className="rounded-none h-9 border-slate-300">
+                        <SelectValue placeholder="Sélectionner un niveau" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-none">
+                        {availableLevels.map((level) => (
+                          <SelectItem key={level} value={level}>
+                            {level}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-[11px] font-bold text-slate-500 uppercase">Classe</Label>
+                    <Select value={selectedClass} onValueChange={setSelectedClass} disabled={!selectedLevel}>
+                      <SelectTrigger className="rounded-none h-9 border-slate-300">
+                        <SelectValue placeholder={selectedLevel ? "Sélectionner une classe" : "---"} />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-none">
+                        {classes.map((cls) => (
+                          <SelectItem key={cls.id} value={cls.id}>
+                            {cls.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-[11px] font-bold text-slate-500 uppercase">Période d'Évaluation</Label>
+                    <div className="flex gap-2">
+                      <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
+                        <SelectTrigger className="rounded-none h-9 border-slate-300">
+                          <SelectValue placeholder="Sélectionner..." />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-none">
+                          {/* Grouper les périodes par type */}
+                          {(() => {
+                            const sequences = evaluationPeriods.filter(p =>
+                              p.name.toLowerCase().includes('seq') || p.name.toLowerCase().includes('séquence')
+                            );
+                            const trimesters = evaluationPeriods.filter(p =>
+                              p.name.toLowerCase().includes('trim')
+                            );
+                            const others = evaluationPeriods.filter(p =>
+                              !p.name.toLowerCase().includes('seq') &&
+                              !p.name.toLowerCase().includes('séquence') &&
+                              !p.name.toLowerCase().includes('trim')
+                            );
 
-                      return (
-                        <TableRow key={student.id} className="divide-x divide-slate-200 border-b border-slate-200 hover:bg-slate-50 transition-colors">
-                          <TableCell className="text-[11px] px-2 py-1.5 font-mono text-blue-600 font-bold bg-slate-50/30">
-                            {student.id || '---'}
-                          </TableCell>
-                          <TableCell className="text-[11px] px-2 py-1.5 font-semibold text-slate-800">
-                            {student.nom} {student.prenom}
-                          </TableCell>
-                          <TableCell className="text-[11px] px-2 py-1.5 text-center text-slate-600 font-medium">
-                            {(student.sexe || '').toUpperCase() === 'MASCULIN' ? 'M' : (student.sexe || '').toUpperCase() === 'FÉMININ' ? 'F' : (student.sexe || '---').substring(0, 1).toUpperCase()}
-                          </TableCell>
-                          <TableCell className="text-[11px] px-2 py-1.5 text-center">
-                            {average !== null && typeof average === 'number' ? (
-                              <span className="font-bold text-slate-900 px-2 py-0.5 bg-blue-50/50">
-                                {average.toFixed(2)}/20
-                              </span>
-                            ) : (
-                              <span className="text-slate-400">--/20</span>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-[11px] px-2 py-1.5 text-center">
-                            {rank !== null ? (
-                              <span className="font-bold text-slate-700">
-                                {rank}/{Object.keys(calculatedRanks).length || students.length}
-                              </span>
-                            ) : (
-                              <span className="text-slate-400">--</span>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-[11px] px-2 py-1.5 text-center">
-                            {mention ? (
-                              <span className={`px-2 py-0.5 text-[10px] items-center font-bold ${getMentionColor(mention)}`}>
-                                {mention}
-                              </span>
-                            ) : (
-                              <span className="text-slate-400">-</span>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-[11px] px-2 py-1.5">
-                            <div className="flex justify-center gap-1">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => openDetailsModal(student)}
-                                className="h-7 w-7 p-0 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-none border-0"
-                                title="Détails"
-                              >
-                                <Eye className="h-3.5 w-3.5" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => openCommentsModal(student)}
-                                className="h-7 w-7 p-0 text-slate-400 hover:text-orange-600 hover:bg-orange-50 rounded-none border-0"
-                                title="Appréciations"
-                              >
-                                <Edit className="h-3.5 w-3.5" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-7 w-20 p-0 text-blue-600 hover:bg-blue-600 hover:text-white rounded-none border border-blue-200 transition-all font-bold text-[10px]"
-                                onClick={() => generateBulletin(student.id)}
-                              >
-                                <FileText className="h-3 w-3 mr-1" />
-                                PDF
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              )}
+                            return (
+                              <>
+                                {/* Séquences */}
+                                {sequences.length > 0 && (
+                                  <>
+                                    <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground bg-muted/50">
+                                      📚 Séquences
+                                    </div>
+                                    {sequences.map((period) => (
+                                      <SelectItem key={period.id} value={period.id}>
+                                        {period.name}
+                                      </SelectItem>
+                                    ))}
+                                  </>
+                                )}
 
-              {/* Pagination améliorée */}
-              {totalPages > 1 && (
-                <div className="flex items-center justify-between mt-6 border-t pt-4">
+                                {/* Trimestres */}
+                                {trimesters.length > 0 && (
+                                  <>
+                                    <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground bg-muted/50">
+                                      📊 Trimestres
+                                    </div>
+                                    {trimesters.map((period) => (
+                                      <SelectItem key={period.id} value={period.id}>
+                                        {period.name}
+                                      </SelectItem>
+                                    ))}
+                                  </>
+                                )}
+
+                                {/* Autres périodes */}
+                                {others.length > 0 && (
+                                  <>
+                                    <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground bg-muted/50">
+                                      📅 Autres Périodes
+                                    </div>
+                                    {others.map((period) => (
+                                      <SelectItem key={period.id} value={period.id}>
+                                        {period.name}
+                                      </SelectItem>
+                                    ))}
+                                  </>
+                                )}
+                              </>
+                            );
+                          })()}
+                        </SelectContent>
+                      </Select>
+
+                      <Button
+                        onClick={async () => {
+                          await reloadAllDataWithRanks();
+                          if (!selectedPeriod?.toLowerCase().includes('trim')) {
+                            calculateTrueRanks();
+                          }
+                        }}
+                        variant="default"
+                        disabled={!selectedClass || !selectedPeriod}
+                        className="bg-blue-600 hover:bg-blue-700 text-white rounded-none h-9 px-6 font-bold shadow-sm"
+                      >
+                        Charger
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+
+
+
+          )}
+
+          {/* Liste des élèves */}
+          {selectedClass && selectedPeriod && selectedLevel ? (
+            <Card>
+              <CardHeader className="pb-4 bg-slate-50/50 border-b border-slate-100 rounded-none">
+                <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
-                    <div className="text-sm text-muted-foreground">
-                      Affichage de {startIndex + 1} à {Math.min(endIndex, filteredStudents.length)} sur {filteredStudents.length} élève(s)
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      Page {currentPage} sur {totalPages}
-                    </div>
+                    <Badge variant="outline" className="bg-white rounded-none">
+                      {filteredStudents.length} élève(s)
+                    </Badge>
+                    <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-100 rounded-none">
+                      {evaluationPeriods.find(p => p.id === selectedPeriod)?.name || 'Période'}
+                    </Badge>
                   </div>
 
                   <div className="flex items-center gap-2">
-                    {/* Bouton Première page */}
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setCurrentPage(1)}
-                      disabled={currentPage === 1}
-                      title="Première page"
+                      onClick={() => setShowFilters(!showFilters)}
+                      className="rounded-none h-8"
                     >
-                      ⏮️
+                      <Filter className="h-4 w-4 mr-2" />
+                      Filtres
                     </Button>
 
-                    {/* Bouton Précédent */}
+                    <Select value={statusFilter} onValueChange={(value: any) => setStatusFilter(value)}>
+                      <SelectTrigger className="w-40 h-8 rounded-none">
+                        <SelectValue placeholder="Filtrer par statut" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-none">
+                        <SelectItem value="all">Tous les élèves</SelectItem>
+                        <SelectItem value="graded">Élèves notés</SelectItem>
+                        <SelectItem value="ungraded">Élèves non notés</SelectItem>
+                      </SelectContent>
+                    </Select>
+
+                    <Select value={sortOrder} onValueChange={(value: any) => setSortOrder(value)}>
+                      <SelectTrigger className="w-44 h-8 rounded-none bg-white">
+                        <SelectValue placeholder="Trier par..." />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-none">
+                        <SelectItem value="alpha_asc">Nom (A-Z)</SelectItem>
+                        <SelectItem value="alpha_desc">Nom (Z-A)</SelectItem>
+                        <SelectItem value="rank_asc">Rang (Croissant)</SelectItem>
+                        <SelectItem value="rank_desc">Rang (Décroissant)</SelectItem>
+                      </SelectContent>
+                    </Select>
+
+                    <div className="w-px h-6 bg-slate-200 mx-1" />
+
                     <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                      disabled={currentPage === 1}
+                      onClick={generateAllBulletins}
+                      disabled={loading || !selectedClass || !selectedPeriod}
+                      className="bg-green-600 hover:bg-green-700 rounded-none shadow-sm flex items-center gap-2 h-8"
                     >
-                      ◀️ Précédent
+                      {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                      <span className="hidden sm:inline">Générer Tout</span>
                     </Button>
+                  </div>
+                </div>
 
-                    {/* Sélecteur de page rapide */}
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-muted-foreground">Page:</span>
-                      <Select
-                        value={currentPage.toString()}
-                        onValueChange={(value) => setCurrentPage(parseInt(value))}
-                      >
-                        <SelectTrigger className="w-20">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                            <SelectItem key={page} value={page.toString()}>
-                              {page}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <span className="text-sm text-muted-foreground">sur {totalPages}</span>
+                {showFilters && (
+                  <div className="mt-4 pt-4 border-t border-slate-200">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                      <Input
+                        placeholder="Rechercher un élève..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-10 rounded-none h-9 border-slate-300 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+                )}
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-none h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                    <p>Chargement...</p>
+                  </div>
+                ) : (
+                  <Table className="border-t border-l border-slate-200 w-full overflow-hidden">
+                    <TableHeader>
+                      <TableRow className="bg-slate-100 divide-x divide-slate-200 border-b border-slate-200 group hover:bg-slate-100">
+                        <TableHead className="w-24 text-[11px] font-bold text-slate-800 uppercase px-2 py-2">Matricule</TableHead>
+                        <TableHead className="text-[11px] font-bold text-slate-800 uppercase px-2 py-2">Élève</TableHead>
+                        <TableHead className="w-16 text-[11px] font-bold text-slate-800 uppercase px-2 py-2 text-center">Sexe</TableHead>
+                        <TableHead className="w-32 text-[11px] font-bold text-slate-800 uppercase px-2 py-2 text-center">Moyenne</TableHead>
+                        <TableHead className="w-24 text-[11px] font-bold text-slate-800 uppercase px-2 py-2 text-center">Rang</TableHead>
+                        <TableHead className="w-32 text-[11px] font-bold text-slate-800 uppercase px-2 py-2 text-center">Mention</TableHead>
+                        <TableHead className="w-40 text-[11px] font-bold text-slate-800 uppercase px-2 py-2 text-center">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {currentStudents.map((student) => {
+                        const average = getStudentAverage(student.id);
+                        const rank = average !== null ? getStudentRank(student.id) : null;
+                        const mention = average !== null ? getMention(average) : null;
+                        const bulletin = bulletins.find(b => b.studentId === student.id);
+                        const ranksBySubject = getStudentRanksBySubject(student.id);
+
+                        return (
+                          <TableRow key={student.id} className="divide-x divide-slate-200 border-b border-slate-200 hover:bg-slate-50 transition-colors">
+                            <TableCell className="text-[11px] px-2 py-1.5 font-mono text-blue-600 font-bold bg-slate-50/30">
+                              {student.id || '---'}
+                            </TableCell>
+                            <TableCell className="text-[11px] px-2 py-1.5 font-semibold text-slate-800">
+                              {student.nom} {student.prenom}
+                            </TableCell>
+                            <TableCell className="text-[11px] px-2 py-1.5 text-center text-slate-600 font-medium">
+                              {(student.sexe || '').toUpperCase() === 'MASCULIN' ? 'M' : (student.sexe || '').toUpperCase() === 'FÉMININ' ? 'F' : (student.sexe || '---').substring(0, 1).toUpperCase()}
+                            </TableCell>
+                            <TableCell className="text-[11px] px-2 py-1.5 text-center">
+                              {average !== null && typeof average === 'number' ? (
+                                <span className="font-bold text-slate-900 px-2 py-0.5 bg-blue-50/50">
+                                  {average.toFixed(2)}/20
+                                </span>
+                              ) : (
+                                <span className="text-slate-400">--/20</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-[11px] px-2 py-1.5 text-center">
+                              {rank !== null ? (
+                                <span className="font-bold text-slate-700">
+                                  {rank}/{Object.keys(calculatedRanks).length || students.length}
+                                </span>
+                              ) : (
+                                <span className="text-slate-400">--</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-[11px] px-2 py-1.5 text-center">
+                              {mention ? (
+                                <span className={`px-2 py-0.5 text-[10px] items-center font-bold ${getMentionColor(mention)}`}>
+                                  {mention}
+                                </span>
+                              ) : (
+                                <span className="text-slate-400">-</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-[11px] px-2 py-1.5">
+                              <div className="flex justify-center gap-1">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => openDetailsModal(student)}
+                                  className="h-7 w-7 p-0 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-none border-0"
+                                  title="Détails"
+                                >
+                                  <Eye className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => openCommentsModal(student)}
+                                  className="h-7 w-7 p-0 text-slate-400 hover:text-orange-600 hover:bg-orange-50 rounded-none border-0"
+                                  title="Appréciations"
+                                >
+                                  <Edit className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 w-20 p-0 text-blue-600 hover:bg-blue-600 hover:text-white rounded-none border border-blue-200 transition-all font-bold text-[10px]"
+                                  onClick={() => generateBulletin(student.id)}
+                                >
+                                  <FileText className="h-3 w-3 mr-1" />
+                                  PDF
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                )}
+
+                {/* Pagination améliorée */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between mt-6 border-t pt-4">
+                    <div className="flex items-center gap-4">
+                      <div className="text-sm text-muted-foreground">
+                        Affichage de {startIndex + 1} à {Math.min(endIndex, filteredStudents.length)} sur {filteredStudents.length} élève(s)
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        Page {currentPage} sur {totalPages}
+                      </div>
                     </div>
 
-                    {/* Bouton Suivant */}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                      disabled={currentPage === totalPages}
-                    >
-                      Suivant ▶️
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      {/* Bouton Première page */}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(1)}
+                        disabled={currentPage === 1}
+                        title="Première page"
+                      >
+                        ⏮️
+                      </Button>
 
-                    {/* Bouton Dernière page */}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(totalPages)}
-                      disabled={currentPage === totalPages}
-                      title="Dernière page"
-                    >
-                      ⏭️
+                      {/* Bouton Précédent */}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                        disabled={currentPage === 1}
+                      >
+                        ◀️ Précédent
+                      </Button>
+
+                      {/* Sélecteur de page rapide */}
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-muted-foreground">Page:</span>
+                        <Select
+                          value={currentPage.toString()}
+                          onValueChange={(value) => setCurrentPage(parseInt(value))}
+                        >
+                          <SelectTrigger className="w-20">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                              <SelectItem key={page} value={page.toString()}>
+                                {page}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <span className="text-sm text-muted-foreground">sur {totalPages}</span>
+                      </div>
+
+                      {/* Bouton Suivant */}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                        disabled={currentPage === totalPages}
+                      >
+                        Suivant ▶️
+                      </Button>
+
+                      {/* Bouton Dernière page */}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(totalPages)}
+                        disabled={currentPage === totalPages}
+                        title="Dernière page"
+                      >
+                        ⏭️
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardContent className="text-center py-8">
+                <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground">
+                  Sélectionnez une classe et une période pour voir les bulletins
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Modal des appréciations */}
+          <Dialog open={showCommentsModal} onOpenChange={setShowCommentsModal}>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>
+                  Appréciations - {selectedStudent?.nom}
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <Label>Appréciation du Professeur Principal</Label>
+                  <Textarea
+                    value={teacherComments}
+                    onChange={(e) => setTeacherComments(e.target.value)}
+                    placeholder="Appréciation du professeur principal..."
+                    rows={4}
+                  />
+                </div>
+                <div>
+                  <Label>Appréciation du Chef d'Établissement</Label>
+                  <Textarea
+                    value={principalComments}
+                    onChange={(e) => setPrincipalComments(e.target.value)}
+                    placeholder="Appréciation du chef d'établissement..."
+                    rows={4}
+                  />
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setShowCommentsModal(false)}>
+                    Annuler
+                  </Button>
+                  <Button onClick={saveComments}>
+                    Sauvegarder
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* Modal des détails des notes et rangs par matière */}
+          <Dialog open={showDetailsModal} onOpenChange={setShowDetailsModal}>
+            <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto p-0 rounded-none border-0 shadow-xl">
+              <DialogHeader className="p-4 bg-slate-800 text-white rounded-t-none border-b-0 m-0">
+                <DialogTitle className="text-lg font-bold flex items-center gap-2 text-white">
+                  <FileText className="h-5 w-5 text-blue-400" />
+                  Relevé de Notes - {selectedStudent?.nom} {selectedStudent?.prenom}
+                </DialogTitle>
+              </DialogHeader>
+
+              {selectedStudent && (
+                <div className="p-6 bg-white space-y-6">
+                  {/* Informations générales compactes */}
+                  <div className="bg-slate-50 border border-slate-200 p-3 grid grid-cols-4 gap-4 text-[11px] uppercase tracking-wider font-semibold text-slate-700">
+                    <div>
+                      <span className="text-slate-400 block text-[9px] mb-1">Classe</span>
+                      {classes.find((c: any) => c.id === selectedClass)?.name || selectedClass || '---'}
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[9px] mb-1">Période</span>
+                      {evaluationPeriods.find((p: any) => p.id === selectedPeriod)?.name || '---'}
+                    </div>
+                    <div className="border-l border-slate-200 pl-4">
+                      <span className="text-slate-400 block text-[9px] mb-1">Moyenne Générale</span>
+                      <span className="font-bold text-[14px] text-blue-600">
+                        {(() => {
+                          const avg = getStudentAverage(selectedStudent.id);
+                          return (typeof avg === 'number') ? `${avg.toFixed(2)}/20` : '---';
+                        })()}
+                      </span>
+                    </div>
+                    <div className="border-l border-slate-200 pl-4">
+                      <span className="text-slate-400 block text-[9px] mb-1">Rang Général</span>
+                      <span className="font-bold text-[14px] text-green-600">
+                        {(() => {
+                          const rank = getStudentRank(selectedStudent.id);
+                          return rank !== null ? `${rank}/${Object.keys(calculatedRanks).length || students.length}` : 'N/A';
+                        })()}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Détails par matière - Grille compacte */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="font-bold text-[11px] text-slate-800 uppercase tracking-tight">
+                        Détail par Matière
+                        {isLoadingSubjectRanks && (
+                          <span className="ml-2 text-[10px] normal-case text-blue-600">
+                            <Loader2 className="h-3 w-3 inline animate-spin mr-1" />
+                            Calcul en cours...
+                          </span>
+                        )}
+                      </h3>
+                    </div>
+
+                    <div className="border border-slate-200 rounded-none overflow-hidden">
+                      <div className="bg-slate-100 border-b border-slate-200 grid grid-cols-12 text-[10px] font-bold text-slate-700 uppercase tracking-tight divide-x divide-slate-200">
+                        <div className="col-span-5 px-3 py-2 flex items-center">Matière</div>
+                        <div className="col-span-1 px-2 py-2 flex justify-center items-center">Coef</div>
+
+                        {(() => {
+                          const isTrimester = selectedPeriod && selectedPeriod.toLowerCase().includes('trim');
+                          return isTrimester ? (
+                            <>
+                              <div className="col-span-2 px-2 py-2 flex justify-center items-center">Seq 1</div>
+                              <div className="col-span-2 px-2 py-2 flex justify-center items-center">Seq 2</div>
+                              <div className="col-span-1 px-2 py-2 flex justify-center items-center text-blue-800">Moy.</div>
+                            </>
+                          ) : (
+                            <div className="col-span-5 px-2 py-2 flex justify-center items-center text-blue-800">Note (/Max)</div>
+                          );
+                        })()}
+
+                        <div className="col-span-1 px-2 py-2 flex justify-center items-center">Rang</div>
+                      </div>
+
+                      <div className="divide-y divide-slate-100">
+                        {(() => {
+                          const isTrimester = selectedPeriod && selectedPeriod.toLowerCase().includes('trim');
+                          let subjectsToDisplay: any[] = [];
+
+                          if (isTrimester) {
+                            subjectsToDisplay = subjects;
+                          } else {
+                            const ranksBySubject = getStudentRanksBySubject(selectedStudent.id);
+                            const subjectsWithGrades = Object.keys(ranksBySubject);
+                            subjectsToDisplay = subjects.filter((s: any) => subjectsWithGrades.includes(s.id.toString()));
+                          }
+
+                          if (subjectsToDisplay.length === 0) {
+                            return (
+                              <div className="text-center py-6 text-[11px] text-slate-500 font-medium">
+                                Aucune note enregistrée
+                              </div>
+                            );
+                          }
+
+                          return subjectsToDisplay.map((subject: any) => {
+                            const subjectId = subject.id.toString();
+                            const subjectName = subject.name || `Matière ${subjectId}`;
+                            const studentGrades = grades[selectedStudent.id]?.filter((g: any) => g.subjectId === subjectId) || [];
+
+                            const rankData = subjectRanksFromDB[subjectId] || { rank: 'N/A' };
+
+                            return (
+                              <div key={subjectId} className="grid grid-cols-12 text-[11px] hover:bg-slate-50 divide-x divide-slate-100 items-center">
+                                <div className="col-span-5 px-3 py-1.5 font-semibold text-slate-800 truncate">
+                                  {subjectName}
+                                </div>
+                                <div className="col-span-1 px-2 py-1.5 text-center text-slate-600 font-mono">
+                                  {subject.coefficient || 1}
+                                </div>
+
+                                {isTrimester ? (
+                                  <>
+                                    <div className="col-span-2 px-2 py-1.5 text-center font-mono">
+                                      {studentGrades.length > 0 && typeof studentGrades[0].seq1 === 'number' ? `${studentGrades[0].seq1.toFixed(2)}` : '---'}
+                                    </div>
+                                    <div className="col-span-2 px-2 py-1.5 text-center font-mono">
+                                      {studentGrades.length > 0 && typeof studentGrades[0].seq2 === 'number' ? `${studentGrades[0].seq2.toFixed(2)}` : '---'}
+                                    </div>
+                                    <div className="col-span-1 px-2 py-1.5 text-center font-bold font-mono text-blue-700 bg-blue-50/50">
+                                      {studentGrades.length > 0 && typeof studentGrades[0].periodAverage === 'number' ? `${studentGrades[0].periodAverage.toFixed(2)}` : '---'}
+                                    </div>
+                                  </>
+                                ) : (
+                                  <div className="col-span-5 px-2 py-1.5 text-center font-bold font-mono text-blue-700 bg-blue-50/50">
+                                    {studentGrades.length > 0 && typeof studentGrades[0].score === 'number' ? `${studentGrades[0].score.toFixed(2)} / ${studentGrades[0].maxScore}` : '---'}
+                                  </div>
+                                )}
+
+                                <div className="col-span-1 px-2 py-1.5 text-center font-bold text-green-600">
+                                  {rankData.rank !== 'N/A' ? `${rankData.rank}` : '-'}
+                                </div>
+                              </div>
+                            );
+                          });
+                        })()}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end pt-4">
+                    <Button variant="outline" className="rounded-none border-slate-300 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] px-6" onClick={() => setShowDetailsModal(false)}>
+                      Fermer
                     </Button>
                   </div>
                 </div>
               )}
-            </CardContent>
-          </Card>
-        ) : (
-          <Card>
-            <CardContent className="text-center py-8">
-              <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">
-                Sélectionnez une classe et une période pour voir les bulletins
-              </p>
-            </CardContent>
-          </Card>
-        )}
+            </DialogContent>
+          </Dialog>
 
-        {/* Modal des appréciations */}
-        <Dialog open={showCommentsModal} onOpenChange={setShowCommentsModal}>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>
-                Appréciations - {selectedStudent?.nom}
-              </DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label>Appréciation du Professeur Principal</Label>
-                <Textarea
-                  value={teacherComments}
-                  onChange={(e) => setTeacherComments(e.target.value)}
-                  placeholder="Appréciation du professeur principal..."
-                  rows={4}
-                />
-              </div>
-              <div>
-                <Label>Appréciation du Chef d'Établissement</Label>
-                <Textarea
-                  value={principalComments}
-                  onChange={(e) => setPrincipalComments(e.target.value)}
-                  placeholder="Appréciation du chef d'établissement..."
-                  rows={4}
-                />
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setShowCommentsModal(false)}>
-                  Annuler
-                </Button>
-                <Button onClick={saveComments}>
-                  Sauvegarder
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+          {/* Modal des informations des élèves avec rangs - SUPPRIMÉ */}
 
-        {/* Modal des détails des notes et rangs par matière */}
-        <Dialog open={showDetailsModal} onOpenChange={setShowDetailsModal}>
-          <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto p-0 rounded-none border-0 shadow-xl">
-            <DialogHeader className="p-4 bg-slate-800 text-white rounded-t-none border-b-0 m-0">
-              <DialogTitle className="text-lg font-bold flex items-center gap-2 text-white">
-                <FileText className="h-5 w-5 text-blue-400" />
-                Relevé de Notes - {selectedStudent?.nom} {selectedStudent?.prenom}
-              </DialogTitle>
-            </DialogHeader>
+          {/* Fonction de débogage pour les trimestres */}
+          {(() => {
+            const debugStudentBulletin = async (studentId: string) => {
+              try {
+                console.log('🔍 === DEBUG BULLETIN TRIMESTRE ===');
+                console.log('👤 ID de l\'élève:', studentId);
+                console.log('📅 Période sélectionnée:', selectedPeriod);
+                console.log('🏫 Classe sélectionnée:', selectedClass);
+                console.log('📚 Année scolaire:', schoolYear);
 
-            {selectedStudent && (
-              <div className="p-6 bg-white space-y-6">
-                {/* Informations générales compactes */}
-                <div className="bg-slate-50 border border-slate-200 p-3 grid grid-cols-4 gap-4 text-[11px] uppercase tracking-wider font-semibold text-slate-700">
-                  <div>
-                    <span className="text-slate-400 block text-[9px] mb-1">Classe</span>
-                    {classes.find((c: any) => c.id === selectedClass)?.name || selectedClass || '---'}
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block text-[9px] mb-1">Période</span>
-                    {evaluationPeriods.find((p: any) => p.id === selectedPeriod)?.name || '---'}
-                  </div>
-                  <div className="border-l border-slate-200 pl-4">
-                    <span className="text-slate-400 block text-[9px] mb-1">Moyenne Générale</span>
-                    <span className="font-bold text-[14px] text-blue-600">
-                      {(() => {
-                        const avg = getStudentAverage(selectedStudent.id);
-                        return avg !== null ? `${avg.toFixed(2)}/20` : '---';
-                      })()}
-                    </span>
-                  </div>
-                  <div className="border-l border-slate-200 pl-4">
-                    <span className="text-slate-400 block text-[9px] mb-1">Rang Général</span>
-                    <span className="font-bold text-[14px] text-green-600">
-                      {(() => {
-                        const rank = getStudentRank(selectedStudent.id);
-                        return rank !== null ? `${rank}/${Object.keys(calculatedRanks).length || students.length}` : 'N/A';
-                      })()}
-                    </span>
-                  </div>
-                </div>
+                // Vérifier si c'est un trimestre
+                if (!isTrimester) {
+                  toast.error('Le mode débogage est uniquement disponible pour les trimestres.');
+                  return;
+                }
 
-                {/* Détails par matière - Grille compacte */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-bold text-[11px] text-slate-800 uppercase tracking-tight">
-                      Détail par Matière
-                      {isLoadingSubjectRanks && (
-                        <span className="ml-2 text-[10px] normal-case text-blue-600">
-                          <Loader2 className="h-3 w-3 inline animate-spin mr-1" />
-                          Calcul en cours...
-                        </span>
-                      )}
-                    </h3>
-                  </div>
+                // Appeler l'API de débogage
+                const response = await fetch('/api/bulletins/debug-trimestre', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    classId: selectedClass,
+                    evaluationPeriodId: selectedPeriod,
+                    schoolYear: schoolYear
+                  })
+                });
 
-                  <div className="border border-slate-200 rounded-none overflow-hidden">
-                    <div className="bg-slate-100 border-b border-slate-200 grid grid-cols-12 text-[10px] font-bold text-slate-700 uppercase tracking-tight divide-x divide-slate-200">
-                      <div className="col-span-5 px-3 py-2 flex items-center">Matière</div>
-                      <div className="col-span-1 px-2 py-2 flex justify-center items-center">Coef</div>
+                if (!response.ok) {
+                  const errorText = await response.text();
+                  console.error('❌ Erreur API debug:', response.status, errorText);
+                  toast.error('Erreur lors de la récupération des données de débogage.');
+                  return;
+                }
 
-                      {(() => {
-                        const isTrimester = selectedPeriod && selectedPeriod.toLowerCase().includes('trim');
-                        return isTrimester ? (
-                          <>
-                            <div className="col-span-2 px-2 py-2 flex justify-center items-center">Seq 1</div>
-                            <div className="col-span-2 px-2 py-2 flex justify-center items-center">Seq 2</div>
-                            <div className="col-span-1 px-2 py-2 flex justify-center items-center text-blue-800">Moy.</div>
-                          </>
-                        ) : (
-                          <div className="col-span-5 px-2 py-2 flex justify-center items-center text-blue-800">Note (/Max)</div>
-                        );
-                      })()}
+                const data = await response.json();
+                console.log('✅ Données de débogage reçues:', data);
 
-                      <div className="col-span-1 px-2 py-2 flex justify-center items-center">Rang</div>
-                    </div>
+                // Afficher les données dans une alerte pour l'instant
+                alert(`Debug Trimestre - ${data.studentsCount} élèves analysés\n\n` +
+                  `Période: ${data.periodName}\n` +
+                  `Classe: ${data.className}\n\n` +
+                  `Données complètes dans la console.`);
 
-                    <div className="divide-y divide-slate-100">
-                      {(() => {
-                        const isTrimester = selectedPeriod && selectedPeriod.toLowerCase().includes('trim');
-                        let subjectsToDisplay: any[] = [];
-
-                        if (isTrimester) {
-                          subjectsToDisplay = subjects;
-                        } else {
-                          const ranksBySubject = getStudentRanksBySubject(selectedStudent.id);
-                          const subjectsWithGrades = Object.keys(ranksBySubject);
-                          subjectsToDisplay = subjects.filter((s: any) => subjectsWithGrades.includes(s.id.toString()));
-                        }
-
-                        if (subjectsToDisplay.length === 0) {
-                          return (
-                            <div className="text-center py-6 text-[11px] text-slate-500 font-medium">
-                              Aucune note enregistrée
-                            </div>
-                          );
-                        }
-
-                        return subjectsToDisplay.map((subject: any) => {
-                          const subjectId = subject.id.toString();
-                          const subjectName = subject.name || `Matière ${subjectId}`;
-                          const studentGrades = grades[selectedStudent.id]?.filter((g: any) => g.subjectId === subjectId) || [];
-
-                          const rankData = subjectRanksFromDB[subjectId] || { rank: 'N/A' };
-
-                          return (
-                            <div key={subjectId} className="grid grid-cols-12 text-[11px] hover:bg-slate-50 divide-x divide-slate-100 items-center">
-                              <div className="col-span-5 px-3 py-1.5 font-semibold text-slate-800 truncate">
-                                {subjectName}
-                              </div>
-                              <div className="col-span-1 px-2 py-1.5 text-center text-slate-600 font-mono">
-                                {subject.coefficient || 1}
-                              </div>
-
-                              {isTrimester ? (
-                                <>
-                                  <div className="col-span-2 px-2 py-1.5 text-center font-mono">
-                                    {studentGrades.length > 0 && studentGrades[0].seq1 !== undefined ? `${parseFloat(String(studentGrades[0].seq1)).toFixed(2)}` : '---'}
-                                  </div>
-                                  <div className="col-span-2 px-2 py-1.5 text-center font-mono">
-                                    {studentGrades.length > 0 && studentGrades[0].seq2 !== undefined ? `${parseFloat(String(studentGrades[0].seq2)).toFixed(2)}` : '---'}
-                                  </div>
-                                  <div className="col-span-1 px-2 py-1.5 text-center font-bold font-mono text-blue-700 bg-blue-50/50">
-                                    {studentGrades.length > 0 && studentGrades[0].periodAverage !== undefined ? `${parseFloat(String(studentGrades[0].periodAverage)).toFixed(2)}` : '---'}
-                                  </div>
-                                </>
-                              ) : (
-                                <div className="col-span-5 px-2 py-1.5 text-center font-bold font-mono text-blue-700 bg-blue-50/50">
-                                  {studentGrades.length > 0 ? `${parseFloat(String(studentGrades[0].score)).toFixed(2)} / ${studentGrades[0].maxScore}` : '---'}
-                                </div>
-                              )}
-
-                              <div className="col-span-1 px-2 py-1.5 text-center font-bold text-green-600">
-                                {rankData.rank !== 'N/A' ? `${rankData.rank}` : '-'}
-                              </div>
-                            </div>
-                          );
-                        });
-                      })()}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex justify-end pt-4">
-                  <Button variant="outline" className="rounded-none border-slate-300 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] px-6" onClick={() => setShowDetailsModal(false)}>
-                    Fermer
-                  </Button>
-                </div>
-              </div>
-            )}
-          </DialogContent>
-        </Dialog>
-
-        {/* Modal des informations des élèves avec rangs - SUPPRIMÉ */}
-
-        {/* Fonction de débogage pour les trimestres */}
-        {(() => {
-          const debugStudentBulletin = async (studentId: string) => {
-            try {
-              console.log('🔍 === DEBUG BULLETIN TRIMESTRE ===');
-              console.log('👤 ID de l\'élève:', studentId);
-              console.log('📅 Période sélectionnée:', selectedPeriod);
-              console.log('🏫 Classe sélectionnée:', selectedClass);
-              console.log('📚 Année scolaire:', schoolYear);
-
-              // Vérifier si c'est un trimestre
-              if (!isTrimester) {
-                toast.error('Le mode débogage est uniquement disponible pour les trimestres.');
-                return;
-              }
-
-              // Appeler l'API de débogage
-              const response = await fetch('/api/bulletins/debug-trimestre', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  classId: selectedClass,
-                  evaluationPeriodId: selectedPeriod,
-                  schoolYear: schoolYear
-                })
-              });
-
-              if (!response.ok) {
-                const errorText = await response.text();
-                console.error('❌ Erreur API debug:', response.status, errorText);
+              } catch (error) {
+                console.error('❌ Erreur lors du débogage:', error);
                 toast.error('Erreur lors de la récupération des données de débogage.');
-                return;
               }
+            };
 
-              const data = await response.json();
-              console.log('✅ Données de débogage reçues:', data);
+            // Rendre la fonction disponible globalement pour le composant
+            (window as any).debugStudentBulletin = debugStudentBulletin;
 
-              // Afficher les données dans une alerte pour l'instant
-              alert(`Debug Trimestre - ${data.studentsCount} élèves analysés\n\n` +
-                `Période: ${data.periodName}\n` +
-                `Classe: ${data.className}\n\n` +
-                `Données complètes dans la console.`);
-
-            } catch (error) {
-              console.error('❌ Erreur lors du débogage:', error);
-              toast.error('Erreur lors de la récupération des données de débogage.');
-            }
-          };
-
-          // Rendre la fonction disponible globalement pour le composant
-          (window as any).debugStudentBulletin = debugStudentBulletin;
-
-          return null;
-        })()}
-              </div>
+            return null;
+          })()}
+        </div>
       ) : (
         <div className="mt-0">
 
-        {selectedClass ? (
-          <ClassAdvancementView
-            students={students}
-            classes={classes}
-            currentClassId={selectedClass}
-            getStudentAverage={getStudentAverage}
-          />
-        ) : (
-          <div className="flex flex-col items-center justify-center py-20 bg-slate-50 border border-slate-200">
-            <FileText className="h-10 w-10 text-slate-300 mb-3" />
-            <p className="text-slate-500 font-medium">Veuillez d'abord sélectionner une classe pour accéder au Conseil de Classe.</p>
-          </div>
-        )}
-              </div>
+          {selectedClass ? (
+            <ClassAdvancementView
+              students={students}
+              classes={classes}
+              currentClassId={selectedClass}
+              schoolYear={schoolYear}
+            advancementDecisions={advancementDecisions}
+            setAdvancementDecisions={setAdvancementDecisions}
+            />
+          ) : (
+            <div className="flex flex-col items-center justify-center py-20 bg-slate-50 border border-slate-200">
+              <FileText className="h-10 w-10 text-slate-300 mb-3" />
+              <p className="text-slate-500 font-medium">Veuillez d'abord sélectionner une classe pour accéder au Conseil de Classe.</p>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

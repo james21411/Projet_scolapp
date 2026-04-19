@@ -17,7 +17,7 @@ export default async function handler(req, res) {
       averageScore
     } = req.body;
 
-    if (!studentId || !classId || !evaluationPeriodId || !schoolYear || !rank || !totalStudents) {
+    if (!studentId || !classId || !evaluationPeriodId || !schoolYear || rank === undefined || totalStudents === undefined) {
       return res.status(400).json({ error: 'Paramètres manquants' });
     }
 
@@ -31,9 +31,9 @@ export default async function handler(req, res) {
 
     if (existingBulletins.length > 0) {
       // Mettre à jour le bulletin existant
-      const [updateResult] = await connection.query(`
+      await connection.query(`
         UPDATE report_cards 
-        SET rank = ?, totalStudents = ?, averageScore = ?, updatedAt = CURRENT_TIMESTAMP
+        SET \`rank\` = ?, totalStudents = ?, averageScore = ?, updatedAt = CURRENT_TIMESTAMP
         WHERE studentId = ? AND evaluationPeriodId = ? AND schoolYear = ?
       `, [rank, totalStudents, averageScore, studentId, evaluationPeriodId, schoolYear]);
 
@@ -42,15 +42,15 @@ export default async function handler(req, res) {
       // Créer un nouveau bulletin avec le rang calculé
       const bulletinId = `bulletin-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-      const [insertResult] = await connection.query(`
+      await connection.query(`
         INSERT INTO report_cards (
           id, studentId, classId, schoolYear, evaluationPeriodId,
-          averageScore, totalCoefficient, rank, totalStudents,
+          averageScore, totalCoefficient, \`rank\`, totalStudents,
           teacherComments, principalComments, mention, issuedBy
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `, [
         bulletinId, studentId, classId, schoolYear, evaluationPeriodId,
-        averageScore, 0, rank, totalStudents,
+        averageScore || 0, 0, rank, totalStudents,
         '', '', 'N/A', 'SYSTEM'
       ]);
 
