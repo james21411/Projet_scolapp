@@ -2059,187 +2059,6 @@ type AdvancementDecision = {
   targetClass: string;
 };
 
-function ClassAdvancementTab({ allStudents, allclasses, onUpdate }: { allStudents: Student[]; allclasses: string[]; onUpdate: () => void }) {
-  const [fromClass, setFromClass] = useState<string>('');
-  const [studentsInClass, setStudentsInClass] = useState<Student[]>([]);
-  const [advancementDecisions, setAdvancementDecisions] = useState<Record<string, AdvancementDecision>>({});
-  const { toast } = useToast();
-
-  const findNextClass = useCallback((currentClass: string): string => {
-    const currentIndex = allclasses.findIndex(c => c === currentClass);
-    if (currentIndex > -1 && currentIndex < allclasses.length - 1) {
-      return allclasses[currentIndex + 1];
-    }
-    return currentClass;
-  }, [allclasses]);
-
-  useEffect(() => {
-    if (fromClass) {
-      const students = allStudents.filter(s => s.classe === fromClass && s.statut === 'Actif');
-      setStudentsInClass(students);
-      // Initialize decisions
-      const initialDecisions: Record<string, AdvancementDecision> = {};
-      students.forEach(s => {
-        const nextClass = findNextClass(s.classe);
-        initialDecisions[s.id] = { decision: 'pass', targetClass: nextClass };
-      });
-      setAdvancementDecisions(initialDecisions);
-    } else {
-      setStudentsInClass([]);
-      setAdvancementDecisions({});
-    }
-  }, [fromClass, allStudents, findNextClass]);
-
-  const handleDecisionChange = (studentId: string, decision: 'pass' | 'repeat') => {
-    setAdvancementDecisions(prev => {
-      const currentDecision = prev[studentId];
-      const student = studentsInClass.find(s => s.id === studentId);
-      if (!student) return prev;
-
-      const newTargetClass = decision === 'pass'
-        ? findNextClass(student.classe)
-        : student.classe;
-
-      return {
-        ...prev,
-        [studentId]: { ...currentDecision, decision, targetClass: newTargetClass }
-      };
-    });
-  };
-
-  const handleTargetClassChange = (studentId: string, newTargetClass: string) => {
-    setAdvancementDecisions(prev => ({
-      ...prev,
-      [studentId]: {
-        ...prev[studentId],
-        decision: 'pass', // Changing target class implies passing
-        targetClass: newTargetClass
-      }
-    }));
-  };
-
-  const handleProcessAdvancement = async () => {
-    const updates = studentsInClass.map(student => {
-      const decisionInfo = advancementDecisions[student.id];
-      return {
-        studentId: student.id,
-        newClass: decisionInfo.decision === 'pass' ? decisionInfo.targetClass : student.classe,
-        hasPassed: decisionInfo.decision === 'pass'
-      };
-    });
-
-    try {
-      await processClassAdvancement(updates);
-      toast({ title: "Passage de classe effectué avec succès !" });
-      setFromClass(''); // Reset view
-      onUpdate(); // Refresh student list
-    } catch (e) {
-      console.error(e);
-      toast({ variant: 'destructive', title: "Erreur", description: "Le passage de classe a échoué." });
-    }
-  }
-
-  return (
-    <Card className="rounded-none shadow-none border-slate-200">
-      <CardHeader className="bg-slate-50/50 border-b border-slate-100 rounded-none">
-        <CardTitle className="text-xl font-bold">Passage de classe</CardTitle>
-        <CardDescription className="text-xs">Outil pour le passage de classe en fin d'année scolaire. Les modifications sont irréversibles.</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4 pt-6">
-        <div className="flex items-center gap-4 bg-blue-50/30 p-4 border border-blue-100 rounded-none">
-          <Label className="text-[11px] font-bold text-slate-700 uppercase">Sélectionner la classe à traiter</Label>
-          <Select value={fromClass} onValueChange={setFromClass}>
-            <SelectTrigger className="w-[200px] rounded-none h-9 border-slate-300 bg-white text-[11px] font-bold"><SelectValue placeholder="Choisir une classe..." /></SelectTrigger>
-            <SelectContent className="rounded-none">
-              {[...new Set(allStudents.map(s => s.classe))].sort().map(c => {
-                const cleanC = cleanValue(c);
-                return cleanC ? <SelectItem key={cleanC} value={cleanC} className="text-[11px]">{cleanC}</SelectItem> : null;
-              }).filter(Boolean)}
-            </SelectContent>
-          </Select>
-        </div>
-        {fromClass && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <p className="text-[11px] font-bold text-slate-500 uppercase">Année scolaire pour le passage : <span className="text-blue-600 font-mono">{new Date().getFullYear()}-{new Date().getFullYear() + 1}</span></p>
-              <Badge variant="outline" className="rounded-none border-slate-300 text-[10px] uppercase font-bold text-slate-600">
-                {studentsInClass.length} élève(s) à traiter
-              </Badge>
-            </div>
-            <Table className="border-t border-l border-slate-200 w-full">
-              <TableHeader>
-                <TableRow className="bg-slate-100 divide-x divide-slate-200 border-b border-slate-200 hover:bg-slate-100">
-                  <TableHead className="text-[11px] font-bold text-slate-800 uppercase px-2 py-2">Élève</TableHead>
-                  <TableHead className="text-[11px] font-bold text-slate-800 uppercase px-2 py-2 text-center">Décision</TableHead>
-                  <TableHead className="w-[250px] text-[11px] font-bold text-slate-800 uppercase px-2 py-2 text-center">Classe de destination</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {studentsInClass.map(student => {
-                  const currentDecision = advancementDecisions[student.id];
-                  if (!currentDecision) return null; // Pre-render guard
-
-                  return (
-                    <TableRow key={student.id} className="divide-x divide-slate-200 border-b border-slate-200 hover:bg-slate-50 transition-colors">
-                      <TableCell className="px-2 py-1.5">
-                        <div className="flex flex-col">
-                          <span className="font-bold text-slate-800 text-[11px] uppercase">{student.prenom} {student.nom}</span>
-                          <span className="text-[10px] font-mono text-blue-600 font-bold">{student.id}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="px-2 py-1.5 text-center">
-                        <RadioGroup
-                          value={currentDecision.decision}
-                          onValueChange={(val) => handleDecisionChange(student.id, val as any)}
-                          className="flex justify-center gap-6"
-                        >
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="pass" id={`pass-${student.id}`} className="h-3.5 w-3.5 border-slate-300" />
-                            <Label htmlFor={`pass-${student.id}`} className="text-[11px] font-semibold text-green-700 uppercase cursor-pointer">Passe</Label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="repeat" id={`repeat-${student.id}`} className="h-3.5 w-3.5 border-slate-300" />
-                            <Label htmlFor={`repeat-${student.id}`} className="text-[11px] font-semibold text-red-700 uppercase cursor-pointer">Redouble</Label>
-                          </div>
-                        </RadioGroup>
-                      </TableCell>
-                      <TableCell className="px-2 py-1.5 text-center">
-                        {currentDecision.decision === 'pass' ? (
-                          <Select value={currentDecision.targetClass} onValueChange={(newClass) => handleTargetClassChange(student.id, newClass)}>
-                            <SelectTrigger className="h-8 rounded-none border-slate-300 text-[11px] font-medium"><SelectValue /></SelectTrigger>
-                            <SelectContent className="rounded-none">
-                              {allclasses && allclasses.length > 0 ? allclasses.map((c: string) => {
-                                const cleanC = cleanValue(c);
-                                return cleanC ? <SelectItem key={cleanC} value={cleanC} className="text-[11px]">{cleanC}</SelectItem> : null;
-                              }).filter(Boolean) : <SelectItem value="no-data" disabled>Aucune classe disponible</SelectItem>}
-                            </SelectContent>
-                          </Select>
-                        ) : (
-                          <span className="text-[10px] text-slate-500 font-bold uppercase italic bg-slate-100 px-2 py-1 border border-slate-200">Reste en {student.classe}</span>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-            <div className="flex justify-end pt-6 border-t border-slate-100">
-              <Button
-                onClick={handleProcessAdvancement}
-                disabled={studentsInClass.length === 0}
-                className="rounded-none bg-blue-600 hover:bg-blue-700 text-white font-bold h-10 px-8 border-b-2 border-blue-800 active:translate-y-0.5 transition-all uppercase text-xs"
-              >
-                Lancer le passage de classe
-              </Button>
-            </div>
-          </div>
-        )}
-        {fromClass && studentsInClass.length === 0 && <p className="text-center text-muted-foreground py-8">Aucun élève actif dans cette classe.</p>}
-      </CardContent>
-    </Card>
-  );
-}
-
 function AdvancedReportsTab() {
   const [allStudents, setAllStudents] = useState<Student[]>([]);
   const [schoolStructure, setSchoolStructure] = useState<SchoolStructure>({ levels: {} });
@@ -2661,7 +2480,7 @@ function StudentsTab({ role, currentUser, schoolInfo }: { role: string, currentU
         <div className="flex items-center justify-between bg-slate-100 p-1 border border-slate-200">
           <TabsList className="h-8 bg-slate-200/50 p-0 rounded-none gap-0">
             <TabsTrigger value="list" className="rounded-none h-full px-4 text-[11px] font-bold uppercase data-[state=active]:bg-white data-[state=active]:text-blue-600 border-r border-slate-200">Liste des élèves</TabsTrigger>
-            <TabsTrigger value="passage" className="rounded-none h-full px-4 text-[11px] font-bold uppercase data-[state=active]:bg-white data-[state=active]:text-blue-600 border-r border-slate-200">Passage de classe</TabsTrigger>
+            
             <TabsTrigger value="reports" className="rounded-none h-full px-4 text-[11px] font-bold uppercase data-[state=active]:bg-white data-[state=active]:text-blue-600">Rapports</TabsTrigger>
           </TabsList>
           {["Admin", "Direction"].includes(role) && (
@@ -2871,9 +2690,7 @@ function StudentsTab({ role, currentUser, schoolInfo }: { role: string, currentU
             </CardFooter>
           </Card>
         </TabsContent>
-        <TabsContent value="passage">
-          <ClassAdvancementTab allStudents={allStudents} allclasses={allclasses as string[]} onUpdate={fetchStudents} />
-        </TabsContent>
+        
         <TabsContent value="reports">
           <AdvancedReportsTab />
         </TabsContent>
