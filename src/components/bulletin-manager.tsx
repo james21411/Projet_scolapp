@@ -21,7 +21,11 @@ import {
   Eye,
   Loader2,
   RefreshCw,
-  Calculator
+  Calculator,
+  Filter,
+  Settings2,
+  ChevronUp,
+  ChevronDown
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { SchoolYearSelect } from '@/components/ui/school-year-select';
@@ -281,7 +285,10 @@ export default function BulletinManager({ schoolInfo }: { schoolInfo?: SchoolInf
 
   // États pour la recherche et filtres
   const [searchTerm, setSearchTerm] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+  const [showConfig, setShowConfig] = useState(true);
   const [statusFilter, setStatusFilter] = useState<'all' | 'graded' | 'ungraded'>('all');
+  const [sortOrder, setSortOrder] = useState<'alpha_asc' | 'alpha_desc' | 'rank_asc' | 'rank_desc'>('alpha_asc');
 
   // États pour la pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -1585,6 +1592,29 @@ export default function BulletinManager({ schoolInfo }: { schoolInfo?: SchoolInf
     return matchesSearch;
   });
 
+  // Trier les élèves
+  filteredStudents.sort((a, b) => {
+    if (sortOrder === 'alpha_asc') {
+      return a.nom.localeCompare(b.nom);
+    } else if (sortOrder === 'alpha_desc') {
+      return b.nom.localeCompare(a.nom);
+    } else if (sortOrder === 'rank_asc' || sortOrder === 'rank_desc') {
+      // Les élèves sans rang (N/A ou null) sont mis à la fin
+      const rankA = getStudentRank(a.id) !== null ? Number(getStudentRank(a.id)) : 999999;
+      const rankB = getStudentRank(b.id) !== null ? Number(getStudentRank(b.id)) : 999999;
+      
+      if (sortOrder === 'rank_asc') {
+        return rankA - rankB;
+      } else {
+        // En mode décroissant, on garde les non classés à la fin tout de même en les traitant à part
+        if (rankA === 999999 && rankB !== 999999) return 1;
+        if (rankB === 999999 && rankA !== 999999) return -1;
+        return rankB - rankA;
+      }
+    }
+    return 0;
+  });
+
   // Pagination
   const totalPages = Math.ceil(filteredStudents.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -1875,87 +1905,56 @@ export default function BulletinManager({ schoolInfo }: { schoolInfo?: SchoolInf
 
   return (
     <div className="space-y-6">
-      {/* En-tête */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Gestion des Bulletins</h1>
-          <p className="text-gray-600 mt-2">
-            Gérez les bulletins, les notes et les rangs des élèves par classe et par période
-          </p>
+      {/* En-tête avec bouton de réduction des filtres */}
+      <div className="flex justify-between items-center bg-white p-4 rounded-none border border-slate-200 shadow-sm mb-6">
+        <div className="flex items-center gap-2">
+          <div className="bg-blue-600 p-2 rounded-none">
+            <FileText className="h-5 w-5 text-white" />
+          </div>
+          <h2 className="text-lg font-bold text-slate-800">Gestion des Bulletins</h2>
         </div>
-
-        {/* Boutons d'action */}
-        <div className="flex items-center gap-3">
-          {/* Bouton de débogage pour les trimestres */}
-          {isTrimester && (
-            <Button
-              variant="outline"
-              onClick={() => {
-                console.log('🔍 === DÉBOGAGE FORCÉ ===');
-                console.log('📅 Période sélectionnée:', selectedPeriod);
-                console.log('🏫 Classe sélectionnée:', selectedClass);
-                console.log('📚 Année scolaire:', schoolYear);
-                console.log('📊 Notes actuelles:', grades);
-                console.log('👥 Élèves:', students);
-                console.log('📝 Matières:', subjects);
-                loadGrades();
-              }}
-              className="bg-yellow-50 border-yellow-200 text-yellow-700 hover:bg-yellow-100"
-            >
-              🔍 Debug Notes
-            </Button>
-          )}
-
-          {/* Bouton pour générer tous les bulletins */}
+        <div className="flex items-center gap-2">
           <Button
-            onClick={generateAllBulletins}
-            disabled={loading || !selectedClass || !selectedPeriod}
-            className="bg-green-600 hover:bg-green-700"
+            variant="outline"
+            size="sm"
+            onClick={() => setShowConfig(!showConfig)}
+            className="flex items-center gap-2 border-slate-200 text-slate-600 hover:bg-slate-50 rounded-none"
           >
-            {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Download className="h-4 w-4 mr-2" />}
-            Générer Tous les Bulletins
+            {showConfig ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            <span className="hidden md:inline">{showConfig ? "Masquer les sélecteurs" : "Afficher les sélecteurs"}</span>
           </Button>
-
-          {/* Bouton masqué pour le recalcul des rangs */}
-          {/* <Button
-            onClick={recalculateAllRanksForComponent}
-            disabled={loading || !selectedClass || !selectedPeriod}
-            className="bg-blue-600 hover:bg-blue-700"
-          >
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Recalculer les Rangs (Composant)
-          </Button> */}
         </div>
       </div>
 
       {/* Sélecteurs */}
+      {showConfig && (
       <Card>
         <CardHeader>
           <CardTitle>Configuration</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div>
-              <Label>Année Scolaire</Label>
+            <div className="space-y-1.5">
+              <Label className="text-[11px] font-bold text-slate-500 uppercase">Année Scolaire</Label>
               <SchoolYearSelect
                 value={schoolYear}
                 onValueChange={setSchoolYear}
                 availableYears={availableYears}
                 currentSchoolYear={currentSchoolYear}
                 placeholder="Sélectionner l'année scolaire"
-                className="w-full"
+                className="w-full rounded-none h-9 border-slate-300"
               />
             </div>
-            <div>
-              <Label>Niveau</Label>
+            <div className="space-y-1.5">
+              <Label className="text-[11px] font-bold text-slate-500 uppercase">Niveau</Label>
               <Select value={selectedLevel} onValueChange={(value) => {
                 setSelectedLevel(value);
                 setSelectedClass(''); // Réinitialiser la classe sélectionnée
               }}>
-                <SelectTrigger>
+                <SelectTrigger className="rounded-none h-9 border-slate-300">
                   <SelectValue placeholder="Sélectionner un niveau" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="rounded-none">
                   {availableLevels.map((level) => (
                     <SelectItem key={level} value={level}>
                       {level}
@@ -1964,13 +1963,13 @@ export default function BulletinManager({ schoolInfo }: { schoolInfo?: SchoolInf
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label>Classe</Label>
+            <div className="space-y-1.5">
+              <Label className="text-[11px] font-bold text-slate-500 uppercase">Classe</Label>
               <Select value={selectedClass} onValueChange={setSelectedClass} disabled={!selectedLevel}>
-                <SelectTrigger>
-                  <SelectValue placeholder={selectedLevel ? "Sélectionner une classe" : "Sélectionnez d'abord un niveau"} />
+                <SelectTrigger className="rounded-none h-9 border-slate-300">
+                  <SelectValue placeholder={selectedLevel ? "Sélectionner une classe" : "---"} />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="rounded-none">
                   {classes.map((cls) => (
                     <SelectItem key={cls.id} value={cls.id}>
                       {cls.name}
@@ -1979,14 +1978,14 @@ export default function BulletinManager({ schoolInfo }: { schoolInfo?: SchoolInf
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label>Période d'Évaluation</Label>
+            <div className="space-y-1.5">
+              <Label className="text-[11px] font-bold text-slate-500 uppercase">Période d'Évaluation</Label>
               <div className="flex gap-2">
                 <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionner une période" />
+                  <SelectTrigger className="rounded-none h-9 border-slate-300">
+                    <SelectValue placeholder="Sélectionner..." />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="rounded-none">
                     {/* Grouper les périodes par type */}
                     {(() => {
                       const sequences = evaluationPeriods.filter(p =>
@@ -2052,19 +2051,16 @@ export default function BulletinManager({ schoolInfo }: { schoolInfo?: SchoolInf
 
                 <Button
                   onClick={async () => {
-                    // Recharger les données ET calculer automatiquement les rangs
                     await reloadAllDataWithRanks();
-                    // Pour les trimestres, les rangs sont déjà calculés dans reloadAllDataWithRanks
-                    // Pour les séquences, on peut recalculer si nécessaire
                     if (!selectedPeriod?.toLowerCase().includes('trim')) {
                       calculateTrueRanks();
                     }
                   }}
                   variant="default"
                   disabled={!selectedClass || !selectedPeriod}
-                  className="bg-green-600 hover:bg-green-700 text-white"
+                  className="bg-blue-600 hover:bg-blue-700 text-white rounded-none h-9 px-6 font-bold shadow-sm"
                 >
-                  Charger...
+                  Charger
                 </Button>
               </div>
             </div>
@@ -2072,67 +2068,103 @@ export default function BulletinManager({ schoolInfo }: { schoolInfo?: SchoolInf
         </CardContent>
       </Card>
 
-      {/* Filtres et recherche */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                <Input
-                  placeholder="Rechercher un élève..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Select value={statusFilter} onValueChange={(value: any) => setStatusFilter(value)}>
-                <SelectTrigger className="w-48">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tous les élèves</SelectItem>
-                  <SelectItem value="graded">Élèves notés</SelectItem>
-                  <SelectItem value="ungraded">Élèves non notés</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
 
+
+      )}
 
       {/* Liste des élèves */}
       {selectedClass && selectedPeriod && selectedLevel ? (
         <Card>
-          <CardHeader>
-            <div className="flex justify-between items-center">
-              <div>
-                <CardTitle>Bulletins des Élèves</CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  {filteredStudents.length} élève(s) trouvé(s)
-                </p>
+          <CardHeader className="pb-4 bg-slate-50/50 border-b border-slate-100 rounded-none">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <Badge variant="outline" className="bg-white rounded-none">
+                  {filteredStudents.length} élève(s)
+                </Badge>
+                <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-100 rounded-none">
+                  {evaluationPeriods.find(p => p.id === selectedPeriod)?.name || 'Période'}
+                </Badge>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowFilters(!showFilters)}
+                  className="rounded-none h-8"
+                >
+                  <Filter className="h-4 w-4 mr-2" />
+                  Filtres
+                </Button>
+
+                <Select value={statusFilter} onValueChange={(value: any) => setStatusFilter(value)}>
+                  <SelectTrigger className="w-40 h-8 rounded-none">
+                    <SelectValue placeholder="Filtrer par statut" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-none">
+                    <SelectItem value="all">Tous les élèves</SelectItem>
+                    <SelectItem value="graded">Élèves notés</SelectItem>
+                    <SelectItem value="ungraded">Élèves non notés</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select value={sortOrder} onValueChange={(value: any) => setSortOrder(value)}>
+                  <SelectTrigger className="w-44 h-8 rounded-none bg-white">
+                    <SelectValue placeholder="Trier par..." />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-none">
+                    <SelectItem value="alpha_asc">Nom (A-Z)</SelectItem>
+                    <SelectItem value="alpha_desc">Nom (Z-A)</SelectItem>
+                    <SelectItem value="rank_asc">Rang (Croissant)</SelectItem>
+                    <SelectItem value="rank_desc">Rang (Décroissant)</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <div className="w-px h-6 bg-slate-200 mx-1" />
+
+                <Button
+                  onClick={generateAllBulletins}
+                  disabled={loading || !selectedClass || !selectedPeriod}
+                  className="bg-green-600 hover:bg-green-700 rounded-none shadow-sm flex items-center gap-2 h-8"
+                >
+                  {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                  <span className="hidden sm:inline">Générer Tout</span>
+                </Button>
               </div>
             </div>
+
+            {showFilters && (
+              <div className="mt-4 pt-4 border-t border-slate-200">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                  <Input
+                    placeholder="Rechercher un élève..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 rounded-none h-9 border-slate-300 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+            )}
           </CardHeader>
           <CardContent>
             {loading ? (
               <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                <div className="animate-spin rounded-none h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
                 <p>Chargement...</p>
               </div>
             ) : (
-              <Table>
+              <Table className="border-t border-l border-slate-200 w-full overflow-hidden">
                 <TableHeader>
-                  <TableRow>
-                    <TableHead className="text-black font-semibold">Élève</TableHead>
-                    <TableHead className="text-black font-semibold">Moyenne Générale</TableHead>
-                    <TableHead className="text-black font-semibold">Rang Général</TableHead>
-                    <TableHead className="text-black font-semibold">Mention</TableHead>
-                    <TableHead className="text-black font-semibold">Actions</TableHead>
+                  <TableRow className="bg-slate-100 divide-x divide-slate-200 border-b border-slate-200 group hover:bg-slate-100">
+                    <TableHead className="w-24 text-[11px] font-bold text-slate-800 uppercase px-2 py-2">Matricule</TableHead>
+                    <TableHead className="text-[11px] font-bold text-slate-800 uppercase px-2 py-2">Élève</TableHead>
+                    <TableHead className="w-16 text-[11px] font-bold text-slate-800 uppercase px-2 py-2 text-center">Sexe</TableHead>
+                    <TableHead className="w-32 text-[11px] font-bold text-slate-800 uppercase px-2 py-2 text-center">Moyenne</TableHead>
+                    <TableHead className="w-24 text-[11px] font-bold text-slate-800 uppercase px-2 py-2 text-center">Rang</TableHead>
+                    <TableHead className="w-32 text-[11px] font-bold text-slate-800 uppercase px-2 py-2 text-center">Mention</TableHead>
+                    <TableHead className="w-40 text-[11px] font-bold text-slate-800 uppercase px-2 py-2 text-center">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -2144,81 +2176,71 @@ export default function BulletinManager({ schoolInfo }: { schoolInfo?: SchoolInf
                     const ranksBySubject = getStudentRanksBySubject(student.id);
 
                     return (
-                      <TableRow key={student.id}>
-                        <TableCell className="text-black">
-                          <div>
-                            <div className="font-medium text-black">{student.nom}</div>
-                            <div className="text-sm text-gray-600">{student.classeId}</div>
-                          </div>
+                      <TableRow key={student.id} className="divide-x divide-slate-200 border-b border-slate-200 hover:bg-slate-50 transition-colors">
+                        <TableCell className="text-[11px] px-2 py-1.5 font-mono text-blue-600 font-bold bg-slate-50/30">
+                          {student.id || '---'}
                         </TableCell>
-                        <TableCell className="text-black">
+                        <TableCell className="text-[11px] px-2 py-1.5 font-semibold text-slate-800">
+                          {student.nom} {student.prenom}
+                        </TableCell>
+                        <TableCell className="text-[11px] px-2 py-1.5 text-center text-slate-600 font-medium">
+                          {(student.sexe || '').toUpperCase() === 'MASCULIN' ? 'M' : (student.sexe || '').toUpperCase() === 'FÉMININ' ? 'F' : (student.sexe || '---').substring(0, 1).toUpperCase()}
+                        </TableCell>
+                        <TableCell className="text-[11px] px-2 py-1.5 text-center">
                           {average !== null && typeof average === 'number' ? (
-                            <span className="font-bold text-black bg-blue-50 px-2 py-1 rounded">
+                            <span className="font-bold text-slate-900 px-2 py-0.5 bg-blue-50/50">
                               {average.toFixed(2)}/20
                             </span>
                           ) : (
-                            <span className="text-gray-500 bg-gray-50 px-2 py-1 rounded">Non noté</span>
+                            <span className="text-slate-400">--/20</span>
                           )}
                         </TableCell>
-                        <TableCell className="text-black">
+                        <TableCell className="text-[11px] px-2 py-1.5 text-center">
                           {rank !== null ? (
-                            <Badge variant="outline" className="text-black border-blue-300 bg-blue-50">
+                            <span className="font-bold text-slate-700">
                               {rank}/{Object.keys(calculatedRanks).length || students.length}
-                            </Badge>
+                            </span>
                           ) : (
-                            <span className="text-gray-500">-</span>
+                            <span className="text-slate-400">--</span>
                           )}
                         </TableCell>
-
-                        <TableCell className="text-black">
+                        <TableCell className="text-[11px] px-2 py-1.5 text-center">
                           {mention ? (
-                            <Badge className={getMentionColor(mention)}>
+                            <span className={`px-2 py-0.5 text-[10px] items-center font-bold ${getMentionColor(mention)}`}>
                               {mention}
-                            </Badge>
+                            </span>
                           ) : (
-                            <span className="text-gray-500">-</span>
+                            <span className="text-slate-400">-</span>
                           )}
                         </TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
+                        <TableCell className="text-[11px] px-2 py-1.5">
+                          <div className="flex justify-center gap-1">
                             <Button
                               size="sm"
-                              variant="outline"
+                              variant="ghost"
                               onClick={() => openDetailsModal(student)}
+                              className="h-7 w-7 p-0 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-none border-0"
+                              title="Détails"
                             >
-                              <Eye className="h-3 w-3" />
-                              Détails
+                              <Eye className="h-3.5 w-3.5" />
                             </Button>
                             <Button
                               size="sm"
-                              variant="outline"
+                              variant="ghost"
                               onClick={() => openCommentsModal(student)}
+                              className="h-7 w-7 p-0 text-slate-400 hover:text-orange-600 hover:bg-orange-50 rounded-none border-0"
+                              title="Appréciations"
                             >
-                              <Edit className="h-3 w-3" />
+                              <Edit className="h-3.5 w-3.5" />
                             </Button>
-                            {/* Bouton de débogage pour les trimestres */}
-                            {isTrimester && (
-                              <Button
-                                size="sm"
-                                variant="secondary"
-                                className="bg-yellow-500 hover:bg-yellow-600 text-white"
-                                onClick={() => openDetailsModal(student)}
-                                disabled={false}
-                              >
-                                <Eye className="h-3 w-3" />
-                                Debug
-                              </Button>
-                            )}
-
                             <Button
                               size="sm"
-                              variant="default"
-                              className={`${isTrimester ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'} text-white`}
+                              variant="ghost"
+                              className="h-7 w-20 p-0 text-blue-600 hover:bg-blue-600 hover:text-white rounded-none border border-blue-200 transition-all font-bold text-[10px]"
                               onClick={() => generateBulletin(student.id)}
-                              disabled={false}
                             >
-                              <FileText className="h-3 w-3" />
-                              {isTrimester ? 'PDF Trimestre' : 'PDF'}
+                              <FileText className="h-3 w-3 mr-1" />
+                              PDF
                             </Button>
                           </div>
                         </TableCell>
@@ -2359,283 +2381,156 @@ export default function BulletinManager({ schoolInfo }: { schoolInfo?: SchoolInf
         </DialogContent>
       </Dialog>
 
-      {/* Modal des détails des notes et rangs par matière */}
+            {/* Modal des détails des notes et rangs par matière */}
       <Dialog open={showDetailsModal} onOpenChange={setShowDetailsModal}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-xl">
-              📊 Détails des Notes et Rangs - {selectedStudent?.nom}
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto p-0 rounded-none border-0 shadow-xl">
+          <DialogHeader className="p-4 bg-slate-800 text-white rounded-t-none border-b-0 m-0">
+            <DialogTitle className="text-lg font-bold flex items-center gap-2 text-white">
+              <FileText className="h-5 w-5 text-blue-400" />
+              Relevé de Notes - {selectedStudent?.nom} {selectedStudent?.prenom}
             </DialogTitle>
           </DialogHeader>
 
           {selectedStudent && (
-            <div className="space-y-6">
-              {/* Informations générales de l'élève */}
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <h3 className="font-semibold text-blue-800 mb-2">Informations de l'élève</h3>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="font-medium">Nom :</span> {selectedStudent.nom}
+            <div className="p-6 bg-white space-y-6">
+              {/* Informations générales compactes */}
+              <div className="bg-slate-50 border border-slate-200 p-3 grid grid-cols-4 gap-4 text-[11px] uppercase tracking-wider font-semibold text-slate-700">
+                <div>
+                  <span className="text-slate-400 block text-[9px] mb-1">Classe</span>
+                  {classes.find((c: any) => c.id === selectedClass)?.name || selectedClass || '---'}
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[9px] mb-1">Période</span>
+                  {evaluationPeriods.find((p: any) => p.id === selectedPeriod)?.name || '---'}
+                </div>
+                <div className="border-l border-slate-200 pl-4">
+                  <span className="text-slate-400 block text-[9px] mb-1">Moyenne Générale</span>
+                  <span className="font-bold text-[14px] text-blue-600">
+                    {(() => {
+                      const avg = getStudentAverage(selectedStudent.id);
+                      return avg !== null ? `${avg.toFixed(2)}/20` : '---';
+                    })()}
+                  </span>
+                </div>
+                <div className="border-l border-slate-200 pl-4">
+                  <span className="text-slate-400 block text-[9px] mb-1">Rang Général</span>
+                  <span className="font-bold text-[14px] text-green-600">
+                    {(() => {
+                      const rank = getStudentRank(selectedStudent.id);
+                      return rank !== null ? `${rank}/${Object.keys(calculatedRanks).length || students.length}` : 'N/A';
+                    })()}
+                  </span>
+                </div>
+              </div>
+
+              {/* Détails par matière - Grille compacte */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-bold text-[11px] text-slate-800 uppercase tracking-tight">
+                    Détail par Matière
+                    {isLoadingSubjectRanks && (
+                      <span className="ml-2 text-[10px] normal-case text-blue-600">
+                        <Loader2 className="h-3 w-3 inline animate-spin mr-1" />
+                        Calcul en cours...
+                      </span>
+                    )}
+                  </h3>
+                </div>
+
+                <div className="border border-slate-200 rounded-none overflow-hidden">
+                  <div className="bg-slate-100 border-b border-slate-200 grid grid-cols-12 text-[10px] font-bold text-slate-700 uppercase tracking-tight divide-x divide-slate-200">
+                    <div className="col-span-5 px-3 py-2 flex items-center">Matière</div>
+                    <div className="col-span-1 px-2 py-2 flex justify-center items-center">Coef</div>
+                    
+                    {(() => {
+                      const isTrimester = selectedPeriod && selectedPeriod.toLowerCase().includes('trim');
+                      return isTrimester ? (
+                        <>
+                          <div className="col-span-2 px-2 py-2 flex justify-center items-center">Seq 1</div>
+                          <div className="col-span-2 px-2 py-2 flex justify-center items-center">Seq 2</div>
+                          <div className="col-span-1 px-2 py-2 flex justify-center items-center text-blue-800">Moy.</div>
+                        </>
+                      ) : (
+                        <div className="col-span-5 px-2 py-2 flex justify-center items-center text-blue-800">Note (/Max)</div>
+                      );
+                    })()}
+                    
+                    <div className="col-span-1 px-2 py-2 flex justify-center items-center">Rang</div>
                   </div>
-                  <div>
-                    <span className="font-medium">Classe :</span> {selectedStudent.classeId}
-                  </div>
-                  <div>
-                    <span className="font-medium">Moyenne Générale :</span>
-                    <span className="font-bold text-blue-600 ml-2">
-                      {/* Utiliser la vraie moyenne du bulletin au lieu de celle calculée par le frontend */}
-                      {(() => {
-                        const bulletin = bulletins.find(b => b.studentId === selectedStudent.id);
-                        if (bulletin && bulletin.averageScore !== null && bulletin.averageScore !== undefined) {
-                          const average = parseFloat(String(bulletin.averageScore));
-                          return !isNaN(average) ? `${average.toFixed(2)}/20` : '0.00/20';
-                        }
-                        return '0.00/20';
-                      })()}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="font-medium">Rang Général :</span>
-                    <span className="font-bold text-green-600 ml-2">
-                      {/* Utiliser le vrai rang du bulletin au lieu de celui calculé par le frontend */}
-                      {(() => {
-                        const bulletin = bulletins.find(b => b.studentId === selectedStudent.id);
-                        return bulletin ? `${bulletin.rank || 'N/A'}/${bulletin.totalStudents || students.length}` : 'N/A';
-                      })()}
-                    </span>
+
+                  <div className="divide-y divide-slate-100">
+                    {(() => {
+                      const isTrimester = selectedPeriod && selectedPeriod.toLowerCase().includes('trim');
+                      let subjectsToDisplay: any[] = [];
+
+                      if (isTrimester) {
+                        subjectsToDisplay = subjects;
+                      } else {
+                        const ranksBySubject = getStudentRanksBySubject(selectedStudent.id);
+                        const subjectsWithGrades = Object.keys(ranksBySubject);
+                        subjectsToDisplay = subjects.filter((s:any) => subjectsWithGrades.includes(s.id.toString()));
+                      }
+
+                      if (subjectsToDisplay.length === 0) {
+                        return (
+                          <div className="text-center py-6 text-[11px] text-slate-500 font-medium">
+                            Aucune note enregistrée
+                          </div>
+                        );
+                      }
+
+                      return subjectsToDisplay.map((subject: any) => {
+                        const subjectId = subject.id.toString();
+                        const subjectName = subject.name || `Matière ${subjectId}`;
+                        const studentGrades = grades[selectedStudent.id]?.filter((g:any) => g.subjectId === subjectId) || [];
+                        
+                        const rankData = subjectRanksFromDB[subjectId] || { rank: 'N/A' };
+
+                        return (
+                          <div key={subjectId} className="grid grid-cols-12 text-[11px] hover:bg-slate-50 divide-x divide-slate-100 items-center">
+                            <div className="col-span-5 px-3 py-1.5 font-semibold text-slate-800 truncate">
+                              {subjectName}
+                            </div>
+                            <div className="col-span-1 px-2 py-1.5 text-center text-slate-600 font-mono">
+                              {subject.coefficient || 1}
+                            </div>
+
+                            {isTrimester ? (
+                              <>
+                                <div className="col-span-2 px-2 py-1.5 text-center font-mono">
+                                  {studentGrades.length > 0 && studentGrades[0].seq1 !== undefined ? `${parseFloat(String(studentGrades[0].seq1)).toFixed(2)}` : '---'}
+                                </div>
+                                <div className="col-span-2 px-2 py-1.5 text-center font-mono">
+                                  {studentGrades.length > 0 && studentGrades[0].seq2 !== undefined ? `${parseFloat(String(studentGrades[0].seq2)).toFixed(2)}` : '---'}
+                                </div>
+                                <div className="col-span-1 px-2 py-1.5 text-center font-bold font-mono text-blue-700 bg-blue-50/50">
+                                  {studentGrades.length > 0 && studentGrades[0].periodAverage !== undefined ? `${parseFloat(String(studentGrades[0].periodAverage)).toFixed(2)}` : '---'}
+                                </div>
+                              </>
+                            ) : (
+                              <div className="col-span-5 px-2 py-1.5 text-center font-bold font-mono text-blue-700 bg-blue-50/50">
+                                {studentGrades.length > 0 ? `${parseFloat(String(studentGrades[0].score)).toFixed(2)} / ${studentGrades[0].maxScore}` : '---'}
+                              </div>
+                            )}
+
+                            <div className="col-span-1 px-2 py-1.5 text-center font-bold text-green-600">
+                              {rankData.rank !== 'N/A' ? `${rankData.rank}` : '-'}
+                            </div>
+                          </div>
+                        );
+                      });
+                    })()}
                   </div>
                 </div>
               </div>
 
-              {/* Détails par matière */}
-              <div>
-                <h3 className="font-semibold text-gray-800 mb-4">
-                  Notes et Rangs par Matière
-                  {isLoadingSubjectRanks && (
-                    <span className="ml-2 text-sm text-blue-600">
-                      <Loader2 className="h-4 w-4 inline animate-spin mr-1" />
-                      Chargement des rangs...
-                    </span>
-                  )}
-                </h3>
-                <div className="space-y-2">
-                  {(() => {
-                    // Pour les trimestres, afficher toutes les matières de la classe
-                    // Pour les séquences, afficher seulement les matières avec des notes
-                    const isTrimester = selectedPeriod && selectedPeriod.toLowerCase().includes('trim');
-
-                    let subjectsToDisplay: any[] = [];
-
-                    if (isTrimester) {
-                      // Pour les trimestres, utiliser toutes les matières de la classe
-                      subjectsToDisplay = subjects;
-                      console.log('📚 Affichage trimestre: toutes les matières de la classe:', subjectsToDisplay);
-                    } else {
-                      // Pour les séquences, utiliser seulement les matières avec des notes
-                      const ranksBySubject = getStudentRanksBySubject(selectedStudent.id);
-                      const subjectsWithGrades = Object.keys(ranksBySubject);
-                      subjectsToDisplay = subjects.filter(s => subjectsWithGrades.includes(s.id.toString()));
-                      console.log('📚 Affichage séquence: matières avec des notes:', subjectsToDisplay);
-                    }
-
-                    if (subjectsToDisplay.length === 0) {
-                      return (
-                        <div className="text-center py-8 text-gray-500">
-                          <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                          <p>Aucune matière disponible pour cet élève</p>
-                        </div>
-                      );
-                    }
-
-                    return subjectsToDisplay.map((subject) => {
-                      const subjectId = subject.id.toString();
-                      const subjectName = subject.name || `Matière ${subjectId}`;
-                      const studentGrades = grades[selectedStudent.id]?.filter(g => g.subjectId === subjectId) || [];
-
-                      // Vérifier si c'est un trimestre
-                      const isTrimester = selectedPeriod && selectedPeriod.toLowerCase().includes('trim');
-
-                      // Calculer la moyenne selon le type de période
-                      const subjectAverage = (() => {
-                        if (isTrimester && studentGrades.length > 0) {
-                          // Pour les trimestres, utiliser periodAverage (moyenne des 2 séquences)
-                          const grade = studentGrades[0];
-                          return grade.periodAverage || 0;
-                        } else if (isTrimester) {
-                          // Pour les trimestres sans notes, retourner 0
-                          return 0;
-                        } else {
-                          // Pour les séquences, calculer la moyenne normalisée
-                          if (studentGrades.length === 0) return 0;
-                          return studentGrades.reduce((sum, grade) => {
-                            const score = parseFloat(String(grade.score)) || 0;
-                            const maxScore = parseFloat(String(grade.maxScore)) || 20;
-                            const coefficient = parseFloat(String(grade.coefficient)) || 1;
-                            const normalizedScore = (score / maxScore) * 20;
-                            return sum + (normalizedScore * coefficient);
-                          }, 0) / studentGrades.reduce((sum, grade) => sum + (parseFloat(String(grade.coefficient)) || 1), 0);
-                        }
-                      })();
-
-                      // Obtenir le rang pour cette matière depuis le bulletin (pas depuis le frontend)
-                      const getSubjectRankFromBulletin = (subjectId: string) => {
-                        // Utiliser les rangs récupérés depuis la base de données
-                        const rankData = subjectRanksFromDB[subjectId];
-                        if (rankData) {
-                          return rankData;
-                        }
-                        // Fallback : utiliser un rang par défaut
-                        return { rank: 1, totalStudents: students.length };
-                      };
-
-                      const rankData = getSubjectRankFromBulletin(subjectId);
-
-                      return (
-                        <div key={subjectId} className={`border rounded-lg p-3 ${subjectAverage < 10 ? 'bg-red-50 border-red-200' : 'bg-gray-50'
-                          }`}>
-                          <div className="flex items-center justify-between mb-3">
-                            <h4 className={`font-semibold text-lg ${subjectAverage < 10 ? 'text-red-700' : 'text-blue-700'
-                              }`}>{subjectName}</h4>
-                            <div className="text-center">
-                              <div className="text-sm text-gray-600">Rang</div>
-                              <div className="text-xl font-bold text-green-600">
-                                {rankData.rank}/{rankData.totalStudents}
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Détails des notes */}
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            {(() => {
-                              if (isTrimester) {
-                                // Pour les trimestres, afficher seq1, seq2 et la moyenne
-                                if (studentGrades.length > 0) {
-                                  const grade = studentGrades[0]; // Prendre la première note (contient toutes les infos)
-
-                                  return (
-                                    <>
-                                      {/* Séquence 1 */}
-                                      <div className={`flex items-center justify-between p-3 rounded border ${(grade.seq1 || 0) < 10 ? 'bg-red-50 border-red-200' : 'bg-white'
-                                        }`}>
-                                        <div>
-                                          <div className="font-medium text-sm">
-                                            {getSequenceLabel(1, selectedPeriod)}
-                                          </div>
-                                          <div className="text-xs text-gray-500">Coefficient: {grade.coefficient}</div>
-                                        </div>
-                                        <div className="text-right">
-                                          <div className={`font-bold text-lg ${(grade.seq1 || 0) < 10 ? 'text-red-600' : 'text-gray-900'
-                                            }`}>
-                                            {grade.seq1 || 0}/20
-                                          </div>
-                                          <div className={`text-xs ${(grade.seq1 || 0) < 10 ? 'text-red-500' : 'text-gray-500'
-                                            }`}>
-                                            {(grade.seq1 || 0).toFixed(2)}/20
-                                          </div>
-                                        </div>
-                                      </div>
-
-                                      {/* Séquence 2 */}
-                                      <div className={`flex items-center justify-between p-3 rounded border ${(grade.seq2 || 0) < 10 ? 'bg-red-50 border-red-200' : 'bg-white'
-                                        }`}>
-                                        <div>
-                                          <div className="font-medium text-sm">
-                                            {getSequenceLabel(2, selectedPeriod)}
-                                          </div>
-                                          <div className="text-xs text-gray-500">Coefficient: {grade.coefficient}</div>
-                                        </div>
-                                        <div className="text-right">
-                                          <div className={`text-lg ${(grade.seq2 || 0) < 10 ? 'text-red-600' : 'text-gray-900'
-                                            }`}>
-                                            {grade.seq2 || 0}/20
-                                          </div>
-                                          <div className={`text-xs ${(grade.seq2 || 0) < 10 ? 'text-red-500' : 'text-gray-500'
-                                            }`}>
-                                            {(grade.seq2 || 0).toFixed(2)}/20
-                                          </div>
-                                        </div>
-                                      </div>
-
-                                      {/* Moyenne des 2 séquences */}
-                                      <div className={`flex items-center justify-between p-3 rounded border ${(grade.periodAverage || 0) < 10 ? 'bg-red-50 border-red-200' : 'bg-blue-50 border-blue-200'
-                                        }`}>
-                                        <div>
-                                          <div className={`font-medium text-sm ${(grade.periodAverage || 0) < 10 ? 'text-red-700' : 'text-blue-700'
-                                            }`}>
-                                            Moyenne Trimestre
-                                          </div>
-                                          <div className={`text-xs ${(grade.periodAverage || 0) < 10 ? 'text-red-600' : 'text-blue-600'
-                                            }`}>
-                                            Coefficient: {grade.coefficient}
-                                          </div>
-                                        </div>
-                                        <div className="text-right">
-                                          <div className={`font-bold text-lg ${(grade.periodAverage || 0) < 10 ? 'text-red-700' : 'text-blue-700'
-                                            }`}>
-                                            {grade.periodAverage?.toFixed(2) || '0.00'}/20
-                                          </div>
-                                          <div className={`text-xs ${(grade.periodAverage || 0) < 10 ? 'text-red-600' : 'text-blue-600'
-                                            }`}>
-                                            Moyenne des 2 séquences
-                                          </div>
-                                        </div>
-                                      </div>
-                                    </>
-                                  );
-                                } else {
-                                  // Pas de notes pour cette matière en trimestre
-                                  return (
-                                    <div className="col-span-2 text-center py-4 text-gray-500">
-                                      <p>Aucune note disponible pour ce trimestre</p>
-                                      <p className="text-sm">Coefficient: {subject.coefficient || 1}</p>
-                                    </div>
-                                  );
-                                }
-                              } else {
-                                // Pour les séquences, affichage normal
-                                if (studentGrades.length > 0) {
-                                  return studentGrades.map((grade, index) => (
-                                    <div key={index} className="flex items-center justify-between bg-white p-3 rounded border">
-                                      <div>
-                                        <div className="font-medium text-sm">Note</div>
-                                        <div className="text-xs text-gray-500">Coefficient: {grade.coefficient}</div>
-                                      </div>
-                                      <div className="text-right">
-                                        <div className="font-bold text-lg">
-                                          {grade.score}/{grade.maxScore}
-                                        </div>
-                                        <div className="text-xs text-gray-500">
-                                          {((grade.score / grade.maxScore) * 20).toFixed(2)}/20
-                                        </div>
-                                      </div>
-                                    </div>
-                                  ));
-                                } else {
-                                  // Pas de notes pour cette matière en séquence
-                                  return (
-                                    <div className="col-span-2 text-center py-4 text-gray-500">
-                                      <p>Aucune note disponible pour cette séquence</p>
-                                      <p className="text-sm">Coefficient: {subject.coefficient || 1}</p>
-                                    </div>
-                                  );
-                                }
-                              }
-                            })()}
-                          </div>
-                        </div>
-                      );
-                    });
-                  })()}
-                </div>
+              <div className="flex justify-end pt-4">
+                <Button variant="outline" className="rounded-none border-slate-300 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] px-6" onClick={() => setShowDetailsModal(false)}>
+                  Fermer
+                </Button>
               </div>
             </div>
           )}
-
-          <div className="flex justify-end pt-4 border-t">
-            <Button variant="outline" onClick={() => setShowDetailsModal(false)}>
-              Fermer
-            </Button>
-          </div>
         </DialogContent>
       </Dialog>
 

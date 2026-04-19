@@ -77,8 +77,8 @@ const ProfessionInput = ({ form, fieldName, label }: { form: any, fieldName: `pa
       control={form.control}
       name={fieldName}
       render={({ field }) => (
-        <FormItem>
-          <FormLabel>{label}</FormLabel>
+        <FormItem className="space-y-1">
+          <FormLabel className="text-[10px] font-bold uppercase text-slate-500">{label}</FormLabel>
           <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
               <FormControl>
@@ -86,23 +86,26 @@ const ProfessionInput = ({ form, fieldName, label }: { form: any, fieldName: `pa
                   <Input
                     placeholder="Sélectionner ou saisir..."
                     {...field}
+                    className="rounded-none h-8 text-[11px] border-slate-300 bg-white"
                   />
-                  <ChevronsUpDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50" />
+                  <ChevronsUpDown className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 opacity-50" />
                 </div>
               </FormControl>
             </PopoverTrigger>
-            <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-              <Command>
+            <PopoverContent className="w-[--radix-popover-trigger-width] p-0 rounded-none border-slate-200 shadow-lg">
+              <Command className="rounded-none">
                 <CommandInput
                   placeholder="Rechercher une profession..."
+                  className="rounded-none h-9 text-[11px]"
                 />
-                <CommandList>
-                  <CommandEmpty>Aucune profession trouvée.</CommandEmpty>
+                <CommandList className="rounded-none max-h-[200px]">
+                  <CommandEmpty className="text-[11px] py-2 text-center text-slate-500 italic">Aucune profession trouvée.</CommandEmpty>
                   <CommandGroup>
                     {professions.map((prof) => (
                       <CommandItem
                         key={prof}
                         value={prof}
+                        className="rounded-none text-[11px] py-1.5"
                         onSelect={() => {
                           form.setValue(fieldName, prof, { shouldValidate: true });
                           setOpen(false);
@@ -116,7 +119,7 @@ const ProfessionInput = ({ form, fieldName, label }: { form: any, fieldName: `pa
               </Command>
             </PopoverContent>
           </Popover>
-          <FormMessage />
+          <FormMessage className="text-[10px]" />
         </FormItem>
       )}
     />
@@ -347,104 +350,184 @@ export function InscriptionForm({ isEditing = false, studentData, onSuccess, onC
     <div className="flex flex-col h-full">
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 flex-grow">
-          <ScrollArea className="h-[70vh] p-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-6">
+          <ScrollArea className="h-[75vh] p-4 bg-white border border-slate-200">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-8">
 
               {/* Colonne 1: Infos Élève */}
-              <div className="space-y-4">
-                <h3 className="font-semibold text-lg border-b pb-2">Informations de l'Élève</h3>
-                <div className="flex gap-4 items-center">
+              <div className="space-y-6">
+                <h3 className="font-black text-[12px] uppercase text-slate-700 border-b-2 border-slate-900 pb-1 flex items-center gap-2">
+                  <User className="h-4 w-4 text-blue-600" />
+                  Informations de l'Élève
+                </h3>
+                <div className="flex gap-4 items-start">
                   <FormField control={form.control} name="photoUrl" render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="space-y-2">
                       <FormLabel className="sr-only">Photo</FormLabel>
                       <FormControl>
                         <div className="flex flex-col items-center gap-2">
-                          <Avatar className="h-24 w-24 relative" onClick={handlePhotoClick}>
-                            {isPhotoLoading ? <Loader2 className="absolute inset-0 m-auto h-6 w-6 animate-spin" /> : photoPreview ? <AvatarImage src={photoPreview} alt="Photo de profil" /> : <AvatarFallback><User className="h-8 w-8" /></AvatarFallback>}
+                          <Avatar className="h-28 w-24 relative rounded-none border-2 border-slate-200 shadow-sm transition-all hover:border-blue-400 group cursor-pointer" onClick={handlePhotoClick}>
+                            {isPhotoLoading ? (
+                              <div className="absolute inset-0 bg-slate-100 flex items-center justify-center">
+                                <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+                              </div>
+                            ) : photoPreview ? (
+                              <AvatarImage src={photoPreview} alt="Photo de profil" className="object-cover" />
+                            ) : (
+                              <AvatarFallback className="rounded-none bg-slate-50 text-slate-400">
+                                <User className="h-10 w-10 opacity-30" />
+                              </AvatarFallback>
+                            )}
+                            <div className="absolute inset-x-0 bottom-0 bg-black/50 text-white text-[8px] font-bold uppercase py-1 text-center opacity-0 group-hover:opacity-100 transition-opacity">
+                              Modifier
+                            </div>
                           </Avatar>
-                          <Button type="button" variant="ghost" size="sm" onClick={photoPreview ? handleRemovePhoto : handlePhotoClick}>
-                            {photoPreview ? <Trash2 className="mr-2 h-4 w-4" /> : <Upload className="mr-2 h-4 w-4" />}
-                            {photoPreview ? "Supprimer" : "Importer"}
-                          </Button>
+                          <div className="flex gap-1">
+                            <Button type="button" variant="outline" size="sm" onClick={handlePhotoClick} className="h-7 px-2 rounded-none border-slate-300 hover:bg-slate-100 text-[10px] font-bold uppercase">
+                              <Upload className="mr-1 h-3 w-3" />
+                              IMPORT
+                            </Button>
+                            {photoPreview && (
+                              <Button type="button" variant="destructive" size="sm" onClick={handleRemovePhoto} className="h-7 px-2 rounded-none text-[10px] font-bold uppercase">
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            )}
+                          </div>
                           <input type="file" accept="image/*" onChange={handlePhotoChange} className="hidden" ref={photoInputRef} />
                         </div>
                       </FormControl>
-                      <FormMessage />
+                      <FormMessage className="text-[10px]" />
                     </FormItem>
                   )} />
-                  <div className="w-full space-y-4">
-                    <FormField control={form.control} name="nom" render={({ field }) => (<FormItem><FormLabel>Nom</FormLabel><FormControl><Input placeholder="Nom de l'élève" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                    <FormField control={form.control} name="prenom" render={({ field }) => (<FormItem><FormLabel>Prénom(s)</FormLabel><FormControl><Input placeholder="Prénom(s) de l'élève" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                  <div className="w-full space-y-3">
+                    <FormField control={form.control} name="nom" render={({ field }) => (
+                      <FormItem className="space-y-1">
+                        <FormLabel className="text-[10px] font-bold uppercase text-slate-500">Nom</FormLabel>
+                        <FormControl><Input placeholder="NOM" {...field} className="rounded-none h-8 text-[11px] border-slate-300 font-bold" /></FormControl>
+                        <FormMessage className="text-[10px]" />
+                      </FormItem>
+                    )} />
+                    <FormField control={form.control} name="prenom" render={({ field }) => (
+                      <FormItem className="space-y-1">
+                        <FormLabel className="text-[10px] font-bold uppercase text-slate-500">Prénom(s)</FormLabel>
+                        <FormControl><Input placeholder="PRÉNOM(S)" {...field} className="rounded-none h-8 text-[11px] border-slate-300 font-bold" /></FormControl>
+                        <FormMessage className="text-[10px]" />
+                      </FormItem>
+                    )} />
                   </div>
                 </div>
-                <FormField control={form.control} name="sexe" render={({ field }) => (
-                  <FormItem className="space-y-3"><FormLabel>Sexe</FormLabel><FormControl>
-                    <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex gap-4">
-                      <FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="Masculin" /></FormControl><FormLabel className="font-normal">Masculin</FormLabel></FormItem>
-                      <FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="Féminin" /></FormControl><FormLabel className="font-normal">Féminin</FormLabel></FormItem>
-                    </RadioGroup>
-                  </FormControl><FormMessage /></FormItem>
-                )} />
+
                 <div className="grid grid-cols-2 gap-4">
-                  <FormField control={form.control} name="dateNaissance" render={({ field }) => (<FormItem><FormLabel>Date de naissance</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                  <FormField control={form.control} name="lieuNaissance" render={({ field }) => (<FormItem><FormLabel>Lieu de naissance</FormLabel><FormControl><Input placeholder="Lieu" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                  <FormField control={form.control} name="sexe" render={({ field }) => (
+                    <FormItem className="space-y-2">
+                      <FormLabel className="text-[10px] font-bold uppercase text-slate-500">Sexe</FormLabel>
+                      <FormControl>
+                        <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex gap-4 p-2 border border-slate-200 bg-slate-50/50">
+                          <FormItem className="flex items-center space-x-2 space-y-0">
+                            <FormControl><RadioGroupItem value="Masculin" className="rounded-none" /></FormControl>
+                            <FormLabel className="text-[11px] font-bold text-slate-700 uppercase cursor-pointer">Masculin</FormLabel>
+                          </FormItem>
+                          <FormItem className="flex items-center space-x-2 space-y-0">
+                            <FormControl><RadioGroupItem value="Féminin" className="rounded-none" /></FormControl>
+                            <FormLabel className="text-[11px] font-bold text-slate-700 uppercase cursor-pointer">Féminin</FormLabel>
+                          </FormItem>
+                        </RadioGroup>
+                      </FormControl>
+                      <FormMessage className="text-[10px]" />
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="dateNaissance" render={({ field }) => (
+                    <FormItem className="space-y-1">
+                      <FormLabel className="text-[10px] font-bold uppercase text-slate-500">Date de naissance</FormLabel>
+                      <FormControl><Input type="date" {...field} className="rounded-none h-8 text-[11px] border-slate-300" /></FormControl>
+                      <FormMessage className="text-[10px]" />
+                    </FormItem>
+                  )} />
                 </div>
-                <FormField control={form.control} name="nationalite" render={({ field }) => (<FormItem><FormLabel>Nationalité</FormLabel><FormControl><Input placeholder="Nationalité" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                <FormField control={form.control} name="acteNaissance" render={({ field }) => (<FormItem><FormLabel>N° Acte de naissance (Optionnel)</FormLabel><FormControl><Input placeholder="Numéro" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                <Separator />
-                <h3 className="font-semibold text-lg border-b pb-2">Classe</h3>
+
                 <div className="grid grid-cols-2 gap-4">
-                  <FormField control={form.control} name="niveau" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Niveau</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl><SelectTrigger><SelectValue placeholder="Sélectionner..." /></SelectTrigger></FormControl>
-                        <SelectContent>{niveaux.map((niveau) => <SelectItem key={niveau} value={niveau}>{niveau.charAt(0).toUpperCase() + niveau.slice(1)}</SelectItem>)}</SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
-                  <FormField control={form.control} name="classe" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Classe</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!form.watch("niveau")}>
-                        <FormControl><SelectTrigger><SelectValue placeholder="Sélectionner..." /></SelectTrigger></FormControl>
-                        <SelectContent>{classes.map((classe) => <SelectItem key={classe} value={classe}>{classe}</SelectItem>)}</SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
+                  <FormField control={form.control} name="lieuNaissance" render={({ field }) => (<FormItem className="space-y-1"><FormLabel className="text-[10px] font-bold uppercase text-slate-500">Lieu de naissance</FormLabel><FormControl><Input placeholder="LIEU" {...field} className="rounded-none h-8 text-[11px] border-slate-300" /></FormControl><FormMessage className="text-[10px]" /></FormItem>)} />
+                  <FormField control={form.control} name="nationalite" render={({ field }) => (<FormItem className="space-y-1"><FormLabel className="text-[10px] font-bold uppercase text-slate-500">Nationalité</FormLabel><FormControl><Input placeholder="NATIONALITÉ" {...field} className="rounded-none h-8 text-[11px] border-slate-300" /></FormControl><FormMessage className="text-[10px]" /></FormItem>)} />
+                </div>
+
+                <FormField control={form.control} name="acteNaissance" render={({ field }) => (<FormItem className="space-y-1"><FormLabel className="text-[10px] font-bold uppercase text-slate-500">N° Acte de naissance (Optionnel)</FormLabel><FormControl><Input placeholder="NUMÉRO D'ACTE" {...field} className="rounded-none h-8 text-[11px] border-slate-300" /></FormControl><FormMessage className="text-[10px]" /></FormItem>)} />
+
+                <div className="pt-2">
+                  <h4 className="font-black text-[11px] uppercase text-slate-600 mb-3 border-b border-slate-100 pb-1">Affectation Scolaire</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField control={form.control} name="niveau" render={({ field }) => (
+                      <FormItem className="space-y-1">
+                        <FormLabel className="text-[10px] font-bold uppercase text-slate-500">Niveau</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl><SelectTrigger className="rounded-none h-8 text-[11px] border-slate-300 font-bold bg-white"><SelectValue placeholder="SÉLECTION..." /></SelectTrigger></FormControl>
+                          <SelectContent className="rounded-none">{niveaux.map((niveau) => <SelectItem key={niveau} value={niveau} className="rounded-none text-[11px] uppercase font-medium">{niveau}</SelectItem>)}</SelectContent>
+                        </Select>
+                        <FormMessage className="text-[10px]" />
+                      </FormItem>
+                    )} />
+                    <FormField control={form.control} name="classe" render={({ field }) => (
+                      <FormItem className="space-y-1">
+                        <FormLabel className="text-[10px] font-bold uppercase text-slate-500">Classe</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!form.watch("niveau")}>
+                          <FormControl><SelectTrigger className="rounded-none h-8 text-[11px] border-slate-300 font-bold bg-white"><SelectValue placeholder="SÉLECTION..." /></SelectTrigger></FormControl>
+                          <SelectContent className="rounded-none">{classes.map((classe) => <SelectItem key={classe} value={classe} className="rounded-none text-[11px] uppercase font-medium">{classe}</SelectItem>)}</SelectContent>
+                        </Select>
+                        <FormMessage className="text-[10px]" />
+                      </FormItem>
+                    )} />
+                  </div>
                 </div>
               </div>
 
               {/* Colonne 2: Parent 1 */}
-              <div className="space-y-4">
-                <h3 className="font-semibold text-lg border-b pb-2">Parent / Tuteur 1</h3>
-                <FormField control={form.control} name="parentNom" render={({ field }) => (<FormItem><FormLabel>Nom</FormLabel><FormControl><Input placeholder="Nom" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                <FormField control={form.control} name="parentPrenom" render={({ field }) => (<FormItem><FormLabel>Prénom</FormLabel><FormControl><Input placeholder="Prénom" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                <ProfessionInput form={form} fieldName="parentProfession" label="Profession" />
-                <FormField control={form.control} name="parentTelephone" render={({ field }) => (<FormItem><FormLabel>Téléphone</FormLabel><FormControl><Input placeholder="Ex: 699123456" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                <FormField control={form.control} name="parentEmail" render={({ field }) => (<FormItem><FormLabel>Email (optionnel)</FormLabel><FormControl><Input type="email" placeholder="Email" {...field} /></FormControl><FormMessage /></FormItem>)} />
+              <div className="space-y-6">
+                <h3 className="font-black text-[12px] uppercase text-slate-700 border-b-2 border-slate-900 pb-1 flex items-center gap-2">
+                  <PlusCircle className="h-4 w-4 text-green-600" />
+                  Parent / Tuteur Principal
+                </h3>
+                <div className="space-y-4 bg-slate-50/30 p-4 border border-slate-100">
+                  <FormField control={form.control} name="parentNom" render={({ field }) => (<FormItem className="space-y-1"><FormLabel className="text-[10px] font-bold uppercase text-slate-500">Nom</FormLabel><FormControl><Input placeholder="NOM" {...field} className="rounded-none h-8 text-[11px] border-slate-300 font-bold" /></FormControl><FormMessage className="text-[10px]" /></FormItem>)} />
+                  <FormField control={form.control} name="parentPrenom" render={({ field }) => (<FormItem className="space-y-1"><FormLabel className="text-[10px] font-bold uppercase text-slate-500">Prénom</FormLabel><FormControl><Input placeholder="PRÉNOM" {...field} className="rounded-none h-8 text-[11px] border-slate-300" /></FormControl><FormMessage className="text-[10px]" /></FormItem>)} />
+                  <ProfessionInput form={form} fieldName="parentProfession" label="Profession" />
+                  <FormField control={form.control} name="parentTelephone" render={({ field }) => (<FormItem className="space-y-1"><FormLabel className="text-[10px] font-bold uppercase text-slate-500">Téléphone</FormLabel><FormControl><Input placeholder="699123456" {...field} className="rounded-none h-8 text-[11px] border-slate-300 font-bold font-mono" /></FormControl><FormMessage className="text-[10px]" /></FormItem>)} />
+                  <FormField control={form.control} name="parentEmail" render={({ field }) => (<FormItem className="space-y-1"><FormLabel className="text-[10px] font-bold uppercase text-slate-500">Email (optionnel)</FormLabel><FormControl><Input type="email" placeholder="EMAIL" {...field} className="rounded-none h-8 text-[11px] border-slate-300" /></FormControl><FormMessage className="text-[10px]" /></FormItem>)} />
+                </div>
               </div>
 
               {/* Colonne 3: Parent 2 */}
-              <div className="space-y-4">
-                <h3 className="font-semibold text-lg border-b pb-2">Parent / Tuteur 2 (Facultatif)</h3>
-                <FormField control={form.control} name="parent2Nom" render={({ field }) => (<FormItem><FormLabel>Nom</FormLabel><FormControl><Input placeholder="Nom" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                <FormField control={form.control} name="parent2Prenom" render={({ field }) => (<FormItem><FormLabel>Prénom</FormLabel><FormControl><Input placeholder="Prénom" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                <ProfessionInput form={form} fieldName="parent2Profession" label="Profession" />
-                <FormField control={form.control} name="parent2Telephone" render={({ field }) => (<FormItem><FormLabel>Téléphone</FormLabel><FormControl><Input placeholder="Ex: 699123456" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                <FormField control={form.control} name="parent2Email" render={({ field }) => (<FormItem><FormLabel>Email (optionnel)</FormLabel><FormControl><Input type="email" placeholder="Email" {...field} /></FormControl><FormMessage /></FormItem>)} />
+              <div className="space-y-6">
+                <h3 className="font-black text-[12px] uppercase text-slate-700 border-b-2 border-slate-900 pb-1 flex items-center gap-2">
+                  <PlusCircle className="h-4 w-4 text-slate-400" />
+                  Second Parent (Facultatif)
+                </h3>
+                <div className="space-y-4 bg-slate-50/30 p-4 border border-slate-100 italic">
+                  <FormField control={form.control} name="parent2Nom" render={({ field }) => (<FormItem className="space-y-1"><FormLabel className="text-[10px] font-bold uppercase text-slate-400">Nom</FormLabel><FormControl><Input placeholder="NOM" {...field} className="rounded-none h-8 text-[11px] border-slate-200" /></FormControl><FormMessage className="text-[10px]" /></FormItem>)} />
+                  <FormField control={form.control} name="parent2Prenom" render={({ field }) => (<FormItem className="space-y-1"><FormLabel className="text-[10px] font-bold uppercase text-slate-400">Prénom</FormLabel><FormControl><Input placeholder="PRÉNOM" {...field} className="rounded-none h-8 text-[11px] border-slate-200" /></FormControl><FormMessage className="text-[10px]" /></FormItem>)} />
+                  <ProfessionInput form={form} fieldName="parent2Profession" label="Profession" />
+                  <FormField control={form.control} name="parent2Telephone" render={({ field }) => (<FormItem className="space-y-1"><FormLabel className="text-[10px] font-bold uppercase text-slate-400">Téléphone</FormLabel><FormControl><Input placeholder="699123456" {...field} className="rounded-none h-8 text-[11px] border-slate-200 font-mono" /></FormControl><FormMessage className="text-[10px]" /></FormItem>)} />
+                  <FormField control={form.control} name="parent2Email" render={({ field }) => (<FormItem className="space-y-1"><FormLabel className="text-[10px] font-bold uppercase text-slate-400">Email (optionnel)</FormLabel><FormControl><Input type="email" placeholder="EMAIL" {...field} className="rounded-none h-8 text-[11px] border-slate-200" /></FormControl><FormMessage className="text-[10px]" /></FormItem>)} />
+                </div>
               </div>
 
             </div>
           </ScrollArea>
-          <Separator className="my-4" />
-          <div className="flex justify-end gap-2 p-4 pt-0">
-            <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>Annuler</Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isEditing ? "Enregistrer les modifications" : "Inscrire l'élève"}
+
+          <div className="flex justify-end gap-3 p-6 pt-4 bg-slate-50 border-t border-slate-200">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onCancel}
+              disabled={isSubmitting}
+              className="rounded-none h-9 px-6 text-[11px] font-bold uppercase border-slate-300 hover:bg-slate-200"
+            >
+              Annuler
+            </Button>
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              className="rounded-none h-9 px-8 text-[11px] font-bold uppercase bg-blue-600 hover:bg-blue-700 shadow-none"
+            >
+              {isSubmitting && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
+              {isEditing ? "Enregistrer les modifications" : "Confirmer l'inscription"}
             </Button>
           </div>
         </form>

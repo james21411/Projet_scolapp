@@ -58,6 +58,9 @@ import {
   Clock3,
   CalendarDays,
   DollarSign,
+  MapPin,
+  Flag,
+  QrCode,
   FileWarning,
   TrendingDown,
   AlertOctagon,
@@ -93,7 +96,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { FinancialBarChart, StudentPieChart } from "@/components/charts";
+import { FinancialBarChart, StudentPieChart, InstitutionalRadarChart } from "@/components/charts";
 import { Badge } from "@/components/ui/badge";
 import DossierFinancierEleve from "@/components/dossier-financier-eleve";
 import { generateDossierFinancierPdf } from '@/components/dossier-financier-pdf';
@@ -402,6 +405,7 @@ function DashboardTab({ schoolInfo }: { schoolInfo: SchoolInfo | null }) {
   const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([]);
   const [schoolStructure, setSchoolStructure] = useState<SchoolStructure | null>(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [totalTeachers, setTotalTeachers] = useState(0);
 
   const [filters, setFilters] = useState<FilterOptions>({
     selectedYear: 'all',
@@ -441,21 +445,23 @@ function DashboardTab({ schoolInfo }: { schoolInfo: SchoolInfo | null }) {
 
         const queryString = queryParams.toString();
 
-        const [summaryResponse, studentsResponse, chartResponse, activitiesResponse, structureResponse] = await Promise.all([
+        const [summaryResponse, studentsResponse, chartResponse, activitiesResponse, structureResponse, personnelResponse] = await Promise.all([
           fetch(`/api/finance/overview?${queryString}`),
           fetch('/api/students'),
           fetch(`/api/finance/monthly-chart?${queryString}`),
           fetch('/api/finance/recent-activities'),
-          fetch('/api/school/structure')
+          fetch('/api/school/structure'),
+          fetch('/api/personnel')
         ]);
 
         console.log('🔍 DashboardTab: API responses received');
-        const [summary, studentData, chartData, activities, structureData] = await Promise.all([
+        const [summary, studentData, chartData, activities, structureData, personnelData] = await Promise.all([
           summaryResponse.json(),
           studentsResponse.json(),
           chartResponse.json(),
           activitiesResponse.json(),
-          structureResponse.json()
+          structureResponse.json(),
+          personnelResponse.json()
         ]);
 
         console.log('🔍 DashboardTab: Parsed data:', {
@@ -492,6 +498,14 @@ function DashboardTab({ schoolInfo }: { schoolInfo: SchoolInfo | null }) {
         console.log('🔍 DashboardTab: Formatted chart data:', formattedChartData);
         setFinancialChartData(formattedChartData);
         setRecentActivities(Array.isArray(activities) && activities.length > 0 ? activities : []);
+        // Personnel: la réponse est { success, data: [...] }
+        const personnelArray = Array.isArray(personnelData?.data) ? personnelData.data : (Array.isArray(personnelData) ? personnelData : []);
+        const teacherCount = personnelArray.filter((p: any) =>
+          p.role === 'Enseignant' ||
+          p.type_personnel === 'enseignant' ||
+          (p.typeName && p.typeName.toLowerCase().includes('enseignant'))
+        ).length;
+        setTotalTeachers(teacherCount > 0 ? teacherCount : personnelArray.length);
       } catch (error) {
         console.error("❌ DashboardTab: Failed to fetch dashboard data:", error);
         // Initialiser avec des valeurs par défaut en cas d'erreur
@@ -583,6 +597,7 @@ function DashboardTab({ schoolInfo }: { schoolInfo: SchoolInfo | null }) {
   }, [filteredStudents]);
 
   const totalStudents = filteredStudents.filter(s => s.statut === 'Actif').length;
+  const totalInactive = filteredStudents.filter(s => s.statut !== 'Actif').length;
 
   console.log('🔍 DashboardTab: financialChartData:', financialChartData);
   console.log('🔍 DashboardTab: financialChartData type:', typeof financialChartData);
@@ -613,7 +628,6 @@ function DashboardTab({ schoolInfo }: { schoolInfo: SchoolInfo | null }) {
   return (
     <div className="space-y-6 pt-4">
       <div className="flex justify-between items-center mb-2">
-        <h2 className="text-xl font-bold tracking-tight">Finances de l'école</h2>
         <Button
           variant="outline"
           size="sm"
@@ -633,6 +647,7 @@ function DashboardTab({ schoolInfo }: { schoolInfo: SchoolInfo | null }) {
 
       {showFilters && (
         <DashboardFilters
+          filters={filters}
           onFiltersChange={setFilters}
           loading={isLoading}
           schoolStructure={schoolStructure}
@@ -645,62 +660,62 @@ function DashboardTab({ schoolInfo }: { schoolInfo: SchoolInfo | null }) {
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card className="card-glow">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
+                <CardTitle className="text-[12px] font-bold text-slate-700">
                   Total Revenus ({currentSchoolYear})
                 </CardTitle>
                 <Landmark className="h-4 w-4 text-green-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-emerald-600">
+                <div className="text-lg font-black text-emerald-600 whitespace-nowrap">
                   {financialSummary?.totals?.totalPaid.toLocaleString() ?? 0} XAF
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-[11px] font-medium text-slate-500 leading-tight">
                   Montant total perçu à ce jour.
                 </p>
               </CardContent>
             </Card>
             <Card className="card-glow">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
+                <CardTitle className="text-[12px] font-bold text-slate-700">
                   Élèves Inscrits (Actifs)
                 </CardTitle>
                 <Users className="h-4 w-4 text-blue-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-blue-600">{totalStudents}</div>
-                <p className="text-xs text-muted-foreground">
+                <div className="text-lg font-black text-blue-600 whitespace-nowrap">{totalStudents}</div>
+                <p className="text-[11px] font-medium text-slate-500 leading-tight">
                   Total des élèves actifs cette année.
                 </p>
               </CardContent>
             </Card>
             <Card className="card-glow">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
+                <CardTitle className="text-[12px] font-bold text-slate-700">
                   Taux de Recouvrement
                 </CardTitle>
                 <TrendingUp className="h-4 w-4 text-orange-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-orange-600">
+                <div className="text-lg font-black text-orange-600 whitespace-nowrap">
                   {financialSummary?.totals ? ((financialSummary.totals.totalPaid / financialSummary.totals.totalDue) * 100).toFixed(1) : 0}%
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-[11px] font-medium text-slate-500 leading-tight">
                   Basé sur le total attendu.
                 </p>
               </CardContent>
             </Card>
             <Card className="card-glow">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
+                <CardTitle className="text-[12px] font-bold text-slate-700">
                   Impayés
                 </CardTitle>
                 <Bell className="h-4 w-4 text-red-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-red-600">
+                <div className="text-lg font-black text-red-600 whitespace-nowrap">
                   {financialSummary?.totals?.outstanding.toLocaleString() ?? 0} XAF
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-[11px] font-medium text-slate-500 leading-tight">
                   Solde total restant à percevoir.
                 </p>
               </CardContent>
@@ -731,55 +746,55 @@ function DashboardTab({ schoolInfo }: { schoolInfo: SchoolInfo | null }) {
 
         <div className="space-y-6">
           <Card className="card-glow">
-            <CardHeader>
-              <CardTitle>Répartition des Élèves</CardTitle>
-              <CardDescription>
-                Distribution des élèves actifs par niveau scolaire.
-              </CardDescription>
-            </CardHeader>
             <CardContent>
               <StudentPieChart data={studentDistributionData || []} />
             </CardContent>
           </Card>
 
+
+
           <Card className="card-glow">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Activité Récente</CardTitle>
-              <CardDescription className="text-xs">
-                Les 5 dernières actions effectuées
-              </CardDescription>
+            <CardHeader className="py-2 px-4 border-b border-slate-100 bg-slate-50/50">
+              <CardTitle className="text-[11px] font-black uppercase text-slate-700">Performance Institutionnelle</CardTitle>
             </CardHeader>
-            <CardContent className="pt-0">
-              <div className="space-y-1.5">
-                {recentActivities.length > 0 ? (
-                  recentActivities.map((activity, index) => {
-                    const Icon = activityIcons[activity.type] || Bell;
-                    return (
-                      <div key={index} className="flex items-start gap-2 p-1.5 rounded-md hover:bg-muted/50 transition-colors">
-                        <div className="bg-gradient-to-br from-blue-500/20 to-blue-600/10 p-1 rounded-full flex-shrink-0">
-                          <Icon className="h-2.5 w-2.5 text-blue-600" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-medium truncate leading-tight">{activity.text}</p>
-                          <p className="text-xs text-muted-foreground leading-tight">
-                            {activity.time}
-                          </p>
-                        </div>
-                      </div>
-                    )
-                  })
-                ) : (
-                  <div className="text-center py-4 text-muted-foreground">
-                    <Bell className="h-5 w-5 mx-auto mb-1 opacity-50" />
-                    <p className="text-xs">Aucune activité récente</p>
-                  </div>
-                )}
-              </div>
+            <CardContent className="pt-4">
+              <InstitutionalRadarChart data={[
+                {
+                  subject: "Recouvrement",
+                  value: financialSummary?.totals && financialSummary.totals.totalDue > 0 ? Math.min(100, Math.round((financialSummary.totals.totalPaid / financialSummary.totals.totalDue) * 100)) : 0,
+                  fullMark: 100,
+                  description: "Pourcentage des frais scolaires perçus par rapport au total attendu."
+                },
+                {
+                  subject: "Élèves Actifs",
+                  value: Math.min(100, Math.round((totalStudents / 200) * 100)),
+                  fullMark: 100,
+                  description: `Taux d'occupation : ${totalStudents} élèves actifs sur 200 ciblés.`
+                },
+                {
+                  subject: "Enseignants",
+                  value: Math.min(100, Math.round((totalTeachers / 20) * 100)),
+                  fullMark: 100,
+                  description: `${totalTeachers} enseignant(s) en poste sur un objectif de 20.`
+                },
+                {
+                  subject: "Classes",
+                  value: schoolStructure ? Math.min(100, Math.round((Object.values(schoolStructure.levels || {}).reduce((sum: number, lvl: any) => sum + (lvl.classes?.length || 0), 0) / 15) * 100)) : 0,
+                  fullMark: 100,
+                  description: "Nombre de classes actives par rapport à la capacité maximale."
+                },
+                {
+                  subject: "Solvabilité",
+                  value: financialSummary?.totals && financialSummary.totals.totalDue > 0 ? Math.max(0, Math.round(100 - (financialSummary.totals.totalUnpaid / financialSummary.totals.totalDue) * 100)) : 100,
+                  fullMark: 100,
+                  description: "Score d'assainissement : faibles impayés = score élevé."
+                },
+              ]} />
             </CardContent>
           </Card>
         </div>
       </div>
-    </div>
+    </div >
   );
 }
 function StudentPaymentsTab({ student }: { student: Student }) {
@@ -872,7 +887,7 @@ function StudentPaymentsTab({ student }: { student: Student }) {
 
             {/* Pagination */}
             {payments.length > 0 && (
-              <div className="flex items-center justify-between mt-4 p-3 bg-gray-50 rounded-lg">
+              <div className="flex items-center justify-between mt-4 p-3 bg-gray-50 rounded-none">
                 <div className="text-sm text-muted-foreground">
                   Affichage de {startIndex + 1} à {Math.min(endIndex, payments.length)} sur {payments.length} paiements
                 </div>
@@ -1624,39 +1639,37 @@ export function StudentFile({ student, onBack, onStudentUpdate }: { student: Stu
   const renderParentInfo = (parent?: ParentInfo, title = "Parent / Tuteur") => {
     if (!parent || !parent.nom || !parent.prenom) return null;
     return (
-      <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+      <Card className="rounded-none border-slate-200 bg-white shadow-none">
+        <CardHeader className="pb-2 border-b border-slate-100 bg-slate-50/50">
+          <CardTitle className="text-[11px] font-bold uppercase text-slate-700 flex items-center gap-2">
+            <UserIcon className="h-3.5 w-3.5 text-blue-600" />
             {title}
           </CardTitle>
         </CardHeader>
-        <CardContent className="pt-0">
+        <CardContent className="pt-3">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-3">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                  <span className="text-blue-600 font-semibold text-sm">{parent.prenom.charAt(0)}{parent.nom.charAt(0)}</span>
-                </div>
+                <Avatar className="h-10 w-10 border border-slate-200 rounded-none bg-slate-100">
+                  <AvatarFallback className="rounded-none text-xs font-bold text-slate-600">
+                    {parent.prenom.charAt(0)}{parent.nom.charAt(0)}
+                  </AvatarFallback>
+                </Avatar>
                 <div>
-                  <p className="font-semibold text-foreground">{parent.prenom} {parent.nom}</p>
-                  <p className="text-sm text-muted-foreground">{parent.profession}</p>
+                  <p className="text-[11px] font-bold text-slate-800 uppercase">{parent.prenom} {parent.nom}</p>
+                  <p className="text-[10px] text-slate-500 font-medium">{parent.profession}</p>
                 </div>
               </div>
             </div>
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <div className="w-4 h-4 bg-green-100 rounded-full flex items-center justify-center">
-                  <span className="text-green-600 text-xs">📞</span>
-                </div>
-                <span className="text-sm font-medium">{parent.telephone}</span>
+                <Phone className="h-3 w-3 text-blue-600" />
+                <span className="text-[11px] font-bold text-slate-700">{parent.telephone}</span>
               </div>
               {parent.email && (
                 <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-purple-100 rounded-full flex items-center justify-center">
-                    <span className="text-purple-600 text-xs">✉️</span>
-                  </div>
-                  <span className="text-sm font-medium">{parent.email}</span>
+                  <Mail className="h-3 w-3 text-blue-600" />
+                  <span className="text-[11px] font-medium text-slate-600">{parent.email}</span>
                 </div>
               )}
             </div>
@@ -1667,170 +1680,176 @@ export function StudentFile({ student, onBack, onStudentUpdate }: { student: Stu
   };
   return (
     <>
-      <Card className="card-glow">
-        <CardHeader>
-          <div className="flex items-center gap-3 mb-3">
-            <Button variant="outline" size="icon" onClick={onBack}>
+      <Card className="rounded-none border-slate-300 shadow-none overflow-hidden">
+        <CardHeader className="bg-slate-50 border-b border-slate-200 py-4">
+          <div className="flex items-center gap-3 mb-4">
+            <Button variant="outline" size="icon" onClick={onBack} className="h-8 w-8 rounded-none border-slate-300">
               <ArrowLeft className="h-4 w-4" />
             </Button>
-            <h2 className="text-xl font-bold">Dossier de l'élève</h2>
+            <h2 className="text-sm font-bold uppercase text-slate-700 tracking-wider">DOSSIER DE L'ÉLÈVE</h2>
           </div>
-          <div className="flex items-start gap-4">
-            <Avatar className="h-16 w-16 border">
-              <AvatarImage src={student.photoUrl || `https://placehold.co/64x64`} data-ai-hint="student avatar" />
-              <AvatarFallback>{student.prenom.charAt(0)}{student.nom.charAt(0)}</AvatarFallback>
+          <div className="flex items-center gap-6">
+            <Avatar className="h-20 w-20 border-2 border-slate-200 rounded-none">
+              <AvatarImage src={student.photoUrl || `https://placehold.co/80x80`} data-ai-hint="student avatar" className="object-cover" />
+              <AvatarFallback className="rounded-none text-xl font-bold bg-slate-100 text-slate-400">
+                {student.prenom.charAt(0)}{student.nom.charAt(0)}
+              </AvatarFallback>
             </Avatar>
-            <div>
-              <CardTitle className="text-2xl">{student.prenom} {student.nom}</CardTitle>
-              <CardDescription className="text-sm">Matricule: {student.id} | Classe: {student.classe}</CardDescription>
-              <div className="mt-1"><Badge variant="secondary">{student.statut}</Badge></div>
+            <div className="space-y-2">
+              <CardTitle className="text-xl font-black text-slate-900 uppercase">{student.prenom} {student.nom}</CardTitle>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                <div className="text-[11px] font-bold text-blue-600 font-mono">MATRICULE: {student.id}</div>
+                <div className="text-[11px] font-bold text-slate-600 flex items-center gap-1 uppercase">
+                  <GraduationCap className="h-3.5 w-3.5" /> CLASSE: {student.classe}
+                </div>
+                <Badge className="bg-blue-600 hover:bg-blue-700 text-white rounded-none text-[9px] px-2 py-0.5 font-bold uppercase tracking-tight">
+                  {student.statut}
+                </Badge>
+              </div>
             </div>
           </div>
         </CardHeader>
-        <CardContent>
-          <Tabs defaultValue="info">
-            <TabsList className="grid w-full grid-cols-5 h-10">
-              <TabsTrigger value="info" className="text-xs">Infos</TabsTrigger>
-              <TabsTrigger value="parents" className="text-xs">Parents</TabsTrigger>
-              <TabsTrigger value="payments" className="text-xs">Finances</TabsTrigger>
-              <TabsTrigger value="notes" className="text-xs">Notes</TabsTrigger>
-              <TabsTrigger value="history" className="text-xs">Historique</TabsTrigger>
+        <CardContent className="p-0">
+          <Tabs defaultValue="info" className="w-full">
+            <TabsList className="flex w-full h-10 bg-slate-100 border-b border-slate-200 p-0 rounded-none overflow-x-auto">
+              <TabsTrigger value="info" className="flex-1 rounded-none data-[state=active]:bg-white data-[state=active]:border-r data-[state=active]:border-l border-slate-200 text-[11px] font-bold uppercase tracking-tight">Infos</TabsTrigger>
+              <TabsTrigger value="parents" className="flex-1 rounded-none data-[state=active]:bg-white data-[state=active]:border-r data-[state=active]:border-l border-slate-200 text-[11px] font-bold uppercase tracking-tight">Parents</TabsTrigger>
+              <TabsTrigger value="payments" className="flex-1 rounded-none data-[state=active]:bg-white data-[state=active]:border-r data-[state=active]:border-l border-slate-200 text-[11px] font-bold uppercase tracking-tight">Finances</TabsTrigger>
+              <TabsTrigger value="notes" className="flex-1 rounded-none data-[state=active]:bg-white data-[state=active]:border-r data-[state=active]:border-l border-slate-200 text-[11px] font-bold uppercase tracking-tight">Notes</TabsTrigger>
+              <TabsTrigger value="history" className="flex-1 rounded-none data-[state=active]:bg-white data-[state=active]:border-r data-[state=active]:border-l border-slate-200 text-[11px] font-bold uppercase tracking-tight">Historique</TabsTrigger>
             </TabsList>
-            <TabsContent value="info" className="pt-4">
-              <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    Informations Personnelles
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                          <span className="text-green-600 text-xs">🎂</span>
-                        </div>
-                        <div>
-                          <p className="text-sm text-muted-foreground">Date de naissance</p>
-                          <p className="font-semibold text-foreground">{new Date(student.dateNaissance).toLocaleDateString('fr-FR')}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                          <span className="text-blue-600 text-xs">📍</span>
-                        </div>
-                        <div>
-                          <p className="text-sm text-muted-foreground">Lieu de naissance</p>
-                          <p className="font-semibold text-foreground">{student.lieuNaissance}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                          <span className="text-purple-600 text-xs">👤</span>
-                        </div>
-                        <div>
-                          <p className="text-sm text-muted-foreground">Sexe</p>
-                          <p className="font-semibold text-foreground">{student.sexe}</p>
-                        </div>
+            <TabsContent value="info" className="p-6 mt-0">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div>
+                  <Label className="text-[10px] font-black uppercase text-slate-500 mb-2 block">Identité</Label>
+                  <div className="space-y-4 bg-slate-50/50 p-4 border border-slate-100">
+                    <div className="flex items-center gap-3">
+                      <Calendar className="h-4 w-4 text-blue-600" />
+                      <div>
+                        <p className="text-[10px] text-slate-500 uppercase font-bold leading-none mb-1">Date de naissance</p>
+                        <p className="text-[11px] font-black text-slate-800 uppercase">{new Date(student.dateNaissance).toLocaleDateString('fr-FR')}</p>
                       </div>
                     </div>
-                    <div className="space-y-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
-                          <span className="text-orange-600 text-xs">🏳️</span>
-                        </div>
-                        <div>
-                          <p className="text-sm text-muted-foreground">Nationalité</p>
-                          <p className="font-semibold text-foreground">{student.nationalite}</p>
-                        </div>
+                    <div className="flex items-center gap-3">
+                      <MapPin className="h-4 w-4 text-blue-600" />
+                      <div>
+                        <p className="text-[10px] text-slate-500 uppercase font-bold leading-none mb-1">Lieu de naissance</p>
+                        <p className="text-[11px] font-black text-slate-800 uppercase">{student.lieuNaissance}</p>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
-                          <span className="text-red-600 text-xs">📄</span>
-                        </div>
-                        <div>
-                          <p className="text-sm text-muted-foreground">N° Acte de Naissance</p>
-                          <p className="font-semibold text-foreground">{student.acteNaissance || 'N/A'}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center">
-                          <span className="text-indigo-600 text-xs">📚</span>
-                        </div>
-                        <div>
-                          <p className="text-sm text-muted-foreground">Année scolaire</p>
-                          <p className="font-semibold text-foreground">{student.anneeScolaire}</p>
-                        </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <UserIcon className="h-4 w-4 text-blue-600" />
+                      <div>
+                        <p className="text-[10px] text-slate-500 uppercase font-bold leading-none mb-1">Sexe</p>
+                        <p className="text-[11px] font-black text-slate-800 uppercase">{student.sexe}</p>
                       </div>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+
+                <div>
+                  <Label className="text-[10px] font-black uppercase text-slate-500 mb-2 block">Détails Administratifs</Label>
+                  <div className="space-y-4 bg-slate-50/50 p-4 border border-slate-100">
+                    <div className="flex items-center gap-3">
+                      <Flag className="h-4 w-4 text-blue-600" />
+                      <div>
+                        <p className="text-[10px] text-slate-500 uppercase font-bold leading-none mb-1">Nationalité</p>
+                        <p className="text-[11px] font-black text-slate-800 uppercase">{student.nationalite}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <FileText className="h-4 w-4 text-blue-600" />
+                      <div>
+                        <p className="text-[10px] text-slate-500 uppercase font-bold leading-none mb-1">N° Acte de Naissance</p>
+                        <p className="text-[11px] font-black text-slate-800 uppercase">{student.acteNaissance || 'N/A'}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Calendar className="h-4 w-4 text-blue-600" />
+                      <div>
+                        <p className="text-[10px] text-slate-500 uppercase font-bold leading-none mb-1">Année scolaire actuelle</p>
+                        <p className="text-[11px] font-black text-slate-800 uppercase">{student.anneeScolaire}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-center p-4 border-2 border-dashed border-slate-200 bg-slate-50/30">
+                  <div className="text-center">
+                    <div className="mx-auto w-12 h-12 bg-blue-100 flex items-center justify-center mb-2">
+                      <QrCode className="h-6 w-6 text-blue-600" />
+                    </div>
+                    <p className="text-[10px] font-bold text-slate-500 uppercase">QR Code Identification</p>
+                    {qrCodeUrl && <img src={qrCodeUrl} alt="QR Code" className="w-24 h-24 mx-auto mt-2 border border-slate-200 p-1 bg-white" />}
+                  </div>
+                </div>
+              </div>
             </TabsContent>
-            <TabsContent value="parents" className="pt-4">
-              <div className="space-y-4">
+            <TabsContent value="parents" className="p-6 mt-0">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {renderParentInfo(student.infoParent, "Parent / Tuteur Principal")}
                 {student.infoParent2 && renderParentInfo(student.infoParent2, "Second Parent / Tuteur")}
               </div>
             </TabsContent>
-            <TabsContent value="payments">
-              <div className="space-y-6">
-                {/* Tableau consolidé unique */}
-                <div>
-                  <h3 className="text-lg font-semibold mb-3">Tableau consolidé des actions financières</h3>
-                  <StudentFinanceConsolidated student={student} schoolYear={student.anneeScolaire} />
-                </div>
+            <TabsContent value="payments" className="p-0 mt-0">
+              <div className="border-t border-slate-100">
+                <StudentFinanceConsolidated student={student} schoolYear={student.anneeScolaire} />
               </div>
             </TabsContent>
-            <TabsContent value="notes" className="pt-4">
-              <StudentNotesTab student={student} />
+            <TabsContent value="notes" className="p-0 mt-0">
+              <div className="border-t border-slate-100">
+                <StudentNotesTab student={student} />
+              </div>
             </TabsContent>
-            <TabsContent value="history" className="pt-4">
-              <Card className="bg-gradient-to-br from-purple-50 to-violet-50 border-purple-200">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                    Historique Scolaire
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  {student.historiqueClasse.length > 0 ? (
-                    <div className="space-y-3">
-                      {student.historiqueClasse.map((h, index) => (
-                        <div key={index} className="flex items-center justify-between p-3 bg-card rounded-lg border border-purple-100">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                              <span className="text-purple-600 font-semibold text-sm">{index + 1}</span>
-                            </div>
-                            <div>
-                              <p className="font-semibold text-foreground">{h.annee}</p>
-                              <p className="text-sm text-muted-foreground">Année scolaire</p>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-semibold text-foreground">{h.classe}</p>
-                            <p className="text-sm text-muted-foreground">Classe</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-8">
-                      <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                        <span className="text-purple-600 text-lg">📚</span>
-                      </div>
-                      <p className="text-muted-foreground">Aucun historique disponible</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+            <TabsContent value="history" className="p-6 mt-0">
+              <div className="overflow-x-auto border border-slate-200">
+                <Table>
+                  <TableHeader className="bg-slate-100">
+                    <TableRow className="divide-x divide-slate-200">
+                      <TableHead className="text-[11px] font-bold uppercase text-slate-700">Rang</TableHead>
+                      <TableHead className="text-[11px] font-bold uppercase text-slate-700">Année Scolaire</TableHead>
+                      <TableHead className="text-[11px] font-bold uppercase text-slate-700">Classe Fréquentée</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {student.historiqueClasse.length > 0 ? (
+                      student.historiqueClasse.map((h, index) => (
+                        <TableRow key={index} className="divide-x divide-slate-200 text-[11px] font-bold text-slate-600 hover:bg-slate-50 transition-colors">
+                          <TableCell className="w-16 text-center">{index + 1}</TableCell>
+                          <TableCell>{h.annee}</TableCell>
+                          <TableCell className="text-blue-600">{h.classe}</TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={3} className="h-32 text-center text-slate-400 italic">
+                          Aucun historique scolaire enregistré.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
             </TabsContent>
           </Tabs>
         </CardContent>
-        <CardFooter className="gap-2">
-          <Button onClick={() => setOpenEdit(true)}><Edit className="mr-2 h-4 w-4" /> Modifier le dossier</Button>
-          <Button variant="outline" onClick={handlePrintStudentFile}><Printer className="mr-2 h-4 w-4" /> Imprimer le dossier</Button>
+        <CardFooter className="bg-slate-50 border-t border-slate-200 py-3 flex justify-end gap-3 px-6">
+          <Button
+            variant="outline"
+            onClick={() => setOpenEdit(true)}
+            className="rounded-none h-8 text-[11px] font-bold border-slate-300 hover:bg-slate-200 uppercase"
+          >
+            <Edit className="mr-2 h-3.5 w-3.5 text-blue-600" />
+            Modifier Dossier
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handlePrintStudentFile}
+            className="rounded-none h-8 text-[11px] font-bold border-slate-300 hover:bg-slate-200 uppercase"
+          >
+            <Printer className="mr-2 h-3.5 w-3.5 text-blue-600" />
+            Imprimer Dossier
+          </Button>
         </CardFooter>
       </Card>
 
@@ -2121,54 +2140,82 @@ function ClassAdvancementTab({ allStudents, allclasses, onUpdate }: { allStudent
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Passage de classe</CardTitle>
-        <CardDescription>Outil pour le passage de classe en fin d'année scolaire. Les modifications sont irréversibles.</CardDescription>
+    <Card className="rounded-none shadow-none border-slate-200">
+      <CardHeader className="bg-slate-50/50 border-b border-slate-100 rounded-none">
+        <CardTitle className="text-xl font-bold">Passage de classe</CardTitle>
+        <CardDescription className="text-xs">Outil pour le passage de classe en fin d'année scolaire. Les modifications sont irréversibles.</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex items-center gap-4">
-          <Label>Sélectionner la classe à traiter</Label>
+      <CardContent className="space-y-4 pt-6">
+        <div className="flex items-center gap-4 bg-blue-50/30 p-4 border border-blue-100 rounded-none">
+          <Label className="text-[11px] font-bold text-slate-700 uppercase">Sélectionner la classe à traiter</Label>
           <Select value={fromClass} onValueChange={setFromClass}>
-            <SelectTrigger className="w-[200px]"><SelectValue placeholder="Choisir une classe..." /></SelectTrigger>
-            <SelectContent>{[...new Set(allStudents.map(s => s.classe))].sort().map(c => {
-              const cleanC = cleanValue(c);
-              return cleanC ? <SelectItem key={cleanC} value={cleanC}>{cleanC}</SelectItem> : null;
-            }).filter(Boolean)}</SelectContent>
+            <SelectTrigger className="w-[200px] rounded-none h-9 border-slate-300 bg-white text-[11px] font-bold"><SelectValue placeholder="Choisir une classe..." /></SelectTrigger>
+            <SelectContent className="rounded-none">
+              {[...new Set(allStudents.map(s => s.classe))].sort().map(c => {
+                const cleanC = cleanValue(c);
+                return cleanC ? <SelectItem key={cleanC} value={cleanC} className="text-[11px]">{cleanC}</SelectItem> : null;
+              }).filter(Boolean)}
+            </SelectContent>
           </Select>
         </div>
         {fromClass && (
-          <>
-            <p className="text-sm text-muted-foreground">Année scolaire pour le passage : {new Date().getFullYear()}-{new Date().getFullYear() + 1}</p>
-            <Table>
-              <TableHeader><TableRow><TableHead>Élève</TableHead><TableHead>Décision</TableHead><TableHead className="w-[250px]">Classe de destination</TableHead></TableRow></TableHeader>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <p className="text-[11px] font-bold text-slate-500 uppercase">Année scolaire pour le passage : <span className="text-blue-600 font-mono">{new Date().getFullYear()}-{new Date().getFullYear() + 1}</span></p>
+              <Badge variant="outline" className="rounded-none border-slate-300 text-[10px] uppercase font-bold text-slate-600">
+                {studentsInClass.length} élève(s) à traiter
+              </Badge>
+            </div>
+            <Table className="border-t border-l border-slate-200 w-full">
+              <TableHeader>
+                <TableRow className="bg-slate-100 divide-x divide-slate-200 border-b border-slate-200 hover:bg-slate-100">
+                  <TableHead className="text-[11px] font-bold text-slate-800 uppercase px-2 py-2">Élève</TableHead>
+                  <TableHead className="text-[11px] font-bold text-slate-800 uppercase px-2 py-2 text-center">Décision</TableHead>
+                  <TableHead className="w-[250px] text-[11px] font-bold text-slate-800 uppercase px-2 py-2 text-center">Classe de destination</TableHead>
+                </TableRow>
+              </TableHeader>
               <TableBody>
                 {studentsInClass.map(student => {
                   const currentDecision = advancementDecisions[student.id];
                   if (!currentDecision) return null; // Pre-render guard
 
                   return (
-                    <TableRow key={student.id}>
-                      <TableCell>{student.prenom} {student.nom}</TableCell>
-                      <TableCell>
-                        <RadioGroup value={currentDecision.decision} onValueChange={(val) => handleDecisionChange(student.id, val as any)} className="flex gap-4">
-                          <div className="flex items-center space-x-2"><RadioGroupItem value="pass" id={`pass-${student.id}`} /><Label htmlFor={`pass-${student.id}`}>Passe</Label></div>
-                          <div className="flex items-center space-x-2"><RadioGroupItem value="repeat" id={`repeat-${student.id}`} /><Label htmlFor={`repeat-${student.id}`}>Redouble</Label></div>
+                    <TableRow key={student.id} className="divide-x divide-slate-200 border-b border-slate-200 hover:bg-slate-50 transition-colors">
+                      <TableCell className="px-2 py-1.5">
+                        <div className="flex flex-col">
+                          <span className="font-bold text-slate-800 text-[11px] uppercase">{student.prenom} {student.nom}</span>
+                          <span className="text-[10px] font-mono text-blue-600 font-bold">{student.id}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="px-2 py-1.5 text-center">
+                        <RadioGroup
+                          value={currentDecision.decision}
+                          onValueChange={(val) => handleDecisionChange(student.id, val as any)}
+                          className="flex justify-center gap-6"
+                        >
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="pass" id={`pass-${student.id}`} className="h-3.5 w-3.5 border-slate-300" />
+                            <Label htmlFor={`pass-${student.id}`} className="text-[11px] font-semibold text-green-700 uppercase cursor-pointer">Passe</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="repeat" id={`repeat-${student.id}`} className="h-3.5 w-3.5 border-slate-300" />
+                            <Label htmlFor={`repeat-${student.id}`} className="text-[11px] font-semibold text-red-700 uppercase cursor-pointer">Redouble</Label>
+                          </div>
                         </RadioGroup>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="px-2 py-1.5 text-center">
                         {currentDecision.decision === 'pass' ? (
                           <Select value={currentDecision.targetClass} onValueChange={(newClass) => handleTargetClassChange(student.id, newClass)}>
-                            <SelectTrigger><SelectValue /></SelectTrigger>
-                            <SelectContent>
+                            <SelectTrigger className="h-8 rounded-none border-slate-300 text-[11px] font-medium"><SelectValue /></SelectTrigger>
+                            <SelectContent className="rounded-none">
                               {allclasses && allclasses.length > 0 ? allclasses.map((c: string) => {
                                 const cleanC = cleanValue(c);
-                                return cleanC ? <SelectItem key={cleanC} value={cleanC}>{cleanC}</SelectItem> : null;
+                                return cleanC ? <SelectItem key={cleanC} value={cleanC} className="text-[11px]">{cleanC}</SelectItem> : null;
                               }).filter(Boolean) : <SelectItem value="no-data" disabled>Aucune classe disponible</SelectItem>}
                             </SelectContent>
                           </Select>
                         ) : (
-                          <span className="text-muted-foreground italic">{student.classe} (redoublement)</span>
+                          <span className="text-[10px] text-slate-500 font-bold uppercase italic bg-slate-100 px-2 py-1 border border-slate-200">Reste en {student.classe}</span>
                         )}
                       </TableCell>
                     </TableRow>
@@ -2176,12 +2223,18 @@ function ClassAdvancementTab({ allStudents, allclasses, onUpdate }: { allStudent
                 })}
               </TableBody>
             </Table>
-            <div className="flex justify-end pt-4">
-              <Button onClick={handleProcessAdvancement} disabled={studentsInClass.length === 0}>Lancer le passage de classe</Button>
+            <div className="flex justify-end pt-6 border-t border-slate-100">
+              <Button
+                onClick={handleProcessAdvancement}
+                disabled={studentsInClass.length === 0}
+                className="rounded-none bg-blue-600 hover:bg-blue-700 text-white font-bold h-10 px-8 border-b-2 border-blue-800 active:translate-y-0.5 transition-all uppercase text-xs"
+              >
+                Lancer le passage de classe
+              </Button>
             </div>
-            {studentsInClass.length === 0 && <p className="text-center text-muted-foreground py-8">Aucun élève actif dans cette classe.</p>}
-          </>
+          </div>
         )}
+        {fromClass && studentsInClass.length === 0 && <p className="text-center text-muted-foreground py-8">Aucun élève actif dans cette classe.</p>}
       </CardContent>
     </Card>
   );
@@ -2604,26 +2657,26 @@ function StudentsTab({ role, currentUser, schoolInfo }: { role: string, currentU
   }
   return (
     <>
-      <Tabs defaultValue="list">
-        <div className="flex items-center justify-between">
-          <TabsList className="grid w-full grid-cols-5 h-10">
-            <TabsTrigger value="list" className="text-xs">Liste des élèves</TabsTrigger>
-            <TabsTrigger value="passage" className="text-xs">Passage de classe</TabsTrigger>
-            <TabsTrigger value="reports" className="text-xs">Rapports</TabsTrigger>
+      <Tabs defaultValue="list" className="w-full">
+        <div className="flex items-center justify-between bg-slate-100 p-1 border border-slate-200">
+          <TabsList className="h-8 bg-slate-200/50 p-0 rounded-none gap-0">
+            <TabsTrigger value="list" className="rounded-none h-full px-4 text-[11px] font-bold uppercase data-[state=active]:bg-white data-[state=active]:text-blue-600 border-r border-slate-200">Liste des élèves</TabsTrigger>
+            <TabsTrigger value="passage" className="rounded-none h-full px-4 text-[11px] font-bold uppercase data-[state=active]:bg-white data-[state=active]:text-blue-600 border-r border-slate-200">Passage de classe</TabsTrigger>
+            <TabsTrigger value="reports" className="rounded-none h-full px-4 text-[11px] font-bold uppercase data-[state=active]:bg-white data-[state=active]:text-blue-600">Rapports</TabsTrigger>
           </TabsList>
           {["Admin", "Direction"].includes(role) && (
             <Dialog open={openInscription} onOpenChange={setOpenInscription}>
               <DialogTrigger asChild>
-                <Button size="sm" className="gap-1">
-                  <Plus className="h-3.5 w-3.5" />
+                <Button size="sm" className="h-8 rounded-none bg-blue-600 hover:bg-blue-700 text-[11px] font-bold uppercase shadow-none px-4">
+                  <Plus className="h-3.5 w-3.5 mr-1" />
                   <span>Inscrire un élève</span>
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-6xl">
-                <DialogHeader className="text-center">
-                  <DialogTitle>Formulaire d'Inscription</DialogTitle>
-                  <DialogDescription>
-                    Remplissez les informations pour inscrire un nouvel élève. Il sera créé en tant que "Pré-inscrit".
+              <DialogContent className="sm:max-w-6xl rounded-none border-slate-300 p-0 overflow-hidden">
+                <DialogHeader className="bg-slate-50 border-b border-slate-200 py-4 px-6">
+                  <DialogTitle className="text-sm font-black uppercase text-slate-800 tracking-wider">Formulaire d'Inscription</DialogTitle>
+                  <DialogDescription className="text-[11px] font-medium text-slate-500 uppercase">
+                    Remplissez les informations pour inscrire un nouvel élève. Statut par défaut: "Pré-inscrit".
                   </DialogDescription>
                 </DialogHeader>
                 <InscriptionForm
@@ -2637,28 +2690,24 @@ function StudentsTab({ role, currentUser, schoolInfo }: { role: string, currentU
 
         <TabsContent value="list">
           <Card className="card-glow">
-            <CardHeader>
-              <CardTitle>Gestion des Élèves</CardTitle>
-              <CardDescription>
-                Consultez, ajoutez ou modifiez les informations des élèves.
-              </CardDescription>
+            <CardHeader className="rounded-none border-b border-slate-100 bg-slate-50/10 py-2">
               <div className="flex flex-col sm:flex-row gap-2 pt-4">
                 <div className="relative flex-1">
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
                     type="search"
                     placeholder="Rechercher par nom ou matricule..."
-                    className="w-full rounded-lg bg-background pl-8"
+                    className="w-full rounded-none bg-background pl-8 h-9 border-slate-300 text-[11px]"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
                 </div>
                 <div className="flex gap-2">
                   <Select value={classFilter} onValueChange={setClassFilter} disabled={isStructureLoading}>
-                    <SelectTrigger className="w-full sm:w-[160px]">
+                    <SelectTrigger className="w-full sm:w-[160px] rounded-none h-9 border-slate-300 text-[11px]">
                       <SelectValue placeholder={isStructureLoading ? "Chargement..." : "Filtrer par classe..."} />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="rounded-none">
                       <SelectItem value="all">Toutes les classes</SelectItem>
                       {!isStructureLoading && allclasses.map(c => (
                         <SelectItem key={c as string} value={c as string}>{c as string}</SelectItem>
@@ -2666,10 +2715,10 @@ function StudentsTab({ role, currentUser, schoolInfo }: { role: string, currentU
                     </SelectContent>
                   </Select>
                   <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
-                    <SelectTrigger className="w-full sm:w-[160px]">
+                    <SelectTrigger className="w-full sm:w-[160px] rounded-none h-9 border-slate-300 text-[11px]">
                       <SelectValue placeholder="Filtrer par statut..." />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="rounded-none">
                       <SelectItem value="all">Tous les statuts</SelectItem>
                       {studentStatuses && studentStatuses.length > 0 ? studentStatuses.map(s => {
                         const cleanS = cleanValue(s);
@@ -2681,109 +2730,111 @@ function StudentsTab({ role, currentUser, schoolInfo }: { role: string, currentU
               </div>
             </CardHeader>
             <CardContent>
-              <Table>
+              <Table className="border-t border-l border-slate-200">
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>Élève</TableHead>
-                    <TableHead className="hidden sm:table-cell">Classe</TableHead>
-                    <TableHead className="hidden sm:table-cell">Statut</TableHead>
-                    <TableHead className="hidden md:table-cell">
+                  <TableRow className="bg-slate-100 divide-x divide-slate-200 border-b border-slate-200 hover:bg-slate-100">
+                    <TableHead className="text-[11px] font-bold text-slate-800 px-2 py-2">Élève</TableHead>
+                    <TableHead className="text-[11px] font-bold text-slate-800 px-2 py-2 text-center">Sexe</TableHead>
+                    <TableHead className="hidden sm:table-cell text-[11px] font-bold text-slate-800 px-2 py-2">Classe</TableHead>
+                    <TableHead className="hidden sm:table-cell text-[11px] font-bold text-slate-800 px-2 py-2">Statut</TableHead>
+                    <TableHead className="hidden md:table-cell text-[11px] font-bold text-slate-800 px-2 py-2">
                       Contact Parent
                     </TableHead>
-                    <TableHead>
-                      <span className="sr-only">Actions</span>
+                    <TableHead className="w-16 text-[11px] font-bold text-slate-800 px-2 py-2 text-center">
+                      Actions
                     </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {paginatedStudents.map((student) => (
-                    <TableRow key={student.id}>
-                      <TableCell className="font-medium">
+                    <TableRow key={student.id} className="divide-x divide-slate-200 border-b border-slate-200 hover:bg-slate-50 transition-colors">
+                      <TableCell className="px-2 py-1.5">
                         <div
-                          className="flex items-center gap-3 cursor-pointer"
+                          className="flex items-center gap-3 cursor-pointer group"
                           onClick={() => setSelectedStudentId(student.id)}
                         >
-                          <Avatar className="h-9 w-9">
-                            <AvatarImage src={student.photoUrl || `https://placehold.co/40x40`} data-ai-hint="student avatar" />
-                            <AvatarFallback>{student.prenom.charAt(0)}{student.nom.charAt(0)}</AvatarFallback>
+                          <Avatar className="h-8 w-8 rounded-none border border-slate-200">
+                            <AvatarImage src={student.photoUrl || `https://placehold.co/40x40`} data-ai-hint="student avatar text-[11px]" />
+                            <AvatarFallback className="rounded-none text-[10px]">{student.prenom.charAt(0)}{student.nom.charAt(0)}</AvatarFallback>
                           </Avatar>
                           <div>
-                            <div className="font-semibold hover:underline">{student.prenom} {student.nom}</div>
-                            <div className="text-xs text-muted-foreground">{student.id}</div>
+                            <div className="font-bold text-slate-800 text-[11px] group-hover:text-blue-600 transition-colors">{student.prenom} {student.nom}</div>
+                            <div className="text-[10px] font-bold text-blue-600 font-mono">{student.id}</div>
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell className="hidden sm:table-cell">{student.classe}</TableCell>
-                      <TableCell className="hidden sm:table-cell">
+                      <TableCell className={`text-[11px] px-2 py-1.5 font-bold text-center ${student.sexe?.charAt(0) === 'M' ? 'text-blue-600' : student.sexe?.charAt(0) === 'F' ? 'text-pink-600' : 'text-slate-700'}`}>
+                        {student.sexe?.charAt(0) || '-'}
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell text-[11px] px-2 py-1.5 font-medium text-slate-700">{student.classe}</TableCell>
+                      <TableCell className="hidden sm:table-cell px-2 py-1.5">
                         <Badge
                           variant={
                             student.statut === "Actif" ? "default"
                               : student.statut === 'Renvoi' ? 'destructive'
                                 : 'secondary'
                           }
+                          className="rounded-none text-[10px] px-1.5 py-0 min-h-0 h-4 font-bold"
                         >
                           {student.statut}
                         </Badge>
                       </TableCell>
-                      <TableCell className="hidden md:table-cell">
+                      <TableCell className="hidden md:table-cell text-[11px] px-2 py-1.5 text-slate-600">
                         {student.infoParent.telephone}
                       </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button aria-haspopup="true" size="icon" variant="ghost">
-                                <ChevronDown className="h-4 w-4" />
-                                <span className="sr-only">Toggle menu</span>
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => setSelectedStudentId(student.id)}>
-                                <UserIcon className="mr-2 h-4 w-4" />
-                                Voir le dossier
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleOpenChangeClassDialog(student)}>
-                                <GraduationCap className="mr-2 h-4 w-4" />
-                                Changer de classe
-                              </DropdownMenuItem>
-                              <DropdownMenuSub>
-                                <DropdownMenuSubTrigger>
-                                  <ShieldCheck className="mr-2 h-4 w-4" />
-                                  Changer le statut
-                                </DropdownMenuSubTrigger>
-                                <DropdownMenuPortal>
-                                  <DropdownMenuSubContent>
-                                    {studentStatuses.map(status => {
-                                      // Afficher "Inscrire" au lieu de "Actif" pour une meilleure UX
-                                      const displayLabel = status === 'Actif' ? 'Inscrire' : status;
-                                      return (
-                                        <DropdownMenuItem key={status} onClick={() => handleStatusChange(student, status)} disabled={student.statut === status}>
-                                          {displayLabel}
-                                        </DropdownMenuItem>
-                                      );
-                                    })}
-                                  </DropdownMenuSubContent>
-                                </DropdownMenuPortal>
-                              </DropdownMenuSub>
-                              <DropdownMenuSub>
-                                <DropdownMenuSubTrigger>
-                                  <Printer className="mr-2 h-4 w-4" />
-                                  Imprimer...
-                                </DropdownMenuSubTrigger>
-                                <DropdownMenuPortal>
-                                  <DropdownMenuSubContent>
-                                    <DropdownMenuItem onClick={() => handlePrintAttestation(student.id)} disabled={isAttestationLoading}>
-                                      {isAttestationLoading ? 'Génération...' : "Attestation d'inscription"}
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => handlePrintRegistrationReceipt(student)} disabled={isReceiptLoading}>
-                                      {isReceiptLoading ? 'Recherche...' : "Reçu d'Inscription"}
-                                    </DropdownMenuItem>
-                                  </DropdownMenuSubContent>
-                                </DropdownMenuPortal>
-                              </DropdownMenuSub>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
+                      <TableCell className="px-2 py-1.5 text-center">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button size="icon" variant="ghost" className="h-7 w-7 rounded-none border-0 hover:bg-slate-200">
+                              <ChevronDown className="h-3.5 w-3.5" />
+                              <span className="sr-only">Toggle menu</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="rounded-none text-[11px]">
+                            <DropdownMenuItem onClick={() => setSelectedStudentId(student.id)} className="rounded-none">
+                              <UserIcon className="mr-2 h-3.5 w-3.5" />
+                              Voir le dossier
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleOpenChangeClassDialog(student)} className="rounded-none">
+                              <GraduationCap className="mr-2 h-3.5 w-3.5" />
+                              Changer de classe
+                            </DropdownMenuItem>
+                            <DropdownMenuSub>
+                              <DropdownMenuSubTrigger className="rounded-none">
+                                <ShieldCheck className="mr-2 h-3.5 w-3.5" />
+                                Changer le statut
+                              </DropdownMenuSubTrigger>
+                              <DropdownMenuPortal>
+                                <DropdownMenuSubContent className="rounded-none text-[11px]">
+                                  {studentStatuses.map(status => {
+                                    const displayLabel = status === 'Actif' ? 'Inscrire' : status;
+                                    return (
+                                      <DropdownMenuItem key={status} onClick={() => handleStatusChange(student, status)} disabled={student.statut === status} className="rounded-none">
+                                        {displayLabel}
+                                      </DropdownMenuItem>
+                                    );
+                                  })}
+                                </DropdownMenuSubContent>
+                              </DropdownMenuPortal>
+                            </DropdownMenuSub>
+                            <DropdownMenuSub>
+                              <DropdownMenuSubTrigger className="rounded-none">
+                                <Printer className="mr-2 h-3.5 w-3.5" />
+                                Imprimer...
+                              </DropdownMenuSubTrigger>
+                              <DropdownMenuPortal>
+                                <DropdownMenuSubContent className="rounded-none text-[11px]">
+                                  <DropdownMenuItem onClick={() => handlePrintAttestation(student.id)} disabled={isAttestationLoading} className="rounded-none">
+                                    {isAttestationLoading ? 'Génération...' : "Attestation d'inscription"}
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handlePrintRegistrationReceipt(student)} disabled={isReceiptLoading} className="rounded-none">
+                                    {isReceiptLoading ? 'Recherche...' : "Reçu d'Inscription"}
+                                  </DropdownMenuItem>
+                                </DropdownMenuSubContent>
+                              </DropdownMenuPortal>
+                            </DropdownMenuSub>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -2795,25 +2846,25 @@ function StudentsTab({ role, currentUser, schoolInfo }: { role: string, currentU
                 </div>
               )}
             </CardContent>
-            <CardFooter>
-              <div className="flex items-center justify-between w-full text-xs text-muted-foreground">
+            <CardFooter className="rounded-none border-t border-slate-100 bg-slate-50/30 py-3">
+              <div className="flex items-center justify-between w-full text-[11px] text-muted-foreground font-medium">
                 <div className="flex-1">
-                  {filteredStudents.length} élève(s) trouvé(s).
+                  {filteredStudents.length} élève(s) trouvé(s)
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="flex items-center gap-2">
                     <span>Lignes par page</span>
                     <Select value={`${rowsPerPage}`} onValueChange={v => { setRowsPerPage(Number(v)); setCurrentPage(1); }}>
-                      <SelectTrigger className="h-8 w-[70px]"><SelectValue /></SelectTrigger>
-                      <SelectContent>
+                      <SelectTrigger className="h-7 w-[60px] rounded-none border-slate-300 text-[10px] uppercase font-bold"><SelectValue /></SelectTrigger>
+                      <SelectContent className="rounded-none">
                         {[10, 20, 30, 40, 50].map(v => <SelectItem key={v} value={`${v}`}>{v}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
-                  <div>Page {currentPage} sur {totalPages}</div>
+                  <div className="font-bold text-slate-700">Page {currentPage} sur {totalPages}</div>
                   <div className="flex gap-1">
-                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setCurrentPage(p => p - 1)} disabled={currentPage === 1}><ChevronLeft /></Button>
-                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setCurrentPage(p => p + 1)} disabled={currentPage === totalPages}><ChevronRight /></Button>
+                    <Button variant="outline" size="icon" className="h-7 w-7 rounded-none border-slate-300 hover:bg-slate-100" onClick={() => setCurrentPage(p => p - 1)} disabled={currentPage === 1}><ChevronLeft className="h-3.5 w-3.5" /></Button>
+                    <Button variant="outline" size="icon" className="h-7 w-7 rounded-none border-slate-300 hover:bg-slate-100" onClick={() => setCurrentPage(p => p + 1)} disabled={currentPage === totalPages}><ChevronRight className="h-3.5 w-3.5" /></Button>
                   </div>
                 </div>
               </div>
@@ -3362,7 +3413,7 @@ function PaymentSearchDialog({
 
       {/* Sélection du type de paiement si un élève est sélectionné */}
       {selectedStudent && !paymentType && (
-        <div className="space-y-4 p-4 border rounded-lg bg-gray-50">
+        <div className="space-y-4 p-4 border rounded-none bg-gray-50">
           <h3 className="font-semibold text-lg">Choisissez le type de paiement :</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Button
@@ -3447,7 +3498,7 @@ function PaymentSearchDialog({
         {isPaymentLoading && <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin" /></div>}
 
         {selectedStudent && paymentType === 'inscription' && (
-          <div className="space-y-4 p-4 border rounded-lg">
+          <div className="space-y-4 p-4 border rounded-none">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-lg">Frais d'Inscription - {selectedStudent.classe}</h3>
               <Button variant="outline" size="sm" onClick={() => setPaymentType(null)}>
@@ -3457,7 +3508,7 @@ function PaymentSearchDialog({
 
             {/* Affichage du paiement existant s'il y en a un */}
             {existingRegistrationPayment && (
-              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <div className="p-4 bg-blue-50 rounded-none border border-blue-200">
                 <div className="flex items-center gap-2 mb-2">
                   <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                   <h4 className="font-medium text-blue-900">Paiement d'inscription déjà effectué</h4>
@@ -3489,7 +3540,7 @@ function PaymentSearchDialog({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Informations de l'inscription */}
               <div className="space-y-4">
-                <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                <div className="p-4 bg-green-50 rounded-none border border-green-200">
                   <h4 className="font-medium text-green-900 mb-3">Détails de l'inscription</h4>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
@@ -3526,7 +3577,7 @@ function PaymentSearchDialog({
 
               {/* Informations de l'élève et confirmation */}
               <div className="space-y-4">
-                <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="p-4 bg-blue-50 rounded-none border border-blue-200">
                   <h4 className="font-medium text-blue-900 mb-3">Informations Élève</h4>
                   <div className="space-y-2 text-sm">
                     <div><span className="font-medium">Nom :</span> {selectedStudent.prenom} {selectedStudent.nom}</div>
@@ -3535,7 +3586,7 @@ function PaymentSearchDialog({
                   </div>
                 </div>
 
-                <div className="p-4 bg-amber-50 rounded-lg border border-amber-200">
+                <div className="p-4 bg-amber-50 rounded-none border border-amber-200">
                   <div className="text-sm text-amber-800">
                     <strong>Note :</strong> Une fois ce paiement enregistré, l'élève sera automatiquement marqué comme "Actif" et pourra commencer les cours.
                   </div>
@@ -3561,7 +3612,7 @@ function PaymentSearchDialog({
         )}
 
         {selectedStudent && paymentType === ('services' as any) && (
-          <div className="space-y-4 p-4 border rounded-lg">
+          <div className="space-y-4 p-4 border rounded-none">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-lg">Paiements des Services - {selectedStudent.classe}</h3>
               <Button variant="outline" size="sm" onClick={() => setPaymentType(null)}>
@@ -3704,7 +3755,7 @@ function PaymentSearchDialog({
                 <div className="flex-1 space-y-4">
                   <h3 className="font-semibold text-lg border-b pb-2">Résumé Financier</h3>
                   <div className="space-y-4">
-                    <div className="p-4 bg-muted rounded-lg">
+                    <div className="p-4 bg-muted rounded-none">
                       <div className="flex justify-between items-center mb-2">
                         <span className="text-sm font-medium">Total Dû:</span>
                         <span className="font-semibold">{paymentSummary.totalDue?.toLocaleString() || 0} XAF</span>
@@ -3718,7 +3769,7 @@ function PaymentSearchDialog({
                         <span className="font-semibold text-red-600">{paymentSummary.outstanding?.toLocaleString() || 0} XAF</span>
                       </div>
                     </div>
-                    <div className="p-4 bg-blue-50 rounded-lg">
+                    <div className="p-4 bg-blue-50 rounded-none">
                       <h4 className="font-medium text-blue-900 mb-2">Informations Élève</h4>
                       <div className="space-y-1 text-sm">
                         <div><span className="font-medium">Nom:</span> {selectedStudent.prenom} {selectedStudent.nom}</div>
@@ -3807,7 +3858,7 @@ function PaymentSearchDialog({
 
               {/* Tableau des paiements: à gauche sur desktop, en dessous sur mobile */}
               <div className="order-2 md:order-1">
-                <div className="border rounded-md">
+                <div className="border rounded-none">
                   <div className="overflow-x-auto">
                     <div className="max-h-[55vh] overflow-y-auto">
                       <Table>
@@ -3858,7 +3909,7 @@ function PaymentSearchDialog({
               </div>
 
               {/* Prévisualisation du PDF */}
-              <div className="border rounded-lg overflow-hidden">
+              <div className="border rounded-none overflow-hidden">
                 <iframe
                   src={paymentReceiptData.dataUrl}
                   width="100%"
@@ -4829,7 +4880,7 @@ function FinancialReportsTab({ onOpenPaymentDialog, schoolInfo }: { onOpenPaymen
         {overallSummary && (
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-              <div className="bg-blue-50 p-4 rounded-lg border">
+              <div className="bg-blue-50 p-4 rounded-none border">
                 <div className="flex items-center gap-2">
                   <DollarSign className="h-5 w-5 text-blue-600" />
                   <span className="text-sm font-medium text-blue-600">Total Dû</span>
@@ -4838,7 +4889,7 @@ function FinancialReportsTab({ onOpenPaymentDialog, schoolInfo }: { onOpenPaymen
                   {overallSummary.totals.totalDue.toLocaleString()} XAF
                 </div>
               </div>
-              <div className="bg-green-50 p-4 rounded-lg border">
+              <div className="bg-green-50 p-4 rounded-none border">
                 <div className="flex items-center gap-2">
                   <Check className="h-5 w-5 text-green-600" />
                   <span className="text-sm font-medium text-green-600">Total Payé</span>
@@ -4847,7 +4898,7 @@ function FinancialReportsTab({ onOpenPaymentDialog, schoolInfo }: { onOpenPaymen
                   {overallSummary.totals.totalPaid.toLocaleString()} XAF
                 </div>
               </div>
-              <div className="bg-red-50 p-4 rounded-lg border">
+              <div className="bg-red-50 p-4 rounded-none border">
                 <div className="flex items-center gap-2">
                   <AlertTriangle className="h-5 w-5 text-red-600" />
                   <span className="text-sm font-medium text-red-600">Solde</span>
@@ -4856,7 +4907,7 @@ function FinancialReportsTab({ onOpenPaymentDialog, schoolInfo }: { onOpenPaymen
                   {overallSummary.totals.outstanding.toLocaleString()} XAF
                 </div>
               </div>
-              <div className="bg-purple-50 p-4 rounded-lg border">
+              <div className="bg-purple-50 p-4 rounded-none border">
                 <div className="flex items-center gap-2">
                   <TrendingUp className="h-5 w-5 text-purple-600" />
                   <span className="text-sm font-medium text-purple-600">Taux Recouvrement</span>
@@ -4891,7 +4942,7 @@ function FinancialReportsTab({ onOpenPaymentDialog, schoolInfo }: { onOpenPaymen
               ].map((type) => (
                 <div
                   key={type.value}
-                  className={`p-4 border rounded-lg cursor-pointer transition-all ${selectedReportType === type.value
+                  className={`p-4 border rounded-none cursor-pointer transition-all ${selectedReportType === type.value
                     ? 'border-green-500 bg-green-50'
                     : 'border-gray-200 hover:border-gray-300'
                     }`}
@@ -4998,7 +5049,7 @@ function FinancialReportsTab({ onOpenPaymentDialog, schoolInfo }: { onOpenPaymen
             </div>
           </CardHeader>
           <CardContent>
-            <div className="border rounded-lg overflow-hidden">
+            <div className="border rounded-none overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-gray-50">
@@ -5734,7 +5785,7 @@ function FinanceTab({ role, currentUser, schoolInfo }: { role: string, currentUs
               {(filteredStudents.length > 0 || classSummary) && (
                 <>
                   <div className="border-t pt-4">
-                    <div className="border rounded-lg overflow-hidden">
+                    <div className="border rounded-none overflow-hidden">
                       <Table>
                         <TableHeader>
                           <TableRow className="bg-muted/50">
@@ -5956,7 +6007,7 @@ function FinanceTab({ role, currentUser, schoolInfo }: { role: string, currentUs
                 </div>
               ) : inscriptionStudents.length > 0 ? (
                 <>
-                  <div className="border rounded-lg overflow-hidden">
+                  <div className="border rounded-none overflow-hidden">
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-muted/50">
@@ -6079,7 +6130,7 @@ function FinanceTab({ role, currentUser, schoolInfo }: { role: string, currentUs
               <input
                 type="date"
                 id="newDueDate"
-                className="w-full p-2 border rounded-md"
+                className="w-full p-2 border rounded-none"
                 min={new Date().toISOString().split('T')[0]}
               />
             </div>
@@ -7770,7 +7821,7 @@ function ReportsTab({ role, schoolInfo }: { role: string, schoolInfo: SchoolInfo
           const Icon = report.icon;
           return (
             <Card key={report.id} className="card-glow hover:shadow-lg transition-shadow">
-              <CardHeader className={`${report.bgColor} rounded-t-lg`}>
+              <CardHeader className={`${report.bgColor} rounded-none`}>
                 <div className="flex items-center space-x-3">
                   <Icon className={`h-6 w-6 ${report.color}`} />
                   <CardTitle className="text-base">{report.title}</CardTitle>
@@ -8050,7 +8101,7 @@ function ClassManager({ onUpdate }: { onUpdate: () => void }) {
           <CardContent className="space-y-2">
             {classesForSelectedLevel.map((className, index) => (
               <div key={className}>
-                <div className="flex items-center justify-between p-2 rounded-md hover:bg-muted">
+                <div className="flex items-center justify-between p-2 rounded-none hover:bg-muted">
                   {isEditing && isEditing.oldName === className ? (
                     <div className="flex-grow flex gap-2">
                       <Input value={editingValue} onChange={(e) => setEditingValue(e.target.value)} className="h-8" />
@@ -8215,7 +8266,7 @@ function JournalActionsDialog({ isOpen, onOpenChange }: { isOpen: boolean, onOpe
           <DialogDescription>Consultez les actions sensibles effectuées sur la plateforme.</DialogDescription>
         </DialogHeader>
         <div className="h-[60vh]">
-          <div className="w-full border rounded-md">
+          <div className="w-full border rounded-none">
             {isLoading ? (
               <div className="flex items-center justify-center h-full">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -8473,13 +8524,13 @@ function SettingsTab({ role, currentUser, currentThemeId, onThemeChange }: { rol
             <button
               key={t.id}
               onClick={() => onThemeChange(t.id)}
-              className={`group relative flex flex-col items-center gap-2 p-3 rounded-xl transition-all duration-200 border-2 ${currentThemeId === t.id
+              className={`group relative flex flex-col items-center gap-2 p-3 rounded-none transition-all duration-200 border-2 ${currentThemeId === t.id
                 ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
                 : 'border-gray-100 bg-gray-50/50 hover:border-gray-200 hover:bg-gray-100'
                 }`}
             >
               <div
-                className="w-full aspect-video rounded-lg shadow-inner overflow-hidden flex"
+                className="w-full aspect-video rounded-none shadow-inner overflow-hidden flex"
                 style={{ backgroundColor: `hsl(${t.colors.background})` }}
               >
                 <div className="w-1/4 h-full" style={{ backgroundColor: `hsl(${t.colors.sidebar})` }}></div>
@@ -8896,7 +8947,7 @@ function TableauDeBord({ role, currentUser }: { role: string, currentUser: User 
                   <DropdownMenuItem
                     key={t.id}
                     onClick={() => handleThemeChange(t.id)}
-                    className={`flex items-center justify-between rounded-lg px-2 py-2 cursor-pointer transition-colors ${currentThemeId === t.id ? 'bg-primary/10 text-primary' : 'hover:bg-accent'}`}
+                    className={`flex items-center justify-between rounded-none px-2 py-2 cursor-pointer transition-colors ${currentThemeId === t.id ? 'bg-primary/10 text-primary' : 'hover:bg-accent'}`}
                   >
                     <div className="flex items-center gap-3">
                       <div className="w-4 h-4 rounded-full border shadow-sm" style={{ backgroundColor: `hsl(${t.colors.primary})` }}></div>
@@ -9028,7 +9079,7 @@ function TableauDeBord({ role, currentUser }: { role: string, currentUser: User 
                   <DropdownMenuItem
                     key={t.id}
                     onClick={() => handleThemeChange(t.id)}
-                    className={`flex items-center justify-between rounded-lg px-2 py-2 cursor-pointer transition-colors ${currentThemeId === t.id ? 'bg-primary/10 text-primary' : 'hover:bg-accent'}`}
+                    className={`flex items-center justify-between rounded-none px-2 py-2 cursor-pointer transition-colors ${currentThemeId === t.id ? 'bg-primary/10 text-primary' : 'hover:bg-accent'}`}
                   >
                     <div className="flex items-center gap-3">
                       <div className="w-5 h-5 rounded-full border shadow-sm flex items-center justify-center overflow-hidden" style={{ backgroundColor: `hsl(${t.colors.background})` }}>

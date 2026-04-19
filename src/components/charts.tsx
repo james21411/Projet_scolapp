@@ -15,6 +15,11 @@ import {
   BarChart,
   Line,
   ComposedChart,
+  Radar,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
 } from "recharts";
 import { BarChart as BarChartIcon, PieChart as PieChartIcon } from "lucide-react";
 
@@ -157,4 +162,62 @@ export const StudentPieChart = ({ data }: { data: ChartData[] }) => {
       </ResponsiveContainer>
     </div>
   );
-}; 
+};
+
+export const InstitutionalRadarChart = ({ data }: { data: { subject: string; value: number; fullMark: number }[] }) => {
+  if (!data || !Array.isArray(data) || data.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-[250px] text-muted-foreground">
+        <div className="text-center">
+          <PieChartIcon className="h-8 w-8 mx-auto mb-2 opacity-50" />
+          <p>Aucune donnée disponible pour le graphique</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full h-[250px]">
+      <ResponsiveContainer width="100%" height="100%">
+        <RadarChart cx="50%" cy="50%" outerRadius="80%" data={data}>
+          <PolarGrid stroke="#E2E8F0" />
+          <PolarAngleAxis
+            dataKey="subject"
+            tick={{ fill: '#64748B', fontSize: 10, fontWeight: 600 }}
+          />
+          <PolarRadiusAxis
+            angle={30}
+            domain={[0, 100]}
+            tick={false}
+            axisLine={false}
+          />
+          <Radar
+            name="Performance"
+            dataKey="value"
+            stroke="#8B5CF6"
+            fill="#8B5CF6"
+            fillOpacity={0.6}
+          />
+          <Tooltip
+            content={({ active, payload }) => {
+              if (active && payload && payload.length) {
+                const item = payload[0].payload;
+                return (
+                  <div className="bg-white p-2 border border-slate-200 shadow-lg text-[10px] rounded-none max-w-[180px]">
+                    <p className="font-black text-slate-800 uppercase border-b border-slate-100 pb-1 mb-1">{item.subject}</p>
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-slate-500 italic">Score:</span>
+                      <span className="text-blue-600 font-black text-xs">{item.value}%</span>
+                    </div>
+                    <p className="text-slate-600 leading-tight">{item.description}</p>
+                  </div>
+                );
+              }
+              return null;
+            }}
+          />
+        </RadarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+};
