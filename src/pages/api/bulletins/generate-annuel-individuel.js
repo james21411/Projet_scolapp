@@ -69,9 +69,8 @@ export default async function handler(req, res) {
       WHERE studentId = ? AND schoolYear = ?
     `, [studentId, schoolYear]);
 
-    // 6. Récupérer les bulletins (pour les rangs généraux par séquence)
     const [reportCards] = await connection.query(`
-      SELECT evaluationPeriodId, \`rank\`, totalStudents, averageScore
+      SELECT evaluationPeriodId, studentRank, totalStudents, averageScore
       FROM report_cards
       WHERE studentId = ? AND schoolYear = ?
     `, [studentId, schoolYear]);
@@ -88,7 +87,7 @@ export default async function handler(req, res) {
 
     const sequenceRanks = {}; // periodId -> {rank, total}
     reportCards.forEach(rc => {
-      sequenceRanks[rc.evaluationPeriodId] = { rank: rc.rank, total: rc.totalStudents, avg: rc.averageScore };
+      sequenceRanks[rc.evaluationPeriodId] = { rank: rc.studentRank, total: rc.totalStudents, avg: rc.averageScore };
     });
 
     // Créer le PDF (En paysage pour faire tenir toutes les colonnes)

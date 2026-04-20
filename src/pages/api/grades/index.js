@@ -237,7 +237,7 @@ export default async function handler(req, res) {
           params.push(subjectId);
         }
 
-        if (evaluationPeriodId) {
+        if (evaluationPeriodId && evaluationPeriodId !== 'Annuel') {
           console.log('🔍 Filtrage par evaluationPeriodId:', evaluationPeriodId);
           query += ' AND g.evaluationPeriodId = ?';
           params.push(evaluationPeriodId);

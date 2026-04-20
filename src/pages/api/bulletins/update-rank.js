@@ -33,7 +33,7 @@ export default async function handler(req, res) {
       // Mettre à jour le bulletin existant
       await connection.query(`
         UPDATE report_cards 
-        SET \`rank\` = ?, totalStudents = ?, averageScore = ?, updatedAt = CURRENT_TIMESTAMP
+        SET studentRank = ?, totalStudents = ?, averageScore = ?, updatedAt = CURRENT_TIMESTAMP
         WHERE studentId = ? AND evaluationPeriodId = ? AND schoolYear = ?
       `, [rank, totalStudents, averageScore, studentId, evaluationPeriodId, schoolYear]);
 
@@ -45,7 +45,7 @@ export default async function handler(req, res) {
       await connection.query(`
         INSERT INTO report_cards (
           id, studentId, classId, schoolYear, evaluationPeriodId,
-          averageScore, totalCoefficient, \`rank\`, totalStudents,
+          averageScore, totalCoefficient, studentRank, totalStudents,
           teacherComments, principalComments, mention, issuedBy
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `, [

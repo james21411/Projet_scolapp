@@ -76,13 +76,13 @@ export default async function handler(req, res) {
 
             if (existing.length > 0) {
                 await connection.query(`
-          UPDATE report_cards SET \`rank\` = ?, totalStudents = ?, averageScore = ?
+          UPDATE report_cards SET studentRank = ?, totalStudents = ?, averageScore = ?
           WHERE id = ?
         `, [rank, totalStudents, s.average, existing[0].id]);
             } else {
                 const id = `rc-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
                 await connection.query(`
-          INSERT INTO report_cards (id, studentId, classId, evaluationPeriodId, schoolYear, \`rank\`, totalStudents, averageScore, mention)
+          INSERT INTO report_cards (id, studentId, classId, evaluationPeriodId, schoolYear, studentRank, totalStudents, averageScore, mention)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, [id, s.studentId, classId, evaluationPeriodId, schoolYear, rank, totalStudents, s.average, 'N/A']);
             }

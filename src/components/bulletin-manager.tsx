@@ -124,7 +124,7 @@ function ClassAdvancementView({
   advancementDecisions: Record<string, any>,
   setAdvancementDecisions: React.Dispatch<React.SetStateAction<Record<string, any>>>
 }) {
-  
+
   const [isLoading, setIsLoading] = React.useState(false);
   const currentClassName = classes.find(c => String(c.id) === String(currentClassId))?.name || '---';
   const availableClasses = classes.map(c => c.name);
@@ -138,33 +138,65 @@ function ClassAdvancementView({
       try {
         const response = await fetch(`/api/grades?classId=${encodeURIComponent(currentClassId)}&schoolYear=${schoolYear}`);
         const allGrades = await response.json();
+        console.log(`📦 DEBUG ANNUEL: ${allGrades.length} notes reçues`, allGrades.slice(0, 5));
 
-        // Calculate annual average for each student (weighted by coefficients)
-        const studentData: Record<string, { totalWeighted: number, totalCoef: number }> = {};
+        // Group grades by subject for each student
+        const studentGradesGrouped: Record<string, Record<string, { sum: number, count: number, coef: number }>> = {};
+
         allGrades.forEach((g: any) => {
-          if (!studentData[g.studentId]) studentData[g.studentId] = { totalWeighted: 0, totalCoef: 0 };
-          const coef = g.subjectCoefficient || g.coefficient || 1;
-          const normalized = g.maxScore > 0 ? (g.score / g.maxScore) * 20 : g.score;
-          studentData[g.studentId].totalWeighted += normalized * coef;
-          studentData[g.studentId].totalCoef += coef;
+          if (!studentGradesGrouped[g.studentId]) studentGradesGrouped[g.studentId] = {};
+          if (!studentGradesGrouped[g.studentId][g.subjectId]) {
+            studentGradesGrouped[g.studentId][g.subjectId] = {
+              sum: 0,
+              count: 0,
+              coef: parseFloat(String(g.subjectCoefficient || g.coefficient)) || 1
+            };
+          }
+
+          const score = parseFloat(String(g.score)) || 0;
+          const maxScore = parseFloat(String(g.maxScore)) || 20;
+          const normalized = maxScore > 0 ? (score / maxScore) * 20 : score;
+
+          // Only count if score > 0 (assuming 0 means not yet graded/empty)
+          // Actually, let's follow the bulletin logic: if it's in the grade table, it's a mark (even if 0)
+          studentGradesGrouped[g.studentId][g.subjectId].sum += normalized;
+          studentGradesGrouped[g.studentId][g.subjectId].count += 1;
         });
 
         const averages: Record<string, number> = {};
-        students.forEach(s => {
-          if (studentData[s.id] && studentData[s.id].totalCoef > 0) {
-            averages[s.id] = studentData[s.id].totalWeighted / studentData[s.id].totalCoef;
+        students.forEach(student => {
+          const subjectsData = studentGradesGrouped[student.id];
+          if (subjectsData) {
+            let totalWeighted = 0;
+            let totalCoef = 0;
+
+            Object.values(subjectsData).forEach(subj => {
+              const subjectAvg = subj.count > 0 ? subj.sum / subj.count : 0;
+              totalWeighted += subjectAvg * subj.coef;
+              totalCoef += subj.coef;
+            });
+
+            if (totalCoef > 0) {
+              averages[student.id] = totalWeighted / totalCoef;
+            }
           }
         });
         setAnnualAverages(averages);
 
-        // Set default decisions based on annual averages
-        const defaultDecisions: Record<string, { decision: 'pass' | 'repeat' | 'exclude', targetClass: string }> = {};
-        students.forEach(student => {
-          const avg = averages[student.id];
-          const decision = avg !== undefined && avg >= 10 ? 'pass' : 'repeat';
-          defaultDecisions[student.id] = { decision, targetClass: currentClassName };
+        console.log("📈 Moyennes annuelles calculées pour le conseil:", averages);
+
+        // Appliquer les décisions basées sur les moyennes
+        setAdvancementDecisions(prev => {
+          const newDecisions = { ...prev };
+          students.forEach(student => {
+            if (!newDecisions[student.id]) {
+              const avg = averages[student.id];
+              const decision = (typeof avg === 'number' && avg >= 10) ? 'pass' : 'repeat';
+              newDecisions[student.id] = { decision, targetClass: currentClassName };
+            }
+          });
+          return newDecisions;
         });
-        setAdvancementDecisions(defaultDecisions);
       } catch (err) {
         console.error(err);
       }
@@ -2198,12 +2230,15 @@ export default function BulletinManager({ schoolInfo }: { schoolInfo?: SchoolInf
         </div>
 
         <div className="flex items-center gap-2 px-2">
-          <div className="bg-blue-600 p-1.5 rounded-none">
-            <FileText className="h-4 w-4 text-white" />
-          </div>
-          <h2 className="text-sm font-black text-slate-800 uppercase tracking-tighter">
-            {currentView === 'bulletins' ? "Gestion des Bulletins & Saisie" : "Décisions de Fin d'Année"}
-          </h2>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowConfig(!showConfig)}
+            className="flex items-center gap-2 border-slate-300 bg-white text-slate-700 hover:bg-slate-50 rounded-none h-8 font-bold text-[10px]"
+          >
+            {showConfig ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+            <span>{showConfig ? "MASQUER LES SÉLECTEURS" : "AFFICHER LES SÉLECTEURS"}</span>
+          </Button>
         </div>
       </div>
 
@@ -2213,20 +2248,7 @@ export default function BulletinManager({ schoolInfo }: { schoolInfo?: SchoolInf
 
 
 
-          {/* En-tête avec bouton de réduction des filtres */}
-          <div className="flex justify-end items-center bg-white p-4 rounded-none border border-slate-200 shadow-sm mb-6">
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowConfig(!showConfig)}
-                className="flex items-center gap-2 border-slate-200 text-slate-600 hover:bg-slate-50 rounded-none"
-              >
-                {showConfig ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                <span className="hidden md:inline">{showConfig ? "Masquer les sélecteurs" : "Afficher les sélecteurs"}</span>
-              </Button>
-            </div>
-          </div>
+          {/* Espaceur supprimé car le bouton est maintenant dans l'en-tête */}
 
           {/* Sélecteurs */}
           {showConfig && (
@@ -2904,8 +2926,8 @@ export default function BulletinManager({ schoolInfo }: { schoolInfo?: SchoolInf
               classes={classes}
               currentClassId={selectedClass}
               schoolYear={schoolYear}
-            advancementDecisions={advancementDecisions}
-            setAdvancementDecisions={setAdvancementDecisions}
+              advancementDecisions={advancementDecisions}
+              setAdvancementDecisions={setAdvancementDecisions}
             />
           ) : (
             <div className="flex flex-col items-center justify-center py-20 bg-slate-50 border border-slate-200">

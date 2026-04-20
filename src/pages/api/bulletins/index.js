@@ -74,7 +74,7 @@ export default async function handler(req, res) {
         const insertQuery = `
           INSERT INTO report_cards (
             id, studentId, classId, schoolYear, evaluationPeriodId,
-            averageScore, totalCoefficient, rank, totalStudents,
+            averageScore, totalCoefficient, studentRank, totalStudents,
             teacherComments, principalComments, mention, issuedBy
           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
