@@ -142,7 +142,7 @@ function ClassAdvancementView({
       if (!advClassId || !advYear) return;
       setIsStudentsLoading(true);
       try {
-        const response = await fetch(`/api/students?classeId=${advClassId}&schoolYear=${advYear}`);
+        const response = await fetch(`/api/students?classId=${advClassId}&schoolYear=${advYear}`);
         const data = await response.json();
         setAdvStudents(Array.isArray(data) ? data : []);
       } catch (e) {
@@ -159,48 +159,65 @@ function ClassAdvancementView({
       if (!advClassId || !advYear || advStudents.length === 0) return;
       setIsAveragesLoading(true);
       try {
+        // 1. Récupérer les périodes d'évaluation pour identifier les séquences
+        const pResp = await fetch(`/api/evaluation-periods?schoolYear=${advYear}`);
+        const allPeriods = await pResp.json();
+        const sequences = allPeriods
+          .filter((p: any) => p.type === 'sequence')
+          .sort((a: any, b: any) => (a.order || 0) - (b.order || 0))
+          .slice(0, 6);
+
+        // 2. Récupérer toutes les notes de la classe
         const response = await fetch(`/api/grades?classId=${encodeURIComponent(advClassId)}&schoolYear=${advYear}`);
         const allGrades = await response.json();
-        console.log(`📦 DEBUG ANNUEL: ${allGrades.length} notes reçues`);
 
-        const studentGradesGrouped: Record<string, Record<string, { sum: number, count: number, coef: number }>> = {};
-
+        // 3. Organiser les notes par élève et sujet
+        const gMap: Record<string, Record<string, Record<string, number>>> = {};
         allGrades.forEach((g: any) => {
-          if (!studentGradesGrouped[g.studentId]) studentGradesGrouped[g.studentId] = {};
-          if (!studentGradesGrouped[g.studentId][g.subjectId]) {
-            studentGradesGrouped[g.studentId][g.subjectId] = {
-              sum: 0,
-              count: 0,
-              coef: parseFloat(String(g.subjectCoefficient || g.coefficient)) || 1
-            };
-          }
+          if (!gMap[g.studentId]) gMap[g.studentId] = {};
+          if (!gMap[g.studentId][g.subjectId]) gMap[g.studentId][g.subjectId] = {};
 
           const score = parseFloat(String(g.score)) || 0;
           const maxScore = parseFloat(String(g.maxScore)) || 20;
-          const normalized = maxScore > 0 ? (score / maxScore) * 20 : score;
-
-          studentGradesGrouped[g.studentId][g.subjectId].sum += normalized;
-          studentGradesGrouped[g.studentId][g.subjectId].count += 1;
+          gMap[g.studentId][g.subjectId][g.evaluationPeriodId] = (score / maxScore) * 20;
         });
 
-        const averages: Record<string, number> = {};
-        advStudents.forEach(student => {
-          const subjectsData = studentGradesGrouped[student.id];
-          if (subjectsData) {
-            let totalWeighted = 0;
-            let totalCoef = 0;
-
-            Object.values(subjectsData).forEach(subj => {
-              const subjectAvg = subj.count > 0 ? subj.sum / subj.count : 0;
-              totalWeighted += subjectAvg * subj.coef;
-              totalCoef += subj.coef;
-            });
-
-            if (totalCoef > 0) {
-              averages[student.id] = totalWeighted / totalCoef;
-            }
+        // 4. Récupérer les coefficients des matières (via les notes ou subjects)
+        const subjectsCache: Record<string, number> = {};
+        allGrades.forEach((g: any) => {
+          if (!subjectsCache[g.subjectId]) {
+            subjectsCache[g.subjectId] = parseFloat(String(g.subjectCoefficient || g.coefficient)) || 1;
           }
         });
+
+        // 5. Calculer la moyenne annuelle pour chaque élève (Logique Bulletin)
+        const averages: Record<string, number> = {};
+        advStudents.forEach(student => {
+          const sGrades = gMap[student.id] || {};
+          let totalWeighted = 0;
+          let totalCoef = 0;
+
+          Object.keys(subjectsCache).forEach(subId => {
+            let annualSubAvg = 0;
+            // 3 Trimestres (2 séquences chacun)
+            for (let t = 0; t < 3; t++) {
+              const s1Id = sequences[t * 2]?.id;
+              const s2Id = sequences[t * 2 + 1]?.id;
+              const n1 = s1Id ? (sGrades[subId]?.[s1Id] ?? 0) : 0;
+              const n2 = s2Id ? (sGrades[subId]?.[s2Id] ?? 0) : 0;
+              annualSubAvg += (n1 + n2) / 2;
+            }
+            annualSubAvg /= 3;
+            const coef = subjectsCache[subId];
+            totalWeighted += annualSubAvg * coef;
+            totalCoef += coef;
+          });
+
+          if (totalCoef > 0) {
+            averages[student.id] = totalWeighted / totalCoef;
+          }
+        });
+
         setAnnualAverages(averages);
 
         // Appliquer les décisions par défaut
