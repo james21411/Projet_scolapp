@@ -60,9 +60,7 @@ interface Grade {
   score: number;
   maxScore: number;
   coefficient: number;
-  schoolYear: string,
-  advancementDecisions: Record<string, any>,
-  setAdvancementDecisions: React.Dispatch<React.SetStateAction<Record<string, any>>>;
+  schoolYear: string;
   seq1?: number;
   seq2?: number;
   periodAverage?: number;
@@ -82,9 +80,7 @@ interface EvaluationPeriod {
   order: number;
   startDate: string;
   endDate: string;
-  schoolYear: string,
-  advancementDecisions: Record<string, any>,
-  setAdvancementDecisions: React.Dispatch<React.SetStateAction<Record<string, any>>>;
+  schoolYear: string;
   isActive?: boolean;
 }
 
@@ -92,13 +88,12 @@ interface Bulletin {
   id: string;
   studentId: string;
   classId: string;
-  schoolYear: string,
-  advancementDecisions: Record<string, any>,
-  setAdvancementDecisions: React.Dispatch<React.SetStateAction<Record<string, any>>>;
+  schoolYear: string;
   evaluationPeriodId: string;
   averageScore: number;
   totalCoefficient: number;
-  rank: number;
+  studentRank: number;
+  rank?: number; // Aliasing pour la compatibilité
   totalStudents: number;
   teacherComments: string;
   principalComments: string;
@@ -108,39 +103,66 @@ interface Bulletin {
 }
 
 
+
 // Sous-composant de vue pour le Passage de Classe
 function ClassAdvancementView({
-  students,
   classes,
-  currentClassId,
-  schoolYear,
+  availableLevels,
+  availableYears,
+  currentSchoolYear,
+  selectedClassId,
+  selectedLevel,
   advancementDecisions,
   setAdvancementDecisions
 }: {
-  students: any[],
-  classes: { id: string, name: string }[],
-  currentClassId: string,
-  schoolYear: string,
+  classes: { id: string, name: string, level?: string }[],
+  availableLevels: string[],
+  availableYears: string[],
+  currentSchoolYear: string,
+  selectedClassId: string,
+  selectedLevel: string,
   advancementDecisions: Record<string, any>,
   setAdvancementDecisions: React.Dispatch<React.SetStateAction<Record<string, any>>>
 }) {
+  const advYear = currentSchoolYear;
+  const advClassId = selectedClassId;
+  const [advStudents, setAdvStudents] = React.useState<any[]>([]);
 
   const [isLoading, setIsLoading] = React.useState(false);
-  const currentClassName = classes.find(c => String(c.id) === String(currentClassId))?.name || '---';
-  const availableClasses = classes.map(c => c.name);
+  const [isStudentsLoading, setIsStudentsLoading] = React.useState(false);
+  const currentClassName = classes.find(c => String(c.id) === String(advClassId))?.name || '---';
+  const availableClasses = Array.from(new Set(classes.map(c => c.name)));
 
   const [annualAverages, setAnnualAverages] = React.useState<Record<string, number>>({});
   const [isAveragesLoading, setIsAveragesLoading] = React.useState(false);
 
+  // Charger les élèves quand la classe change
+  React.useEffect(() => {
+    const fetchStudents = async () => {
+      if (!advClassId || !advYear) return;
+      setIsStudentsLoading(true);
+      try {
+        const response = await fetch(`/api/students?classeId=${advClassId}&schoolYear=${advYear}`);
+        const data = await response.json();
+        setAdvStudents(Array.isArray(data) ? data : []);
+      } catch (e) {
+        console.error(e);
+        toast.error("Erreur lors du chargement des élèves");
+      }
+      setIsStudentsLoading(false);
+    };
+    fetchStudents();
+  }, [advClassId, advYear]);
+
   React.useEffect(() => {
     const fetchAverages = async () => {
+      if (!advClassId || !advYear || advStudents.length === 0) return;
       setIsAveragesLoading(true);
       try {
-        const response = await fetch(`/api/grades?classId=${encodeURIComponent(currentClassId)}&schoolYear=${schoolYear}`);
+        const response = await fetch(`/api/grades?classId=${encodeURIComponent(advClassId)}&schoolYear=${advYear}`);
         const allGrades = await response.json();
-        console.log(`📦 DEBUG ANNUEL: ${allGrades.length} notes reçues`, allGrades.slice(0, 5));
+        console.log(`📦 DEBUG ANNUEL: ${allGrades.length} notes reçues`);
 
-        // Group grades by subject for each student
         const studentGradesGrouped: Record<string, Record<string, { sum: number, count: number, coef: number }>> = {};
 
         allGrades.forEach((g: any) => {
@@ -157,14 +179,12 @@ function ClassAdvancementView({
           const maxScore = parseFloat(String(g.maxScore)) || 20;
           const normalized = maxScore > 0 ? (score / maxScore) * 20 : score;
 
-          // Only count if score > 0 (assuming 0 means not yet graded/empty)
-          // Actually, let's follow the bulletin logic: if it's in the grade table, it's a mark (even if 0)
           studentGradesGrouped[g.studentId][g.subjectId].sum += normalized;
           studentGradesGrouped[g.studentId][g.subjectId].count += 1;
         });
 
         const averages: Record<string, number> = {};
-        students.forEach(student => {
+        advStudents.forEach(student => {
           const subjectsData = studentGradesGrouped[student.id];
           if (subjectsData) {
             let totalWeighted = 0;
@@ -183,12 +203,10 @@ function ClassAdvancementView({
         });
         setAnnualAverages(averages);
 
-        console.log("📈 Moyennes annuelles calculées pour le conseil:", averages);
-
-        // Appliquer les décisions basées sur les moyennes
+        // Appliquer les décisions par défaut
         setAdvancementDecisions(prev => {
           const newDecisions = { ...prev };
-          students.forEach(student => {
+          advStudents.forEach(student => {
             if (!newDecisions[student.id]) {
               const avg = averages[student.id];
               const decision = (typeof avg === 'number' && avg >= 10) ? 'pass' : 'repeat';
@@ -203,10 +221,8 @@ function ClassAdvancementView({
       setIsAveragesLoading(false);
     };
 
-    if (currentClassId && schoolYear) {
-      fetchAverages();
-    }
-  }, [students, currentClassId, schoolYear, currentClassName]);
+    fetchAverages();
+  }, [advStudents, advClassId, advYear, currentClassName]);
 
   const handleDecisionChange = (studentId: string, decision: 'pass' | 'repeat' | 'exclude') => {
     setAdvancementDecisions(prev => ({
@@ -224,7 +240,7 @@ function ClassAdvancementView({
 
   const handleProcess = async () => {
     setIsLoading(true);
-    const updates = students.map(student => {
+    const updates = advStudents.map(student => {
       const decisionInfo = advancementDecisions[student.id];
       return {
         studentId: student.id,
@@ -242,16 +258,53 @@ function ClassAdvancementView({
     setIsLoading(false);
   };
 
+  const generateAllAnnualBulletins = async () => {
+    if (!advClassId || advStudents.length === 0) return;
+    try {
+      setIsLoading(true);
+      toast.info("Génération de tous les bulletins annuels en cours...");
+
+      const response = await fetch('/api/bulletins/generate-annuel-all', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          classId: advClassId,
+          schoolYear: advYear,
+          decisions: advancementDecisions // Envoyer toutes les décisions
+        })
+      });
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Bulletins_Annuels_${currentClassName}_${advYear}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        toast.success("Tous les bulletins annuels ont été générés !");
+      } else {
+        toast.error("Erreur lors de la génération groupée.");
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error("Erreur de connexion.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const printAnnualBulletin = async (student: any) => {
     try {
       toast.info(`Génération du bulletin annuel pour ${student.nom}...`);
-      const response = await fetch('/api/bulletins/generate-annuel-individuel', {
+      const response = await fetch('/api/bulletins/generate-annuel-officiel', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           studentId: student.id,
-          classId: currentClassId,
-          schoolYear: schoolYear,
+          classId: advClassId,
+          schoolYear: advYear,
           decision: advancementDecisions[student.id]?.decision || 'repeat',
           targetClass: advancementDecisions[student.id]?.targetClass || currentClassName
         })
@@ -277,93 +330,114 @@ function ClassAdvancementView({
   };
 
   return (
-    <div className="border border-slate-200 bg-white rounded-none shadow-sm">
-      <div className="p-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-bold text-slate-800">Décision du Conseil de Classe</h2>
-          <p className="text-xs text-slate-500 mt-1">Évaluez la moyenne agrégée de chaque étudiant pour définir son passage en classe supérieure ou son redoublement.</p>
+    <div className="space-y-4">
+      {/* Sélecteurs locaux supprimés car maintenant globaux */}
+
+      <div className="border border-slate-200 bg-white rounded-none shadow-sm">
+        <div className="p-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-slate-800 uppercase tracking-tight">Conseil de Classe : Décisions de Fin d'Année</h2>
+            <p className="text-[11px] text-slate-500 mt-0.5">Validation des passages en classe supérieure, redoublements et exclusions.</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={generateAllAnnualBulletins}
+              disabled={isLoading || advStudents.length === 0}
+              variant="outline"
+              className="border-green-600 text-green-600 hover:bg-green-50 rounded-none h-9 px-4 font-bold flex items-center gap-2"
+            >
+              {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+              Générer Tout
+            </Button>
+            <Button
+              onClick={handleProcess}
+              disabled={isLoading || advStudents.length === 0}
+              className="bg-blue-600 hover:bg-blue-700 text-white rounded-none shadow-sm flex items-center gap-2 h-9 px-6 font-bold"
+            >
+              {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+              Valider les Passages
+            </Button>
+          </div>
         </div>
-        <Button
-          onClick={handleProcess}
-          disabled={isLoading || students.length === 0}
-          className="bg-blue-600 hover:bg-blue-700 text-white rounded-none shadow-sm flex items-center gap-2"
-        >
-          {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
-          Valider les Passages
-        </Button>
-      </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-[11px]">
-          <thead className="bg-slate-100 text-slate-700 uppercase font-bold border-b border-slate-200">
-            <tr>
-              <th className="px-4 py-3 border-r border-slate-200">Élève</th>
-              <th className="px-4 py-3 border-r border-slate-200 text-center w-32">Moy. Agg</th>
-              <th className="px-4 py-3 border-r border-slate-200 text-center w-40">Décision</th>
-              <th className="px-4 py-3 text-center w-56">Classe Suivante (Si admis)</th>
-              <th className="px-4 py-3 text-center w-24">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {students.length === 0 ? (
-              <tr><td colSpan={4} className="p-6 text-center text-slate-500 font-medium text-sm">Veuillez sélectionner une classe active avec des élèves évalués.</td></tr>
-            ) : null}
-            {students.map(student => {
-              const avg = annualAverages[student.id];
-              const decision = advancementDecisions[student.id]?.decision || 'repeat';
-              const targetClass = advancementDecisions[student.id]?.targetClass || currentClassName;
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-[11px] border-collapse">
+            <thead className="bg-slate-100 text-slate-700 uppercase font-bold border-b border-slate-200">
+              <tr className="divide-x divide-slate-200">
+                <th className="px-4 py-3">Élève</th>
+                <th className="px-4 py-3 text-center w-32">Moy. Agg</th>
+                <th className="px-4 py-3 text-center w-48">Décision</th>
+                <th className="px-4 py-3 text-center w-64">Classe Suivante (Si admis)</th>
+                <th className="px-4 py-3 text-center w-28">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 italic-rows:bg-slate-50">
+              {isStudentsLoading && (
+                <tr><td colSpan={5} className="p-8 text-center text-slate-500 font-medium text-sm"><Loader2 className="h-4 w-4 animate-spin mx-auto mb-2" /> Chargement des élèves...</td></tr>
+              )}
+              {!isStudentsLoading && advStudents.length === 0 && advClassId && (
+                <tr><td colSpan={5} className="p-8 text-center text-slate-500 font-medium text-sm">Aucun élève trouvé dans cette classe pour l'année sélectionnée.</td></tr>
+              )}
+              {!isStudentsLoading && !advClassId && (
+                <tr><td colSpan={5} className="p-8 text-center text-slate-500 font-medium text-sm">Veuillez sélectionner une classe pour afficher le conseil.</td></tr>
+              )}
+              {advStudents.map(student => {
+                const avg = annualAverages[student.id];
+                const decision = advancementDecisions[student.id]?.decision || 'repeat';
+                const targetClass = advancementDecisions[student.id]?.targetClass || currentClassName;
 
-              return (
-                <tr key={student.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-4 py-2 border-r border-slate-200">
-                    <div className="font-bold text-slate-800">{student.nom} {student.prenom}</div>
-                    <div className="text-[10px] text-slate-500 font-mono mt-0.5">{student.id}</div>
-                  </td>
-                  <td className="px-4 py-2 border-r border-slate-200 text-center font-bold">
-                    <span className={avg && avg >= 10 ? 'text-green-600' : 'text-red-500'}>
-                      {typeof avg === 'number' ? `${avg.toFixed(2)}/20` : '---'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2 border-r border-slate-200 text-center">
-                    <Select value={decision} onValueChange={(val: any) => handleDecisionChange(student.id, val)}>
-                      <SelectTrigger className="w-full h-8 rounded-none text-[10px] font-bold">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="rounded-none">
-                        <SelectItem value="pass" className="text-green-600 font-bold">A ADMIS(E)</SelectItem>
-                        <SelectItem value="repeat" className="text-red-500 font-bold">A REDOUBLER</SelectItem>
-                        <SelectItem value="exclude" className="text-slate-500 font-bold">EXCLURE</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </td>
-                  <td className="px-4 py-2 text-center">
-                    <Select disabled={decision !== 'pass'} value={targetClass} onValueChange={(val: any) => handleTargetClassChange(student.id, val)}>
-                      <SelectTrigger className="w-full h-8 rounded-none text-[10px] font-medium bg-white">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="rounded-none">
-                        {availableClasses.map((ac, i) => (
-                          <SelectItem key={i} value={ac}>{ac}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </td>
-                  <td className="px-4 py-2 text-center">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => printAnnualBulletin(student)}
-                      className="h-8 w-8 p-0 rounded-none border-blue-200 hover:bg-blue-50 text-blue-600"
-                      title="Imprimer Bulletin Annuel"
-                    >
-                      <Printer className="h-4 w-4" />
-                    </Button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                return (
+                  <tr key={student.id} className="hover:bg-slate-50 transition-colors">
+                    <td className="px-4 py-2 border-r border-slate-200">
+                      <div className="font-bold text-slate-800">{student.nom} {student.prenom}</div>
+                      <div className="text-[10px] text-slate-500 font-mono mt-0.5">{student.id}</div>
+                    </td>
+                    <td className="px-4 py-2 border-r border-slate-200 text-center font-bold">
+                      <span className={avg && avg >= 10 ? 'text-green-600' : 'text-red-500'}>
+                        {typeof avg === 'number' ? `${avg.toFixed(2)}/20` : '---'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2 border-r border-slate-200 text-center">
+                      <Select value={decision} onValueChange={(val: any) => handleDecisionChange(student.id, val)}>
+                        <SelectTrigger className="w-full h-8 rounded-none text-[10px] font-bold">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-none">
+                          <SelectItem value="pass" className="text-green-600 font-bold">A ADMIS(E)</SelectItem>
+                          <SelectItem value="repeat" className="text-red-500 font-bold">A REDOUBLER</SelectItem>
+                          <SelectItem value="exclude" className="text-slate-500 font-bold">EXCLURE</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </td>
+                    <td className="px-4 py-2 text-center">
+                      <Select disabled={decision !== 'pass'} value={targetClass} onValueChange={(val: any) => handleTargetClassChange(student.id, val)}>
+                        <SelectTrigger className="w-full h-8 rounded-none text-[10px] font-medium bg-white">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-none">
+                          {availableClasses.map((ac, i) => (
+                            <SelectItem key={i} value={ac}>{ac}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </td>
+                    <td className="px-4 py-2 text-center">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => printAnnualBulletin(student)}
+                        className="h-8 w-8 p-0 rounded-none border-blue-200 hover:bg-blue-50 text-blue-600"
+                        title="Imprimer Bulletin Annuel"
+                      >
+                        <Printer className="h-4 w-4" />
+                      </Button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
@@ -427,14 +501,14 @@ export default function BulletinManager({ schoolInfo }: { schoolInfo?: SchoolInf
   const [grades, setGrades] = useState<GradesByStudent>({});
   const [advancementDecisions, setAdvancementDecisions] = useState<Record<string, { decision: 'pass' | 'repeat' | 'exclude', targetClass: string }>>({});
   const [bulletins, setBulletins] = useState<Bulletin[]>([]);
-  const [classes, setClasses] = useState<{ id: string, name: string }[]>([]);
+  const [classes, setClasses] = useState<{ id: string, name: string, level?: string }[]>([]);
   const [availableLevels, setAvailableLevels] = useState<string[]>([]);
   const [levelsData, setLevelsData] = useState<any[]>([]);
 
   // État pour stocker les vrais rangs calculés
   const [calculatedRanks, setCalculatedRanks] = useState<{
     [studentId: string]: {
-      rank: number;
+      rank: number | string;
       totalStudents: number;
       average: number;
       totalWeighted: number;
@@ -670,7 +744,7 @@ export default function BulletinManager({ schoolInfo }: { schoolInfo?: SchoolInf
           const selectedLevelData = levelsData.find((level: any) => level.name === selectedLevel);
 
           if (selectedLevelData) {
-            const levelClasses = selectedLevelData.classes.map((cls: any) => ({ id: cls.id, name: cls.name }));
+            const levelClasses = selectedLevelData.classes.map((cls: any) => ({ id: cls.id, name: cls.name, level: selectedLevel }));
             setClasses(levelClasses);
             console.log(`✅ Classes chargées pour le niveau ${selectedLevel}:`, levelClasses);
 
@@ -2242,161 +2316,153 @@ export default function BulletinManager({ schoolInfo }: { schoolInfo?: SchoolInf
         </div>
       </div>
 
-      {currentView === 'bulletins' ? (
-        <div className="space-y-6 mt-0">
+      {/* Sélecteurs Communs (Année, Niveau, Classe) */}
+      {showConfig && (
+        <Card className="rounded-none border-slate-200 shadow-sm">
+          <CardHeader className="pb-2 border-b border-slate-100 bg-slate-50/50">
+            <CardTitle className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+              <Filter className="h-4 w-4 text-blue-600" />
+              SÉLECTION DU PÉRIMÈTRE
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4 px-4 pb-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="space-y-1.5">
+                <Label className="text-[11px] font-bold text-slate-500 uppercase">Année Scolaire</Label>
+                <SchoolYearSelect
+                  value={schoolYear}
+                  onValueChange={setSchoolYear}
+                  availableYears={availableYears}
+                  currentSchoolYear={currentSchoolYear}
+                  placeholder="Sélectionner l'année scolaire"
+                  className="w-full rounded-none h-9 border-slate-300"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[11px] font-bold text-slate-500 uppercase">Niveau</Label>
+                <Select value={selectedLevel} onValueChange={(value) => {
+                  setSelectedLevel(value);
+                  setSelectedClass(''); // Réinitialiser la classe sélectionnée
+                }}>
+                  <SelectTrigger className="rounded-none h-9 border-slate-300">
+                    <SelectValue placeholder="Sélectionner un niveau" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-none">
+                    {availableLevels.map((level) => (
+                      <SelectItem key={level} value={level}>
+                        {level}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[11px] font-bold text-slate-500 uppercase">Classe</Label>
+                <Select value={selectedClass} onValueChange={setSelectedClass} disabled={!selectedLevel}>
+                  <SelectTrigger className="rounded-none h-9 border-slate-300">
+                    <SelectValue placeholder={selectedLevel ? "Sélectionner une classe" : "---"} />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-none">
+                    {classes
+                      .filter((c) => !selectedLevel || c.level === selectedLevel)
+                      .map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-
-
-
-          {/* Espaceur supprimé car le bouton est maintenant dans l'en-tête */}
-
-          {/* Sélecteurs */}
-          {showConfig && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Configuration</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div className="space-y-1.5">
-                    <Label className="text-[11px] font-bold text-slate-500 uppercase">Année Scolaire</Label>
-                    <SchoolYearSelect
-                      value={schoolYear}
-                      onValueChange={setSchoolYear}
-                      availableYears={availableYears}
-                      currentSchoolYear={currentSchoolYear}
-                      placeholder="Sélectionner l'année scolaire"
-                      className="w-full rounded-none h-9 border-slate-300"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-[11px] font-bold text-slate-500 uppercase">Niveau</Label>
-                    <Select value={selectedLevel} onValueChange={(value) => {
-                      setSelectedLevel(value);
-                      setSelectedClass(''); // Réinitialiser la classe sélectionnée
-                    }}>
-                      <SelectTrigger className="rounded-none h-9 border-slate-300">
-                        <SelectValue placeholder="Sélectionner un niveau" />
+              {currentView === 'bulletins' ? (
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] font-bold text-slate-500 uppercase">Période d'Évaluation</Label>
+                  <div className="flex gap-2">
+                    <Select value={selectedPeriod} onValueChange={setSelectedPeriod} disabled={!selectedClass}>
+                      <SelectTrigger className="w-full rounded-none h-9 border-slate-300">
+                        <SelectValue placeholder={selectedClass ? "Période..." : "---"} />
                       </SelectTrigger>
                       <SelectContent className="rounded-none">
-                        {availableLevels.map((level) => (
-                          <SelectItem key={level} value={level}>
-                            {level}
-                          </SelectItem>
-                        ))}
+                        {(() => {
+                          const sequences = evaluationPeriods.filter(p => !p.name.toLowerCase().includes('trim'));
+                          const trimesters = evaluationPeriods.filter(p => p.name.toLowerCase().includes('trim'));
+                          const others = evaluationPeriods.filter(p => !sequences.includes(p) && !trimesters.includes(p));
+
+                          return (
+                            <>
+                              {sequences.length > 0 && (
+                                <>
+                                  <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground bg-muted/50">
+                                    📝 Séquences
+                                  </div>
+                                  {sequences.map((period) => (
+                                    <SelectItem key={period.id} value={period.id}>
+                                      {period.name}
+                                    </SelectItem>
+                                  ))}
+                                </>
+                              )}
+
+                              {trimesters.length > 0 && (
+                                <>
+                                  <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground bg-muted/50">
+                                    📊 Trimestres
+                                  </div>
+                                  {trimesters.map((period) => (
+                                    <SelectItem key={period.id} value={period.id}>
+                                      {period.name}
+                                    </SelectItem>
+                                  ))}
+                                </>
+                              )}
+
+                              {others.length > 0 && (
+                                <>
+                                  <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground bg-muted/50">
+                                    📅 Autres Périodes
+                                  </div>
+                                  {others.map((period) => (
+                                    <SelectItem key={period.id} value={period.id}>
+                                      {period.name}
+                                    </SelectItem>
+                                  ))}
+                                </>
+                              )}
+                            </>
+                          );
+                        })()}
                       </SelectContent>
                     </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-[11px] font-bold text-slate-500 uppercase">Classe</Label>
-                    <Select value={selectedClass} onValueChange={setSelectedClass} disabled={!selectedLevel}>
-                      <SelectTrigger className="rounded-none h-9 border-slate-300">
-                        <SelectValue placeholder={selectedLevel ? "Sélectionner une classe" : "---"} />
-                      </SelectTrigger>
-                      <SelectContent className="rounded-none">
-                        {classes.map((cls) => (
-                          <SelectItem key={cls.id} value={cls.id}>
-                            {cls.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-[11px] font-bold text-slate-500 uppercase">Période d'Évaluation</Label>
-                    <div className="flex gap-2">
-                      <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
-                        <SelectTrigger className="rounded-none h-9 border-slate-300">
-                          <SelectValue placeholder="Sélectionner..." />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-none">
-                          {/* Grouper les périodes par type */}
-                          {(() => {
-                            const sequences = evaluationPeriods.filter(p =>
-                              p.name.toLowerCase().includes('seq') || p.name.toLowerCase().includes('séquence')
-                            );
-                            const trimesters = evaluationPeriods.filter(p =>
-                              p.name.toLowerCase().includes('trim')
-                            );
-                            const others = evaluationPeriods.filter(p =>
-                              !p.name.toLowerCase().includes('seq') &&
-                              !p.name.toLowerCase().includes('séquence') &&
-                              !p.name.toLowerCase().includes('trim')
-                            );
-
-                            return (
-                              <>
-                                {/* Séquences */}
-                                {sequences.length > 0 && (
-                                  <>
-                                    <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground bg-muted/50">
-                                      📚 Séquences
-                                    </div>
-                                    {sequences.map((period) => (
-                                      <SelectItem key={period.id} value={period.id}>
-                                        {period.name}
-                                      </SelectItem>
-                                    ))}
-                                  </>
-                                )}
-
-                                {/* Trimestres */}
-                                {trimesters.length > 0 && (
-                                  <>
-                                    <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground bg-muted/50">
-                                      📊 Trimestres
-                                    </div>
-                                    {trimesters.map((period) => (
-                                      <SelectItem key={period.id} value={period.id}>
-                                        {period.name}
-                                      </SelectItem>
-                                    ))}
-                                  </>
-                                )}
-
-                                {/* Autres périodes */}
-                                {others.length > 0 && (
-                                  <>
-                                    <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground bg-muted/50">
-                                      📅 Autres Périodes
-                                    </div>
-                                    {others.map((period) => (
-                                      <SelectItem key={period.id} value={period.id}>
-                                        {period.name}
-                                      </SelectItem>
-                                    ))}
-                                  </>
-                                )}
-                              </>
-                            );
-                          })()}
-                        </SelectContent>
-                      </Select>
-
-                      <Button
-                        onClick={async () => {
-                          await reloadAllDataWithRanks();
-                          if (!selectedPeriod?.toLowerCase().includes('trim')) {
-                            calculateTrueRanks();
-                          }
-                        }}
-                        variant="default"
-                        disabled={!selectedClass || !selectedPeriod}
-                        className="bg-blue-600 hover:bg-blue-700 text-white rounded-none h-9 px-6 font-bold shadow-sm"
-                      >
-                        Charger
-                      </Button>
-                    </div>
+                    <Button
+                      onClick={async () => {
+                        await reloadAllDataWithRanks();
+                        if (!selectedPeriod?.toLowerCase().includes('trim')) {
+                          calculateTrueRanks();
+                        }
+                      }}
+                      variant="default"
+                      disabled={!selectedClass || !selectedPeriod}
+                      className="bg-blue-600 hover:bg-blue-700 text-white rounded-none h-9 px-4 font-bold shadow-sm"
+                    >
+                      OK
+                    </Button>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              ) : (
+                <div className="flex items-end pb-0.5">
+                  <div className="bg-blue-50 border border-blue-100 p-2 text-[10px] text-blue-700 font-medium w-full text-center">
+                    Mode Annuel Activé
+                  </div>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
-
-
-
-          )}
-
+      {/* Contenu principal selon la vue */}
+      {currentView === 'bulletins' ? (
+        <div className="space-y-6 mt-0">
           {/* Liste des élèves */}
           {selectedClass && selectedPeriod && selectedLevel ? (
             <Card>
@@ -2838,7 +2904,7 @@ export default function BulletinManager({ schoolInfo }: { schoolInfo?: SchoolInf
                                 )}
 
                                 <div className="col-span-1 px-2 py-1.5 text-center font-bold text-green-600">
-                                  {rankData.rank !== 'N/A' ? `${rankData.rank}` : '-'}
+                                  {rankData.rank && rankData.rank !== 'N/A' ? String(rankData.rank) : '-'}
                                 </div>
                               </div>
                             );
@@ -2922,10 +2988,12 @@ export default function BulletinManager({ schoolInfo }: { schoolInfo?: SchoolInf
 
           {selectedClass ? (
             <ClassAdvancementView
-              students={students}
               classes={classes}
-              currentClassId={selectedClass}
-              schoolYear={schoolYear}
+              availableLevels={availableLevels}
+              availableYears={availableYears}
+              currentSchoolYear={schoolYear}
+              selectedClassId={selectedClass}
+              selectedLevel={selectedLevel}
               advancementDecisions={advancementDecisions}
               setAdvancementDecisions={setAdvancementDecisions}
             />
@@ -2935,6 +3003,7 @@ export default function BulletinManager({ schoolInfo }: { schoolInfo?: SchoolInf
               <p className="text-slate-500 font-medium">Veuillez d'abord sélectionner une classe pour accéder au Conseil de Classe.</p>
             </div>
           )}
+
         </div>
       )}
     </div>
