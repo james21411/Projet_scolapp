@@ -2,14 +2,17 @@ import { getPoolFromRequest } from '@/lib/pool-from-request';
 
 export default async function handler(req, res) {
   if (req.method === 'POST') {
-    // Sauvegarder les commentaires
+    let connection;
     try {
       const { studentId, evaluationPeriodId, schoolYear, teacherComments, principalComments, classId, issuedBy } = req.body;
 
       if (!studentId || !evaluationPeriodId || !schoolYear || !classId || !issuedBy) {
         return res.status(400).json({ error: 'Paramètres manquants: studentId, evaluationPeriodId, schoolYear, classId, issuedBy' });
       }
-      const connection = pool;
+
+      const pool = await getPoolFromRequest(req, res);
+      connection = await pool.getConnection();
+
       // Vérifier si un bulletin existe déjà
       const [existingBulletins] = await connection.query(
         'SELECT id FROM report_cards WHERE studentId = ? AND evaluationPeriodId = ? AND schoolYear = ?',
@@ -34,30 +37,41 @@ export default async function handler(req, res) {
           ) VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
           [bulletinId, studentId, classId, evaluationPeriodId, schoolYear, teacherComments, principalComments, issuedBy]
         );
-      } return res.status(200).json({
+      }
+
+      connection.release();
+      return res.status(200).json({
         message: 'Commentaires sauvegardés avec succès'
       });
 
     } catch (error) {
       console.error('Erreur API bulletins/comments POST:', error);
+      if (connection) connection.release();
       return res.status(500).json({
         error: 'Erreur serveur interne',
         details: error.message
       });
     }
   } else if (req.method === 'GET') {
-    // Récupérer les commentaires
+    let connection;
     try {
       const { studentId, evaluationPeriodId, schoolYear } = req.query;
 
       if (!studentId || !evaluationPeriodId || !schoolYear) {
         return res.status(400).json({ error: 'Paramètres manquants: studentId, evaluationPeriodId, schoolYear' });
       }
-      const connection = pool;
+
+      const pool = await getPoolFromRequest(req, res);
+      connection = await pool.getConnection();
+
       const [comments] = await connection.query(
         'SELECT teacherComments, principalComments FROM report_cards WHERE studentId = ? AND evaluationPeriodId = ? AND schoolYear = ?',
         [studentId, evaluationPeriodId, schoolYear]
-      ); if (comments.length > 0) {
+      );
+
+      connection.release();
+
+      if (comments.length > 0) {
         return res.status(200).json(comments[0]);
       } else {
         return res.status(200).json({ teacherComments: '', principalComments: '' });
@@ -65,6 +79,7 @@ export default async function handler(req, res) {
 
     } catch (error) {
       console.error('Erreur API bulletins/comments GET:', error);
+      if (connection) connection.release();
       return res.status(500).json({
         error: 'Erreur serveur interne',
         details: error.message
@@ -75,3 +90,4 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: `Method ${req.method} Not Allowed` });
   }
 }
+

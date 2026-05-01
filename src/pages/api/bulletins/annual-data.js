@@ -13,8 +13,8 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Paramètres manquants' });
     }
 
-    console.log('🚀 === RÉCUPÉRATION DONNÉES ANNUELLES ===');
-    console.log(`👤 Élève: ${studentId}, Classe: ${classId}, Année: ${schoolYear}`);
+    console.log(' === RÉCUPÉRATION DONNÉES ANNUELLES ===');
+    console.log(` Élève: ${studentId}, Classe: ${classId}, Année: ${schoolYear}`);
 
     // Récupérer les moyennes des 3 trimestres
     const [trimesterResults] = await pool.query(`
@@ -33,7 +33,7 @@ export default async function handler(req, res) {
       ORDER BY ep.name
     `, [studentId, schoolYear]);
 
-    console.log(`📊 Résultats trimestres trouvés:`, trimesterResults);
+    console.log(` Résultats trimestres trouvés:`, trimesterResults);
 
     if (trimesterResults.length < 3) {
       return res.status(400).json({
@@ -71,10 +71,9 @@ export default async function handler(req, res) {
       annualAverage: Math.round(annualAverage * 100) / 100,
       finalDecision,
       trimesterAverages
-    });
 
   } catch (error) {
-    console.error('❌ Erreur lors de la récupération des données annuelles:', error);
+    console.error(' ❌ Erreur lors de la récupération des données annuelles:', error);
     return res.status(500).json({
       error: 'Erreur lors de la récupération des données annuelles',
       details: error.message

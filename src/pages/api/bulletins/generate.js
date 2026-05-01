@@ -129,18 +129,24 @@ export default async function handler(req, res) {
     res.setHeader('Content-Disposition', `attachment; filename="Bulletin_${student.nom}_${evaluationPeriodId}.pdf"`);
     doc.pipe(res);
 
-    // Header
+    // Header Dynamique
+    const isBasicParams = student.niveau && (student.niveau.toLowerCase().includes('primaire') || student.niveau.toLowerCase().includes('maternelle') || student.niveau.toLowerCase().includes('sil') || student.niveau.toLowerCase().includes('cp'));
+    const ministryFrench = isBasicParams ? "MINISTÈRE DE L'ÉDUCATION DE BASE" : "MINISTÈRE DE L'ENSEIGNEMENT SECONDAIRE";
+    const ministryEnglish = isBasicParams ? "MINISTRY OF BASIC EDUCATION" : "MINISTRY OF SECONDARY EDUCATION";
+    const schoolTypeFrench = isBasicParams ? "ÉCOLE DE BASE" : "ÉCOLE SECONDAIRE";
+    const schoolTypeEnglish = isBasicParams ? "BASIC SCHOOL" : "SECONDARY SCHOOL";
+
     doc.fontSize(9).font('Helvetica-Bold').fillColor('#1e40af').text('RÉPUBLIQUE DU CAMEROUN', 10, 10);
     doc.fontSize(7).fillColor('#374151').text('Paix - Travail - Patrie', 10, 20);
-    doc.fontSize(8).font('Helvetica-Bold').fillColor('#1e40af').text('MINISTÈRE DE L\'ENSEIGNEMENT SECONDAIRE', 10, 30);
-    doc.fontSize(7).fillColor('#374151').text('ÉCOLE SECONDAIRE', 10, 40);
+    doc.fontSize(8).font('Helvetica-Bold').fillColor('#1e40af').text(ministryFrench, 10, 30);
+    doc.fontSize(7).fillColor('#374151').text(schoolTypeFrench, 10, 40);
     doc.text(`BP: ${schoolInfo.address ? schoolInfo.address.split(',')[0] : 'Yaoundé'}`, 10, 50);
     doc.text(`e-mail: ${schoolInfo.email || 'contact@ecole.cm'}`, 10, 60);
 
     doc.fontSize(9).font('Helvetica-Bold').fillColor('#1e40af').text('REPUBLIC OF CAMEROON', 370, 10, { align: 'right', width: 220 });
     doc.fontSize(7).fillColor('#374151').text('Peace - Work - Fatherland', 370, 20, { align: 'right', width: 220 });
-    doc.fontSize(8).font('Helvetica-Bold').fillColor('#1e40af').text('MINISTRY OF SECONDARY EDUCATION', 370, 30, { align: 'right', width: 220 });
-    doc.fontSize(7).fillColor('#374151').text('SECONDARY SCHOOL', 370, 40, { align: 'right', width: 220 });
+    doc.fontSize(8).font('Helvetica-Bold').fillColor('#1e40af').text(ministryEnglish, 370, 30, { align: 'right', width: 220 });
+    doc.fontSize(7).fillColor('#374151').text(schoolTypeEnglish, 370, 40, { align: 'right', width: 220 });
     doc.text(`P.O BOX ${schoolInfo.address ? schoolInfo.address.split(',')[0] : 'Yaoundé'}`, 370, 50, { align: 'right', width: 220 });
     doc.text(`e-mail: ${schoolInfo.email || 'contact@ecole.cm'}`, 370, 60, { align: 'right', width: 220 });
 
@@ -180,11 +186,11 @@ export default async function handler(req, res) {
     doc.rect(15, y, 565, 15).fill('#f3f4f6');
     doc.fontSize(7).font('Helvetica-Bold').fillColor('#000000');
     doc.text('Matière', 20, y + 4);
-    doc.text('Note/20', 250, y + 4, { width: 50, align: 'center' });
-    doc.text('Coef', 310, y + 4, { width: 40, align: 'center' });
-    doc.text('Total', 360, y + 4, { width: 50, align: 'center' });
-    doc.text('Rang', 420, y + 4, { width: 50, align: 'center' });
-    doc.text('Appréciation', 480, y + 4, { width: 95, align: 'center' });
+    doc.text('Note/20', 160, y + 4, { width: 40, align: 'center' });
+    doc.text('Coef', 210, y + 4, { width: 30, align: 'center' });
+    doc.text('Total', 240, y + 4, { width: 45, align: 'center' });
+    doc.text('Rang', 290, y + 4, { width: 45, align: 'center' });
+    doc.text('Appréciation', 340, y + 4, { width: 240, align: 'left' });
     y += 15;
 
     const cats = [...new Set(classSubjects.map(s => s.category))];
@@ -194,12 +200,12 @@ export default async function handler(req, res) {
         const score = subjectStudentAverages[sub.subjectId][studentId];
         if (idx % 2 === 0) doc.rect(15, y, 565, 14).fill('#f9fafb');
         doc.fontSize(7).font('Helvetica').fillColor('#374151');
-        doc.text(sub.name, 25, y + 3, { width: 220 });
-        doc.font('Helvetica-Bold').text(score.toFixed(2), 250, y + 3, { width: 50, align: 'center' });
-        doc.font('Helvetica').text(sub.coefficient, 310, y + 3, { width: 40, align: 'center' });
-        doc.text((score * sub.coefficient).toFixed(2), 360, y + 3, { width: 50, align: 'center' });
-        doc.text(formatRank(subjectRanks[sub.subjectId]), 420, y + 3, { width: 50, align: 'center' });
-        doc.text(getSubjectMention(score), 480, y + 3, { width: 95, align: 'center' });
+        doc.text(sub.name, 25, y + 3, { width: 130 });
+        doc.font('Helvetica-Bold').text(score.toFixed(2), 160, y + 3, { width: 40, align: 'center' });
+        doc.font('Helvetica').text(sub.coefficient, 210, y + 3, { width: 30, align: 'center' });
+        doc.text((score * sub.coefficient).toFixed(2), 240, y + 3, { width: 45, align: 'center' });
+        doc.text(formatRank(subjectRanks[sub.subjectId]), 290, y + 3, { width: 45, align: 'center' });
+        doc.text(getSubjectMention(score), 340, y + 3, { width: 240, align: 'left' });
         y += 14;
       });
     });
@@ -221,10 +227,11 @@ export default async function handler(req, res) {
     }
 
     const signY = 740;
-    doc.fontSize(8).font('Helvetica-Bold').fillColor('#374151');
-    doc.text('Le Titulaire', 40, signY); doc.rect(40, signY + 12, 110, 35).stroke('#e2e8f0', 1);
-    doc.text('Le Parent', 250, signY); doc.rect(250, signY + 12, 110, 35).stroke('#e2e8f0', 1);
-    doc.text('Le Principal', 450, signY); doc.rect(450, signY + 12, 110, 35).stroke('#e2e8f0', 1);
+    doc.moveTo(15, signY - 5).lineTo(580, signY - 5).stroke('#e5e7eb', 1);
+    doc.fontSize(8).font('Helvetica-Bold').fillColor('#1e293b');
+    doc.text('Le Titulaire / Class Teacher', 40, signY); doc.rect(40, signY + 10, 100, 35).stroke('#9ca3af', 1);
+    doc.text('Le Parent / Parent Signature', 250, signY); doc.rect(250, signY + 10, 100, 35).stroke('#9ca3af', 1);
+    doc.text('Le Principal / Principal Stamp', 450, signY); doc.rect(450, signY + 10, 100, 35).stroke('#9ca3af', 1);
     doc.fontSize(7).font('Helvetica').fillColor('#94a3b8').text(`Généré le ${new Date().toLocaleString('fr-FR')}`, 15, 810);
 
     doc.end();

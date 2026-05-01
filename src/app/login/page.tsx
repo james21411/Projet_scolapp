@@ -174,11 +174,11 @@ function LoginForm() {
                 >
                     <div className="login-brand-content">
                         <div className="login-brand-logo-wrapper">
-                            <div className="login-brand-logo-bg">
-                                <Sparkles size={32} className="text-blue-300" />
+                            <div className="login-brand-logo-bg !rounded-none !bg-[#3fd298]">
+                                <Sparkles size={32} className="text-[#002113]" />
                             </div>
                         </div>
-                        <h1 className="login-brand-title">ScolApp</h1>
+                        <h1 className="login-brand-title font-roboto">ScolApp</h1>
                         <p className="login-brand-subtitle">
                             La plateforme de gestion scolaire intelligente pour les établissements africains.
                         </p>
@@ -199,13 +199,13 @@ function LoginForm() {
                                     <div className="login-feature-icon">
                                         <f.icon size={18} className="text-blue-300" />
                                     </div>
-                                    <span className="text-slate-300 text-sm">{f.text}</span>
+                                    <span className="text-[#0b1c30] text-sm">{f.text}</span>
                                 </motion.div>
                             ))}
                         </div>
 
                         <div className="login-brand-footer">
-                            <p className="text-slate-500 text-xs">© 2026 ScolApp • Version 2.0</p>
+                            <p className="text-[#5c5f61] text-xs">© 2026 ScolApp • Version 2.0</p>
                         </div>
                     </div>
                 </motion.div>
@@ -229,7 +229,7 @@ function LoginForm() {
                                 >
                                     <div className="login-form-header mb-8">
                                         <div className="login-school-logo-placeholder">
-                                            <Search size={28} className="text-blue-400" />
+                                            <Search size={28} className="text-[#3fd298]" />
                                         </div>
                                         <h2 className="login-form-title mt-4">Trouvez votre école</h2>
                                         <p className="login-form-subtitle">
@@ -249,7 +249,7 @@ function LoginForm() {
                                                     value={workspaceInput}
                                                     onChange={(e) => setWorkspaceInput(e.target.value)}
                                                     placeholder="Ex: Collège de la Salle..."
-                                                    className="login-input bg-white/5 border-white/10 text-white w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    className="login-input bg-white border-[#dce9ff] text-[#0b1c30] w-full px-4 py-3 rounded-none focus:outline-none focus:ring-2 focus:ring-[#00288e]"
                                                     autoFocus
                                                 />
                                                 {workspaceLoading && (
@@ -266,7 +266,7 @@ function LoginForm() {
                                                         initial={{ opacity: 0, y: -10 }}
                                                         animate={{ opacity: 1, y: 0 }}
                                                         exit={{ opacity: 0, y: -10 }}
-                                                        className="absolute z-50 w-full mt-2 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl overflow-hidden"
+                                                        className="absolute z-50 w-full mt-2 bg-slate-800 border border-slate-700 rounded-none shadow-2xl overflow-hidden"
                                                     >
                                                         {suggestions.map((school) => (
                                                             <button
@@ -276,10 +276,10 @@ function LoginForm() {
                                                                 className="w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-slate-700/50 transition-colors border-b border-slate-700/50 last:border-0"
                                                             >
                                                                 {school.logoUrl ? (
-                                                                    <img src={school.logoUrl} alt={school.name} className="w-8 h-8 rounded-full object-cover bg-white" />
+                                                                    <img src={school.logoUrl} alt={school.name} className="w-8 h-8 rounded-none object-cover bg-white" />
                                                                 ) : (
-                                                                    <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center">
-                                                                        <School size={14} className="text-blue-400" />
+                                                                    <div className="w-8 h-8 rounded-none bg-slate-700 flex items-center justify-center">
+                                                                        <School size={14} className="text-[#3fd298]" />
                                                                     </div>
                                                                 )}
                                                                 <div className="flex flex-col">
@@ -295,7 +295,7 @@ function LoginForm() {
 
                                         <button
                                             type="submit"
-                                            className="login-submit-btn w-full flex justify-center items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-medium py-3 rounded-lg transition-colors"
+                                            className="login-submit-btn w-full flex justify-center items-center gap-2 bg-[#0b1c30] hover:bg-[#002113] text-white font-medium py-3 rounded-none transition-colors"
                                             disabled={workspaceLoading || !workspaceInput.trim()}
                                         >
                                             <ArrowRight size={18} /> Continuer
@@ -318,7 +318,7 @@ function LoginForm() {
                                             </div>
                                         ) : (
                                             <div className="login-school-logo-placeholder">
-                                                <School size={28} className="text-blue-400" />
+                                                <School size={28} className="text-[#3fd298]" />
                                             </div>
                                         )}
                                         <h2 className="login-form-title">
@@ -423,9 +423,9 @@ function LoginForm() {
 
                         <div className="mt-8 text-center">
                             <div className="login-form-footer">
-                                <p className="text-slate-500 text-sm">
+                                <p className="text-[#5c5f61] text-sm">
                                     Votre école n'est pas encore inscrite ?{' '}
-                                    <Link href="/register" className="text-blue-400 hover:text-blue-300 font-semibold transition-colors">
+                                    <Link href="/register" className="text-[#0b1c30] hover:text-[#000000] font-bold">
                                         Créer un compte ScolApp →
                                     </Link>
                                 </p>

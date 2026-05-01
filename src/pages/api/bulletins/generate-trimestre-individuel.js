@@ -523,10 +523,11 @@ export default async function handler(req, res) {
     doc.pipe(res);
 
     // ===== EN-TÊTE DU BULLETIN (MÊME FORMAT QUE generate-all.js) =====
-    const ministryFrench = 'MINISTÈRE DE L\'ENSEIGNEMENT SECONDAIRE';
-    const ministryEnglish = 'MINISTRY OF SECONDARY EDUCATION';
-    const schoolTypeFrench = 'ÉCOLE SECONDAIRE';
-    const schoolTypeEnglish = 'SECONDARY SCHOOL';
+    const isBasicParams = student.niveau && (student.niveau.toLowerCase().includes('primaire') || student.niveau.toLowerCase().includes('maternelle') || student.niveau.toLowerCase().includes('sil') || student.niveau.toLowerCase().includes('cp'));
+    const ministryFrench = isBasicParams ? "MINISTÈRE DE L'ÉDUCATION DE BASE" : "MINISTÈRE DE L'ENSEIGNEMENT SECONDAIRE";
+    const ministryEnglish = isBasicParams ? "MINISTRY OF BASIC EDUCATION" : "MINISTRY OF SECONDARY EDUCATION";
+    const schoolTypeFrench = isBasicParams ? "ÉCOLE DE BASE" : "ÉCOLE SECONDAIRE";
+    const schoolTypeEnglish = isBasicParams ? "BASIC SCHOOL" : "SECONDARY SCHOOL";
 
     // Section gauche (français)
     doc.fontSize(9).font('Helvetica-Bold').fillColor('#1e40af')
@@ -988,25 +989,13 @@ export default async function handler(req, res) {
     doc.text(principalComments || 'Aucune appréciation disponible', 300, appreciationsTop + 32, { width: 250 });
 
     // ===== PIED DE PAGE =====
-    const pageHeight = 842;
-    const footerTop = pageHeight - 120;
-
-    // Ligne de séparation
-    doc.moveTo(15, footerTop).lineTo(580, footerTop).stroke('#e5e7eb', 1);
-
-    // Signatures
-    doc.fontSize(8).font('Helvetica').fillColor('#6b7280');
-
-    // Signature du parent
-    doc.text('Signature du Parent / Parent Signature:', 15, footerTop + 10);
-    doc.rect(15, footerTop + 18, 100, 30).stroke('#9ca3af', 1);
-
-    // Date et lieu
-    doc.text(`Yaoundé, le ${new Date().toLocaleDateString('fr-FR')}`, 130, footerTop + 25);
-
-    // Signature du directeur
-    doc.text('Cachet et signature du Directeur / Director Stamp & Signature:', 300, footerTop + 10);
-    doc.rect(400, footerTop + 18, 100, 30).stroke('#9ca3af', 1);
+    const signY = 740;
+    doc.moveTo(15, signY - 5).lineTo(580, signY - 5).stroke('#e5e7eb', 1);
+    doc.fontSize(8).font('Helvetica-Bold').fillColor('#1e293b');
+    doc.text('Le Titulaire / Class Teacher', 40, signY); doc.rect(40, signY + 10, 100, 35).stroke('#9ca3af', 1);
+    doc.text('Le Parent / Parent Signature', 250, signY); doc.rect(250, signY + 10, 100, 35).stroke('#9ca3af', 1);
+    doc.text('Le Principal / Principal Stamp', 450, signY); doc.rect(450, signY + 10, 100, 35).stroke('#9ca3af', 1);
+    doc.fontSize(7).font('Helvetica').fillColor('#94a3b8').text(`Généré le ${new Date().toLocaleString('fr-FR')}`, 15, 810);
 
     // Finaliser le PDF
     doc.end();

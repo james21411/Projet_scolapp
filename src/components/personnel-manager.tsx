@@ -555,1209 +555,752 @@ export function PersonnelManager({ currentUser, role }: { currentUser?: User; ro
   }
 
   return (
-    <div className="space-y-6">
-      {/* En-tête */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold">Gestion du Personnel</h2>
-          <p className="text-gray-600">Gérez le personnel de l'établissement</p>
+    <div className="space-y-0">
+      {/* ===== EN-TETE ===== */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-white sticky top-0 z-10">
+        <div className="flex items-center gap-3">
+          <div className="bg-blue-600 text-white p-1.5 rounded-none">
+            <Users className="w-4 h-4" />
+          </div>
+          <div>
+            <h2 className="text-base font-black uppercase tracking-tight text-slate-800">Gestion du Personnel</h2>
+            <p className="text-[10px] text-slate-400 uppercase font-bold tracking-widest">{personnel.length} membre(s) enregistre(s)</p>
+          </div>
         </div>
-        <div className="flex space-x-2">
-          <Button onClick={() => setIsAddDialogOpen(true)}>
-            <Plus className="w-4 h-4 mr-2" />
-            Ajouter un personnel
-          </Button>
-          {/* Bouton Fiches de paie masqué
-          <Button variant="outline" onClick={() => setIsPayrollDialogOpen(true)}>
-            <DollarSign className="w-4 h-4 mr-2" />
-            Fiches de paie
-            </Button>
-          */}
-        </div>
+        <Button
+          onClick={() => setIsAddDialogOpen(true)}
+          className="bg-blue-600 hover:bg-blue-700 text-white rounded-none h-8 px-4 text-xs font-bold uppercase flex items-center gap-2"
+        >
+          <Plus className="w-3 h-3" />
+          Ajouter
+        </Button>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="personnel" className="flex items-center gap-2">
-            <Users className="w-4 h-4" />
-            Personnel
-          </TabsTrigger>
-          <TabsTrigger value="enseignants" className="flex items-center gap-2">
-            <GraduationCap className="w-4 h-4" />
-            Enseignants
-          </TabsTrigger>
-          <TabsTrigger value="visualisation" className="flex items-center gap-2">
-            <Eye className="w-4 h-4" />
-            Visualisation
-          </TabsTrigger>
-          <TabsTrigger value="affectations" className="flex items-center gap-2">
-            <GraduationCap className="w-4 h-4" />
-            Affectations
-          </TabsTrigger>
-        </TabsList>
+        {/* ===== BARRE D'ONGLETS ===== */}
+        <div className="border-b border-slate-200 bg-white px-4">
+          <TabsList className="h-auto bg-transparent p-0 gap-0 rounded-none">
+            {[
+              { value: 'personnel', label: 'Personnel', icon: <Users className="w-3 h-3" /> },
+              { value: 'enseignants', label: 'Enseignants', icon: <GraduationCap className="w-3 h-3" /> },
+              { value: 'visualisation', label: 'Visualisation', icon: <Eye className="w-3 h-3" /> },
+              { value: 'affectations', label: 'Affectations', icon: <GraduationCap className="w-3 h-3" /> },
+            ].map(tab => (
+              <TabsTrigger
+                key={tab.value}
+                value={tab.value}
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-transparent data-[state=active]:text-blue-600 data-[state=active]:font-black text-slate-500 text-[11px] font-bold uppercase tracking-wide h-10 px-4 gap-1.5 transition-none"
+              >
+                {tab.icon}
+                {tab.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
 
-        {/* Onglet Personnel Général */}
-        <TabsContent value="personnel" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <div className="flex justify-between items-center">
-                <CardTitle>Liste du Personnel</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {/* Barre de recherche */}
-              <div className="mb-4">
-                <div className="relative">
-                  <Input
-                    placeholder="Rechercher un personnel..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                </div>
-              </div>
+        {/* ===== ONGLET: PERSONNEL GÉNÉRAL ===== */}
+        <TabsContent value="personnel" className="m-0">
+          {/* Barre d'outils */}
+          <div className="flex items-center gap-2 px-4 py-2 border-b border-slate-100 bg-slate-50">
+            <div className="relative flex-1 max-w-xs">
+              <Input
+                placeholder="Rechercher un personnel..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-8 h-8 text-xs rounded-none border-slate-300"
+              />
+              <User className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400" />
+            </div>
+            <span className="text-[11px] text-slate-500 font-bold uppercase ml-auto">
+              {filteredPersonnel?.length ?? 0} résultat(s)
+            </span>
+          </div>
 
-              {/* Tableau avec photos */}
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Photo</TableHead>
-                    <TableHead>Nom complet</TableHead>
-                    <TableHead>Contact</TableHead>
-                    <TableHead>Rôle</TableHead>
-                    <TableHead>Statut</TableHead>
-                    <TableHead>Date d'embauche</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {currentPersonnel?.map((member) => (
-                    <TableRow key={member.id}>
-                      <TableCell>
-                        <div className="flex items-center">
-                          {member.photoUrl ? (
-                            <img
-                              src={member.photoUrl}
-                              alt={member.fullName}
-                              className="w-10 h-10 rounded-full object-cover border-2 border-gray-200"
-                              onError={(e) => {
-                                // En cas d'erreur de chargement, remplacer par l'avatar par défaut
-                                const target = e.target as HTMLImageElement;
-                                target.style.display = 'none';
-                                const fallback = target.nextElementSibling as HTMLElement;
-                                if (fallback) fallback.style.display = 'flex';
-                              }}
-                            />
-                          ) : null}
-                          <div
-                            className={`w-10 h-10 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center border-2 border-gray-200 ${member.photoUrl ? 'hidden' : ''}`}
-                            style={{ display: member.photoUrl ? 'none' : 'flex' }}
-                          >
-                            <span className="text-sm font-semibold text-blue-600">
-                              {member.fullName?.charAt(0)?.toUpperCase() || 'U'}
-                            </span>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-col">
-                          <span className="font-medium text-gray-900">{member.fullName}</span>
-                          <span className="text-sm text-gray-500">@{member.username}</span>
-                          {member.specialite && (
-                            <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-full inline-block mt-1">
-                              {member.specialite}
-                            </span>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          <div className="flex items-center space-x-1">
-                            <Mail className="w-3 h-3 text-gray-500" />
-                            <span className="text-sm text-gray-700 hover:text-blue-600 transition-colors">
-                              {member.email}
-                            </span>
-                          </div>
-                          <div className="flex items-center space-x-1">
-                            <Phone className="w-3 h-3 text-gray-500" />
-                            <span className="text-sm text-gray-700 hover:text-green-600 transition-colors">
-                              {member.phone}
-                            </span>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={getRoleBadgeColor(member.role)}>
-                          {member.type_personnel}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={getStatusBadgeColor(member.statut || 'Actif')}>
-                          {member.statut || 'Actif'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {member.dateEmbauche ?
-                          new Date(member.dateEmbauche).toLocaleDateString('fr-FR') :
-                          'Non définie'
-                        }
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedPersonnel(member);
-                              setOpenEditOnMount(false);
-                              setShowPersonnelFile(true);
-                            }}
-                          >
-                            <User className="w-4 h-4" />
-                            Dossier
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedPersonnel(member);
-                              setOpenEditOnMount(true);
-                              setShowPersonnelFile(true);
-                            }}
-                          >
-                            <Edit className="w-4 h-4" />
-                            Modifier
-                          </Button>
-                          {false && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setShowMyClassesFor(member.id)}
-                            >
-                              Classe
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-
-              {/* Message si aucun personnel trouvé */}
-              {(!currentPersonnel || currentPersonnel.length === 0) && (
-                <div className="text-center py-8">
-                  <Users className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-                  <p className="text-lg font-medium text-gray-500 mb-2">
-                    {searchTerm ? 'Aucun personnel trouvé' : 'Aucun personnel enregistré'}
-                  </p>
-                  <p className="text-sm text-gray-400">
-                    {searchTerm ? 'Essayez de modifier vos critères de recherche' : 'Commencez par ajouter du personnel'}
-                  </p>
-                </div>
-              )}
-
-              {/* Pagination améliorée */}
-              <div className="flex items-center justify-between mt-4 p-4 bg-gray-50 rounded-lg">
-                <div className="text-sm text-gray-600">
-                  {filteredPersonnel?.length > 0 ? (
-                    <>
-                      Affichage de <span className="font-medium">{startIndex + 1}</span> à{' '}
-                      <span className="font-medium">{Math.min(endIndex, filteredPersonnel.length)}</span> sur{' '}
-                      <span className="font-medium">{filteredPersonnel.length}</span> personnel(s)
-                      {totalPages > 1 && (
-                        <span className="ml-2 text-gray-500">
-                          - Page {currentPage} sur {totalPages}
-                        </span>
-                      )}
-                    </>
-                  ) : (
-                    <span className="text-gray-500">Aucun personnel trouvé</span>
-                  )}
-                </div>
-
-                {totalPages > 1 && (
-                  <div className="flex items-center space-x-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                      disabled={currentPage === 1}
-                      className="flex items-center gap-1"
-                    >
-                      ← Précédent
-                    </Button>
-
-                    <div className="flex items-center space-x-1">
-                      {/* Afficher seulement quelques pages pour éviter l'encombrement */}
-                      {(() => {
-                        const pages = [];
-                        const maxVisiblePages = 5;
-                        let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-                        let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-
-                        if (endPage - startPage + 1 < maxVisiblePages) {
-                          startPage = Math.max(1, endPage - maxVisiblePages + 1);
-                        }
-
-                        // Première page
-                        if (startPage > 1) {
-                          pages.push(
-                            <Button
-                              key={1}
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setCurrentPage(1)}
-                              className="w-8 h-8"
-                            >
-                              1
-                            </Button>
-                          );
-                          if (startPage > 2) {
-                            pages.push(
-                              <span key="ellipsis1" className="px-2 text-gray-500">
-                                ...
-                              </span>
-                            );
-                          }
-                        }
-
-                        // Pages visibles
-                        for (let i = startPage; i <= endPage; i++) {
-                          pages.push(
-                            <Button
-                              key={i}
-                              variant={currentPage === i ? "default" : "outline"}
-                              size="sm"
-                              onClick={() => setCurrentPage(i)}
-                              className="w-8 h-8"
-                            >
-                              {i}
-                            </Button>
-                          );
-                        }
-
-                        // Dernière page
-                        if (endPage < totalPages) {
-                          if (endPage < totalPages - 1) {
-                            pages.push(
-                              <span key="ellipsis2" className="px-2 text-gray-500">
-                                ...
-                              </span>
-                            );
-                          }
-                          pages.push(
-                            <Button
-                              key={totalPages}
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setCurrentPage(totalPages)}
-                              className="w-8 h-8"
-                            >
-                              {totalPages}
-                            </Button>
-                          );
-                        }
-
-                        return pages;
-                      })()}
-                    </div>
-
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                      disabled={currentPage === totalPages}
-                      className="flex items-center gap-1"
-                    >
-                      Suivant →
-                    </Button>
-                  </div>
+          {/* Tableau */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-[11px] border-collapse">
+              <thead className="bg-slate-100 text-slate-600 uppercase font-black border-b border-slate-200">
+                <tr className="divide-x divide-slate-200">
+                  <th className="px-3 py-2 w-10"></th>
+                  <th className="px-3 py-2">Nom complet</th>
+                  <th className="px-3 py-2">Contact</th>
+                  <th className="px-3 py-2 text-center">Rôle / Type</th>
+                  <th className="px-3 py-2 text-center">Statut</th>
+                  <th className="px-3 py-2 text-center">Embauche</th>
+                  <th className="px-3 py-2 text-center">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {currentPersonnel?.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="py-16 text-center text-slate-400 text-sm font-medium uppercase tracking-wide">
+                      <Users className="w-10 h-10 mx-auto mb-3 text-slate-200" />
+                      {searchTerm ? 'Aucun personnel trouvé pour cette recherche' : 'Aucun personnel enregistré'}
+                    </td>
+                  </tr>
                 )}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Onglet Enseignants */}
-        <TabsContent value="enseignants" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Enseignants</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {/* Barre de recherche et contrôles pour les enseignants */}
-              <div className="mb-4 space-y-4">
-                <div className="flex gap-4 items-end">
-                  <div className="flex-1">
-                    <div className="relative">
-                      <Input
-                        placeholder="Rechercher un enseignant..."
-                        value={teacherSearchTerm}
-                        onChange={(e) => setTeacherSearchTerm(e.target.value)}
-                        className="pl-10"
-                      />
-                      <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      id="showAllTeachers"
-                      checked={showAllTeachers}
-                      onChange={(e) => {
-                        setShowAllTeachers(e.target.checked);
-                        if (e.target.checked) {
-                          setTeacherCurrentPage(1);
-                        }
-                      }}
-                      className="rounded"
-                    />
-                    <Label htmlFor="showAllTeachers" className="text-sm">
-                      Afficher tous les enseignants
-                    </Label>
-                  </div>
-                </div>
-              </div>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Photo</TableHead>
-                    <TableHead>Nom complet</TableHead>
-                    <TableHead>Spécialité</TableHead>
-                    <TableHead>Diplôme</TableHead>
-                    <TableHead>Expérience</TableHead>
-                    <TableHead>Statut</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {currentTeachers?.map((teacher) => (
-                    <TableRow key={teacher.id}>
-                      <TableCell>
-                        <div className="flex items-center">
-                          {teacher.photoUrl ? (
-                            <img
-                              src={teacher.photoUrl}
-                              alt={teacher.fullName}
-                              className="w-10 h-10 rounded-full object-cover border-2 border-gray-200"
-                              onError={(e) => {
-                                // En cas d'erreur de chargement, remplacer par l'avatar par défaut
-                                const target = e.target as HTMLImageElement;
-                                target.style.display = 'none';
-                                const fallback = target.nextElementSibling as HTMLElement;
-                                if (fallback) fallback.style.display = 'flex';
-                              }}
-                            />
-                          ) : null}
-                          <div
-                            className={`w-10 h-10 rounded-full bg-gradient-to-br from-purple-100 to-purple-200 flex items-center justify-center border-2 border-gray-200 ${teacher.photoUrl ? 'hidden' : ''}`}
-                            style={{ display: teacher.photoUrl ? 'none' : 'flex' }}
-                          >
-                            <span className="text-sm font-semibold text-purple-600">
-                              {teacher.fullName?.charAt(0)?.toUpperCase() || 'E'}
-                            </span>
-                          </div>
+                {currentPersonnel?.map((member, idx) => (
+                  <tr key={member.id} className={`hover:bg-blue-50/50 transition-colors ${idx % 2 === 0 ? '' : 'bg-slate-50/50'}`}>
+                    <td className="px-3 py-1.5 border-r border-slate-100">
+                      {member.photoUrl ? (
+                        <img src={member.photoUrl} alt="" className="w-8 h-8 object-cover border border-slate-200" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                      ) : (
+                        <div className="w-8 h-8 bg-blue-100 flex items-center justify-center border border-slate-200 text-xs font-black text-blue-600">
+                          {member.fullName?.charAt(0)?.toUpperCase() || '?'}
                         </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-col">
-                          <span className="font-medium text-gray-900">{teacher.fullName}</span>
-                          <span className="text-sm text-gray-500">@{teacher.username}</span>
-                          {teacher.specialite && (
-                            <span className="text-xs text-purple-600 bg-purple-50 px-2 py-1 rounded-full inline-block mt-1">
-                              {teacher.specialite}
-                            </span>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>{teacher.specialite || 'Non définie'}</TableCell>
-                      <TableCell>{teacher.diplome || 'Non défini'}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center space-x-1">
-                          <Clock className="w-3 h-3 text-gray-500" />
-                          <span>{teacher.experience || 0} ans</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={getStatusBadgeColor(teacher.statut || 'Actif')}>
-                          {teacher.statut || 'Actif'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedPersonnel(teacher);
-                              setOpenEditOnMount(false);
-                              setShowPersonnelFile(true);
-                            }}
-                          >
-                            <User className="w-4 h-4" />
-                            Dossier
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedPersonnel(teacher);
-                              setOpenEditOnMount(true);
-                              setShowPersonnelFile(true);
-                            }}
-                          >
-                            <Edit className="w-4 h-4" />
-                            Modifier
-                          </Button>
-                          {users.some(u => u.username?.toLowerCase() === (teacher.username || '').toLowerCase()) ? (
-                            <Badge className="bg-green-100 text-green-800 border border-green-200">Compte existant</Badge>
-                          ) : (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={async () => {
-                                const result = await createUserFromTeacher(teacher);
-                                if (result.success) {
-                                  toast({ title: 'Utilisateur créé', description: `Compte: @${teacher.username} · Mdp provisoire: ${result.password}` });
-                                  getAllUsers().then(setUsers).catch(() => { });
-                                } else {
-                                  toast({ variant: 'destructive', title: 'Erreur', description: result.error || 'Création impossible' });
-                                }
-                              }}
-                            >
-                              Créer utilisateur
-                            </Button>)}
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setShowMyClassesFor(teacher.id)}
-                          >
-                            Classe
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-
-              {/* Message si aucun enseignant trouvé */}
-              {(!currentTeachers || currentTeachers.length === 0) && (
-                <div className="text-center py-8">
-                  <Users className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-                  <p className="text-lg font-medium text-gray-500 mb-2">
-                    {teacherSearchTerm ? 'Aucun enseignant trouvé' : 'Aucun enseignant enregistré'}
-                  </p>
-                  <p className="text-sm text-gray-400">
-                    {teacherSearchTerm ? 'Essayez de modifier vos critères de recherche' : 'Commencez par ajouter des enseignants'}
-                  </p>
-                </div>
-              )}
-
-              {/* Pagination améliorée pour les enseignants */}
-              {!showAllTeachers && teacherTotalPages > 1 && (
-                <div className="flex items-center justify-between mt-4 p-4 bg-gray-50 rounded-lg">
-                  <div className="text-sm text-gray-600">
-                    {filteredTeachers?.length > 0 ? (
-                      <>
-                        Affichage de <span className="font-medium">{teacherStartIndex + 1}</span> à{' '}
-                        <span className="font-medium">{Math.min(teacherEndIndex, filteredTeachers.length)}</span> sur{' '}
-                        <span className="font-medium">{filteredTeachers.length}</span> enseignant(s)
-                        {teacherTotalPages > 1 && (
-                          <span className="ml-2 text-gray-500">
-                            - Page {teacherCurrentPage} sur {teacherTotalPages}
-                          </span>
-                        )}
-                      </>
-                    ) : (
-                      <span className="text-gray-500">Aucun enseignant trouvé</span>
-                    )}
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setTeacherCurrentPage(Math.max(1, teacherCurrentPage - 1))}
-                      disabled={teacherCurrentPage === 1}
-                      className="flex items-center gap-1"
-                    >
-                      ← Précédent
-                    </Button>
-
-                    <div className="flex items-center space-x-1">
-                      {/* Afficher seulement quelques pages pour éviter l'encombrement */}
-                      {(() => {
-                        const pages = [];
-                        const maxVisiblePages = 5;
-                        let startPage = Math.max(1, teacherCurrentPage - Math.floor(maxVisiblePages / 2));
-                        let endPage = Math.min(teacherTotalPages, startPage + maxVisiblePages - 1);
-
-                        if (endPage - startPage + 1 < maxVisiblePages) {
-                          startPage = Math.max(1, endPage - maxVisiblePages + 1);
-                        }
-
-                        // Première page
-                        if (startPage > 1) {
-                          pages.push(
-                            <Button
-                              key={1}
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setTeacherCurrentPage(1)}
-                              className="w-8 h-8"
-                            >
-                              1
-                            </Button>
-                          );
-                          if (startPage > 2) {
-                            pages.push(
-                              <span key="ellipsis1" className="px-2 text-gray-500">
-                                ...
-                              </span>
-                            );
-                          }
-                        }
-
-                        // Pages visibles
-                        for (let i = startPage; i <= endPage; i++) {
-                          pages.push(
-                            <Button
-                              key={i}
-                              variant={teacherCurrentPage === i ? "default" : "outline"}
-                              size="sm"
-                              onClick={() => setTeacherCurrentPage(i)}
-                              className="w-8 h-8"
-                            >
-                              {i}
-                            </Button>
-                          );
-                        }
-
-                        // Dernière page
-                        if (endPage < teacherTotalPages) {
-                          if (endPage < teacherTotalPages - 1) {
-                            pages.push(
-                              <span key="ellipsis2" className="px-2 text-gray-500">
-                                ...
-                              </span>
-                            );
-                          }
-                          pages.push(
-                            <Button
-                              key={teacherTotalPages}
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setTeacherCurrentPage(teacherTotalPages)}
-                              className="w-8 h-8"
-                            >
-                              {teacherTotalPages}
-                            </Button>
-                          );
-                        }
-
-                        return pages;
-                      })()}
-                    </div>
-
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setTeacherCurrentPage(Math.min(teacherTotalPages, teacherCurrentPage + 1))}
-                      disabled={teacherCurrentPage === teacherTotalPages}
-                      className="flex items-center gap-1"
-                    >
-                      Suivant →
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {/* Affichage du nombre total quand "Afficher tous" est activé */}
-              {showAllTeachers && filteredTeachers?.length > 0 && (
-                <div className="flex items-center justify-center mt-4 p-4 bg-gray-50 rounded-lg">
-                  <div className="text-sm text-gray-600">
-                    Affichage de <span className="font-medium">{filteredTeachers.length}</span> enseignant(s) au total
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Onglet Visualisation */}
-        <TabsContent value="visualisation" className="space-y-4">
-          <AssignmentVisualization />
-        </TabsContent>
-
-        {/* Onglet Affectations */}
-        <TabsContent value="affectations" className="space-y-4">
-          <TeacherAssignments />
-        </TabsContent>
-
-        {/* Onglet Contrats - Masqué */}
-        {/* <TabsContent value="contrats" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Gestion des Contrats</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-8 text-gray-500">
-                <DollarSign className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-                <p>Module de gestion des contrats en cours de développement</p>
-                <p className="text-sm">Fonctionnalités à venir :</p>
-                <ul className="text-sm mt-2 space-y-1">
-                  <li>• Création et modification de contrats</li>
-                  <li>• Suivi des salaires et avantages</li>
-                  <li>• Gestion des congés et absences</li>
-                  <li>• Évaluations et promotions</li>
-                </ul>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent> */}
-
-        {/* Onglet Fiches de paie - Masqué */}
-        {/* <TabsContent value="paie" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <div className="flex justify-between items-center">
-                <CardTitle>Gestion des Fiches de Paie</CardTitle>
-                <Button onClick={() => setIsPayrollDialogOpen(true)}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Générer fiches de paie
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex items-center space-x-2">
-                      <DollarSign className="w-8 h-8 text-green-500" />
-                      <div>
-                        <p className="text-sm text-gray-500">Total Personnel</p>
-                        <p className="text-2xl font-bold">{personnel.length}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex items-center space-x-2">
-                      <Users className="w-8 h-8 text-blue-500" />
-                      <div>
-                        <p className="text-sm text-gray-500">Enseignants</p>
-                        <p className="text-2xl font-bold">{teachers.length}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex items-center space-x-2">
-                      <Calendar className="w-8 h-8 text-purple-500" />
-                      <div>
-                        <p className="text-sm text-gray-500">Année scolaire</p>
-                        <p className="text-2xl font-bold">{currentSchoolYear}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-              
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Personnel</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Salaire de base</TableHead>
-                    <TableHead>Statut</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {personnel.map((member) => (
-                    <TableRow key={member.id}>
-                      <TableCell>
-                        <div className="flex items-center space-x-2">
-                          <User className="w-4 h-4 text-gray-500" />
-                          <span className="font-medium">{member.fullName}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={getRoleBadgeColor(member.role)}>
-                          {member.type_personnel}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {member.salaire ? `${member.salaire.toLocaleString()} FCFA` : 'Non défini'}
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={getStatusBadgeColor(member.statut || 'Actif')}>
-                          {member.statut || 'Actif'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Button variant="outline" size="sm">
-                          <DollarSign className="w-4 h-4" />
+                      )}
+                    </td>
+                    <td className="px-3 py-1.5 border-r border-slate-100">
+                      <div className="font-bold text-slate-800">{member.fullName}</div>
+                      <div className="text-[10px] text-slate-400 font-mono">@{member.username}</div>
+                      {member.specialite && <div className="text-[10px] text-blue-600 mt-0.5">{member.specialite}</div>}
+                    </td>
+                    <td className="px-3 py-1.5 border-r border-slate-100">
+                      <div className="flex items-center gap-1"><Mail className="w-3 h-3 text-slate-400 flex-shrink-0" /><span className="truncate max-w-[150px]">{member.email || '—'}</span></div>
+                      <div className="flex items-center gap-1"><Phone className="w-3 h-3 text-slate-400 flex-shrink-0" /><span>{member.phone || '—'}</span></div>
+                    </td>
+                    <td className="px-3 py-1.5 border-r border-slate-100 text-center">
+                      <span className={`inline-block px-1.5 py-0.5 text-[9px] font-black uppercase ${getRoleBadgeColor(member.role)}`}>
+                        {member.type_personnel || member.role}
+                      </span>
+                    </td>
+                    <td className="px-3 py-1.5 border-r border-slate-100 text-center">
+                      <span className={`inline-block px-1.5 py-0.5 text-[9px] font-black uppercase ${getStatusBadgeColor(member.statut || 'Actif')}`}>
+                        {member.statut || 'Actif'}
+                      </span>
+                    </td>
+                    <td className="px-3 py-1.5 border-r border-slate-100 text-center text-[10px] text-slate-500">
+                      {member.dateEmbauche ? new Date(member.dateEmbauche).toLocaleDateString('fr-FR') : '—'}
+                    </td>
+                    <td className="px-3 py-1.5 text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <Button variant="outline" size="sm" onClick={() => { setSelectedPersonnel(member); setOpenEditOnMount(false); setShowPersonnelFile(true); }} className="h-6 px-2 text-[10px] font-bold rounded-none border-slate-300 hover:bg-blue-50 hover:border-blue-400 hover:text-blue-700">
+                          <User className="w-3 h-3 mr-1" /> Dossier
                         </Button>
-                      </TableCell>
-                    </TableRow>
+                        <Button variant="outline" size="sm" onClick={() => { setSelectedPersonnel(member); setOpenEditOnMount(true); setShowPersonnelFile(true); }} className="h-6 px-2 text-[10px] font-bold rounded-none border-slate-300 hover:bg-amber-50 hover:border-amber-400 hover:text-amber-700">
+                          <Edit className="w-3 h-3 mr-1" /> Éditer
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination */}
+          {filteredPersonnel?.length > 0 && (
+            <div className="px-4 py-3 border-t border-slate-100 bg-slate-50 flex items-center justify-between text-[11px] text-slate-500 font-bold uppercase">
+              <div>Affichage de {startIndex + 1} à {Math.min(endIndex, filteredPersonnel.length)} sur {filteredPersonnel.length} personnel(s)</div>
+              {totalPages > 1 && (
+                <div className="flex items-center gap-1">
+                  <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="h-7 px-2 rounded-none text-[10px]">← Préc.</Button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1).map((p, i, arr) => (
+                    <React.Fragment key={p}>
+                      {i > 0 && arr[i - 1] !== p - 1 && <span className="px-1">…</span>}
+                      <Button variant={currentPage === p ? 'default' : 'outline'} size="sm" onClick={() => setCurrentPage(p)} className="h-7 w-7 p-0 rounded-none text-[10px]">{p}</Button>
+                    </React.Fragment>
                   ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent> */}
+                  <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="h-7 px-2 rounded-none text-[10px]">Suiv. →</Button>
+                </div>
+              )}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* ===== ONGLET: ENSEIGNANTS ===== */}
+        <TabsContent value="enseignants" className="m-0">
+          {/* Barre d'outils */}
+          <div className="flex items-center gap-3 px-4 py-2 border-b border-slate-100 bg-slate-50">
+            <div className="relative flex-1 max-w-xs">
+              <Input placeholder="Rechercher un enseignant..." value={teacherSearchTerm} onChange={(e) => setTeacherSearchTerm(e.target.value)} className="pl-8 h-8 text-xs rounded-none border-slate-300" />
+              <User className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400" />
+            </div>
+            <label className="flex items-center gap-1.5 text-[11px] text-slate-600 font-bold uppercase cursor-pointer">
+              <input type="checkbox" checked={showAllTeachers} onChange={(e) => { setShowAllTeachers(e.target.checked); if (e.target.checked) setTeacherCurrentPage(1); }} className="rounded-none" />
+              Tout afficher
+            </label>
+            <span className="text-[11px] text-slate-500 font-bold uppercase ml-auto">{filteredTeachers?.length ?? 0} résultat(s)</span>
+          </div>
+
+          {/* Tableau */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-[11px] border-collapse">
+              <thead className="bg-slate-100 text-slate-600 uppercase font-black border-b border-slate-200">
+                <tr className="divide-x divide-slate-200">
+                  <th className="px-3 py-2 w-10"></th>
+                  <th className="px-3 py-2">Nom complet</th>
+                  <th className="px-3 py-2">Spécialité</th>
+                  <th className="px-3 py-2 text-center">Diplôme</th>
+                  <th className="px-3 py-2 text-center">Expérience</th>
+                  <th className="px-3 py-2 text-center">Statut</th>
+                  <th className="px-3 py-2 text-center">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {currentTeachers?.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="py-16 text-center text-slate-400 text-sm font-medium uppercase tracking-wide">
+                      <Users className="w-10 h-10 mx-auto mb-3 text-slate-200" />
+                      {teacherSearchTerm ? 'Aucun enseignant trouvé' : 'Aucun enseignant enregistré'}
+                    </td>
+                  </tr>
+                )}
+                {currentTeachers?.map((teacher, idx) => (
+                  <tr key={teacher.id} className={`hover:bg-purple-50/50 transition-colors ${idx % 2 === 0 ? '' : 'bg-slate-50/50'}`}>
+                    <td className="px-3 py-1.5 border-r border-slate-100">
+                      {teacher.photoUrl ? (
+                        <img src={teacher.photoUrl} alt="" className="w-8 h-8 object-cover border border-slate-200" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                      ) : (
+                        <div className="w-8 h-8 bg-purple-100 flex items-center justify-center border border-slate-200 text-xs font-black text-purple-600">
+                          {teacher.fullName?.charAt(0)?.toUpperCase() || '?'}
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-3 py-1.5 border-r border-slate-100">
+                      <div className="font-bold text-slate-800">{teacher.fullName}</div>
+                      <div className="text-[10px] text-slate-400 font-mono">@{teacher.username}</div>
+                    </td>
+                    <td className="px-3 py-1.5 border-r border-slate-100 text-slate-600">{teacher.specialite || '—'}</td>
+                    <td className="px-3 py-1.5 border-r border-slate-100 text-center text-slate-600">{teacher.diplome || '—'}</td>
+                    <td className="px-3 py-1.5 border-r border-slate-100 text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <Clock className="w-3 h-3 text-slate-400" />
+                        <span>{teacher.experience || 0} an(s)</span>
+                      </div>
+                    </td>
+                    <td className="px-3 py-1.5 border-r border-slate-100 text-center">
+                      <span className={`inline-block px-1.5 py-0.5 text-[9px] font-black uppercase ${getStatusBadgeColor(teacher.statut || 'Actif')}`}>
+                        {teacher.statut || 'Actif'}
+                      </span>
+                    </td>
+                    <td className="px-3 py-1.5 text-center">
+                      <div className="flex items-center justify-center gap-1 flex-wrap">
+                        <Button variant="outline" size="sm" onClick={() => { setSelectedPersonnel(teacher); setOpenEditOnMount(false); setShowPersonnelFile(true); }} className="h-6 px-2 text-[10px] font-bold rounded-none border-slate-300 hover:bg-blue-50 hover:border-blue-400 hover:text-blue-700">
+                          <User className="w-3 h-3 mr-1" /> Dossier
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => { setSelectedPersonnel(teacher); setOpenEditOnMount(true); setShowPersonnelFile(true); }} className="h-6 px-2 text-[10px] font-bold rounded-none border-slate-300 hover:bg-amber-50 hover:border-amber-400 hover:text-amber-700">
+                          <Edit className="w-3 h-3 mr-1" /> Éditer
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => setShowMyClassesFor(teacher.id)} className="h-6 px-2 text-[10px] font-bold rounded-none border-slate-300 hover:bg-green-50 hover:border-green-400 hover:text-green-700">
+                          Classe
+                        </Button>
+                        {users.some(u => u.username?.toLowerCase() === (teacher.username || '').toLowerCase()) ? (
+                          <span className="inline-block px-1.5 py-0.5 text-[9px] font-black uppercase bg-green-100 text-green-700 border border-green-200">Compte ✓</span>
+                        ) : (
+                          <Button variant="outline" size="sm" onClick={async () => { const r = await createUserFromTeacher(teacher); if (r.success) { toast({ title: 'Utilisateur créé', description: `@${teacher.username} · mdp: ${r.password}` }); getAllUsers().then(setUsers).catch(() => { }); } else toast({ variant: 'destructive', title: 'Erreur', description: r.error || '—' }); }} className="h-6 px-2 text-[10px] font-bold rounded-none border-slate-300 hover:bg-slate-100">
+                            + Compte
+                          </Button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination enseignants */}
+          {!showAllTeachers && filteredTeachers?.length > 0 && (
+            <div className="px-4 py-3 border-t border-slate-100 bg-slate-50 flex items-center justify-between text-[11px] text-slate-500 font-bold uppercase">
+              <div>Affichage de {teacherStartIndex + 1} à {Math.min(teacherEndIndex, filteredTeachers.length)} sur {filteredTeachers.length} enseignant(s)</div>
+              {teacherTotalPages > 1 && (
+                <div className="flex items-center gap-1">
+                  <Button variant="outline" size="sm" onClick={() => setTeacherCurrentPage(p => Math.max(1, p - 1))} disabled={teacherCurrentPage === 1} className="h-7 px-2 rounded-none text-[10px]">← Préc.</Button>
+                  {Array.from({ length: teacherTotalPages }, (_, i) => i + 1).filter(p => p === 1 || p === teacherTotalPages || Math.abs(p - teacherCurrentPage) <= 1).map((p, i, arr) => (
+                    <React.Fragment key={p}>
+                      {i > 0 && arr[i - 1] !== p - 1 && <span className="px-1">…</span>}
+                      <Button variant={teacherCurrentPage === p ? 'default' : 'outline'} size="sm" onClick={() => setTeacherCurrentPage(p)} className="h-7 w-7 p-0 rounded-none text-[10px]">{p}</Button>
+                    </React.Fragment>
+                  ))}
+                  <Button variant="outline" size="sm" onClick={() => setTeacherCurrentPage(p => Math.min(teacherTotalPages, p + 1))} disabled={teacherCurrentPage === teacherTotalPages} className="h-7 px-2 rounded-none text-[10px]">Suiv. →</Button>
+                </div>
+              )}
+            </div>
+          )}
+          {showAllTeachers && filteredTeachers?.length > 0 && (
+            <div className="px-4 py-2 text-center text-[11px] text-slate-500 font-bold uppercase border-t border-slate-100 bg-slate-50">
+              {filteredTeachers.length} enseignant(s) affiché(s) au total
+            </div>
+          )}
+        </TabsContent>
+
+        {/* ===== ONGLET: VISUALISATION ===== */}
+        <TabsContent value="visualisation" className="m-0">
+          <div className="p-0 border-t border-slate-200">
+            <div className="px-4 py-2 bg-slate-50 border-b border-slate-200">
+              <div className="flex items-center gap-2">
+                <Eye className="w-3.5 h-3.5 text-blue-600" />
+                <span className="text-[11px] font-black uppercase text-slate-700 tracking-wide">Répartition des affectations par classe & matière</span>
+              </div>
+            </div>
+            <AssignmentVisualization />
+          </div>
+        </TabsContent>
+
+        {/* ===== ONGLET: AFFECTATIONS ===== */}
+        <TabsContent value="affectations" className="m-0">
+          <div className="p-0 border-t border-slate-200">
+            <div className="px-4 py-2 bg-slate-50 border-b border-slate-200">
+              <div className="flex items-center gap-2">
+                <GraduationCap className="w-3.5 h-3.5 text-blue-600" />
+                <span className="text-[11px] font-black uppercase text-slate-700 tracking-wide">Affectations des enseignants aux classes et matières</span>
+              </div>
+            </div>
+            <TeacherAssignments />
+          </div>
+        </TabsContent>
+
       </Tabs>
 
-      {/* Dialog "Mes classes" pour un enseignant */}
-      {showMyClassesFor && activeTab === 'enseignants' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-xl shadow-2xl w-11/12 max-w-4xl p-0 border border-gray-100 max-h-[90vh] flex flex-col">
-            <div className="flex items-center justify-between px-5 py-4 border-b flex-shrink-0">
-              <h3 className="text-lg font-semibold">Classe</h3>
-              <Button variant="ghost" onClick={() => setShowMyClassesFor(null)}>Fermer</Button>
-            </div>
-            <div className="p-5 overflow-y-auto flex-1">
-              <MyClasses teacherId={showMyClassesFor} />
-            </div>
+      {/* Dialog "Mes classes" pour un enseignant */ }
+  {
+    showMyClassesFor && activeTab === 'enseignants' && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+        <div className="bg-white rounded-xl shadow-2xl w-11/12 max-w-4xl p-0 border border-gray-100 max-h-[90vh] flex flex-col">
+          <div className="flex items-center justify-between px-5 py-4 border-b flex-shrink-0">
+            <h3 className="text-lg font-semibold">Classe</h3>
+            <Button variant="ghost" onClick={() => setShowMyClassesFor(null)}>Fermer</Button>
+          </div>
+          <div className="p-5 overflow-y-auto flex-1">
+            <MyClasses teacherId={showMyClassesFor} />
           </div>
         </div>
-      )}
+      </div>
+    )
+  }
 
-      {/* Dialog pour ajouter une affectation */}
-      <Dialog open={isAssignmentDialogOpen} onOpenChange={setIsAssignmentDialogOpen}>
-        <DialogContent className="sm:max-w-[500px] max-h-[90vh] flex flex-col">
-          <DialogHeader className="flex-shrink-0">
-            <DialogTitle>Nouvelle Affectation</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleAddAssignment} className="space-y-4 overflow-y-auto flex-1 pr-1">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="teacherId">Enseignant</Label>
-                <Select
-                  value={assignmentForm.teacherId}
-                  onValueChange={(value) => {
-                    const teacher = teachers.find(t => t.id === value);
-                    setAssignmentForm({
-                      ...assignmentForm,
-                      teacherId: value,
-                      teacherName: teacher?.fullName || ''
-                    });
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionner un enseignant" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {teachers?.map((teacher) => (
-                      <SelectItem key={teacher.id} value={teacher.id}>
-                        {teacher.fullName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="className">Classe</Label>
-                <Select
-                  value={assignmentForm.className}
-                  onValueChange={(value) => {
-                    setAssignmentForm({ ...assignmentForm, className: value, subject: '' });
-                    loadClassSubjects(value);
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionner une classe" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableClasses?.map((className) => (
-                      <SelectItem key={className} value={className}>
-                        {className}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+  {/* Dialog pour ajouter une affectation */ }
+  <Dialog open={isAssignmentDialogOpen} onOpenChange={setIsAssignmentDialogOpen}>
+    <DialogContent className="sm:max-w-[500px] max-h-[90vh] flex flex-col">
+      <DialogHeader className="flex-shrink-0">
+        <DialogTitle>Nouvelle Affectation</DialogTitle>
+      </DialogHeader>
+      <form onSubmit={handleAddAssignment} className="space-y-4 overflow-y-auto flex-1 pr-1">
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="teacherId">Enseignant</Label>
+            <Select
+              value={assignmentForm.teacherId}
+              onValueChange={(value) => {
+                const teacher = teachers.find(t => t.id === value);
+                setAssignmentForm({
+                  ...assignmentForm,
+                  teacherId: value,
+                  teacherName: teacher?.fullName || ''
+                });
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Sélectionner un enseignant" />
+              </SelectTrigger>
+              <SelectContent>
+                {teachers?.map((teacher) => (
+                  <SelectItem key={teacher.id} value={teacher.id}>
+                    {teacher.fullName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="className">Classe</Label>
+            <Select
+              value={assignmentForm.className}
+              onValueChange={(value) => {
+                setAssignmentForm({ ...assignmentForm, className: value, subject: '' });
+                loadClassSubjects(value);
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Sélectionner une classe" />
+              </SelectTrigger>
+              <SelectContent>
+                {availableClasses?.map((className) => (
+                  <SelectItem key={className} value={className}>
+                    {className}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="subject">Matière</Label>
-                <Select
-                  value={assignmentForm.subject}
-                  onValueChange={(value) => {
-                    const selectedSubject = [...classSubjects, ...availableSubjects].find(s => s.id === value);
-                    setAssignmentForm({
-                      ...assignmentForm,
-                      subject: value,
-                      subjectName: selectedSubject?.name || ''
-                    });
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionner une matière" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {classSubjects?.length > 0 ? (
-                      classSubjects.map((subject) => (
-                        <SelectItem key={`class-${subject.id}`} value={subject.id}>
-                          {subject.name}
-                        </SelectItem>
-                      ))
-                    ) : (
-                      availableSubjects?.map((subject) => (
-                        <SelectItem key={`available-${subject.id}`} value={subject.id}>
-                          {subject.name}
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="schoolYear">Année scolaire</Label>
-                <Input
-                  id="schoolYear"
-                  value={currentSchoolYear}
-                  disabled
-                  className="bg-gray-50"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="hoursPerWeek">Heures par semaine</Label>
-                <Input
-                  id="hoursPerWeek"
-                  type="number"
-                  step="0.5"
-                  min="0"
-                  max="40"
-                  value={assignmentForm.hoursPerWeek}
-                  onChange={(e) => setAssignmentForm({ ...assignmentForm, hoursPerWeek: parseFloat(e.target.value) || 0 })}
-                  placeholder="Ex: 2.0"
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="semester">Semestre</Label>
-                <Select
-                  value={assignmentForm.semester}
-                  onValueChange={(value) => setAssignmentForm({ ...assignmentForm, semester: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionner un semestre" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Premier semestre">Premier semestre</SelectItem>
-                    <SelectItem value="Second semestre">Second semestre</SelectItem>
-                    <SelectItem value="Année complète">Année complète</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                id="isMainTeacher"
-                checked={assignmentForm.isMainTeacher}
-                onChange={(e) => setAssignmentForm({ ...assignmentForm, isMainTeacher: e.target.checked })}
-              />
-              <Label htmlFor="isMainTeacher">Professeur principal</Label>
-            </div>
-
-            <div className="flex justify-end space-x-2">
-              <Button type="button" variant="outline" onClick={() => setIsAssignmentDialogOpen(false)}>
-                Annuler
-              </Button>
-              <Button type="submit">
-                Ajouter l'affectation
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog pour ajouter un personnel */}
-      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col">
-          <DialogHeader className="flex-shrink-0">
-            <DialogTitle>Ajouter un nouveau personnel</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleAddPersonnel} className="space-y-4 overflow-y-auto flex-1 pr-1">
-            {/* Upload de photo */}
-            <div className="flex justify-center mb-4">
-              <div className="text-center">
-                <Label htmlFor="photo" className="cursor-pointer">
-                  <div className="w-24 h-24 mx-auto mb-2 border-2 border-dashed border-gray-300 rounded-full flex items-center justify-center overflow-hidden">
-                    {photoPreview ? (
-                      <img
-                        src={photoPreview}
-                        alt="Photo de profil"
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <User className="w-8 h-8 text-gray-400" />
-                    )}
-                  </div>
-                  <span className="text-sm text-gray-600">Cliquer pour ajouter une photo</span>
-                </Label>
-                <Input
-                  id="photo"
-                  type="file"
-                  accept="image/*"
-                  onChange={handlePhotoChange}
-                  className="hidden"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="fullName">Nom complet</Label>
-                <Input
-                  id="fullName"
-                  value={personnelForm.fullName}
-                  onChange={(e) => setPersonnelForm({ ...personnelForm, fullName: e.target.value })}
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="username">Nom d'utilisateur</Label>
-                <Input
-                  id="username"
-                  value={personnelForm.username}
-                  onChange={(e) => setPersonnelForm({ ...personnelForm, username: e.target.value })}
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={personnelForm.email}
-                  onChange={(e) => setPersonnelForm({ ...personnelForm, email: e.target.value })}
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="phone">Téléphone</Label>
-                <Input
-                  id="phone"
-                  value={personnelForm.phone}
-                  onChange={(e) => setPersonnelForm({ ...personnelForm, phone: e.target.value })}
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="personnelTypeId">Type de personnel</Label>
-                <Select
-                  value={personnelForm.personnelTypeId}
-                  onValueChange={(value) => setPersonnelForm({ ...personnelForm, personnelTypeId: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionner un type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {personnelTypes?.map((type) => (
-                      <SelectItem key={type.id} value={type.id}>
-                        {type.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="password">Mot de passe</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={personnelForm.password}
-                  onChange={(e) => setPersonnelForm({ ...personnelForm, password: e.target.value })}
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="dateEmbauche">Date d'embauche</Label>
-                <Input
-                  id="dateEmbauche"
-                  type="date"
-                  value={personnelForm.dateEmbauche}
-                  onChange={(e) => setPersonnelForm({ ...personnelForm, dateEmbauche: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label htmlFor="typeContrat">Type de contrat</Label>
-                <Select
-                  value={personnelForm.typeContrat}
-                  onValueChange={(value) => setPersonnelForm({ ...personnelForm, typeContrat: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionner un type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="CDI">CDI</SelectItem>
-                    <SelectItem value="CDD">CDD</SelectItem>
-                    <SelectItem value="Stage">Stage</SelectItem>
-                    <SelectItem value="Vacataire">Vacataire</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="salaire">Salaire de base</Label>
-                <Input
-                  id="salaire"
-                  type="number"
-                  value={personnelForm.salaire}
-                  onChange={(e) => setPersonnelForm({ ...personnelForm, salaire: parseInt(e.target.value) })}
-                />
-              </div>
-              <div>
-                <Label htmlFor="experience">Années d'expérience</Label>
-                <Input
-                  id="experience"
-                  type="number"
-                  value={personnelForm.experience}
-                  onChange={(e) => setPersonnelForm({ ...personnelForm, experience: parseInt(e.target.value) })}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="specialite">Spécialité</Label>
-                <Input
-                  id="specialite"
-                  value={personnelForm.specialite}
-                  onChange={(e) => setPersonnelForm({ ...personnelForm, specialite: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label htmlFor="diplome">Diplôme</Label>
-                <Input
-                  id="diplome"
-                  value={personnelForm.diplome}
-                  onChange={(e) => setPersonnelForm({ ...personnelForm, diplome: e.target.value })}
-                />
-              </div>
-            </div>
-
-            <div className="flex justify-end space-x-2">
-              <Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-                Annuler
-              </Button>
-              <Button type="submit">
-                Ajouter le personnel
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog pour les fiches de paie */}
-      <Dialog open={isPayrollDialogOpen} onOpenChange={setIsPayrollDialogOpen}>
-        <DialogContent className="sm:max-w-[500px] max-h-[90vh] flex flex-col">
-          <DialogHeader className="flex-shrink-0">
-            <DialogTitle>Générer les fiches de paie</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleGeneratePayroll} className="space-y-4 overflow-y-auto flex-1 pr-1">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="month">Mois</Label>
-                <Select
-                  value={payrollForm.month.toString()}
-                  onValueChange={(value) => setPayrollForm({ ...payrollForm, month: parseInt(value) })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionner un mois" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1">Janvier</SelectItem>
-                    <SelectItem value="2">Février</SelectItem>
-                    <SelectItem value="3">Mars</SelectItem>
-                    <SelectItem value="4">Avril</SelectItem>
-                    <SelectItem value="5">Mai</SelectItem>
-                    <SelectItem value="6">Juin</SelectItem>
-                    <SelectItem value="7">Juillet</SelectItem>
-                    <SelectItem value="8">Août</SelectItem>
-                    <SelectItem value="9">Septembre</SelectItem>
-                    <SelectItem value="10">Octobre</SelectItem>
-                    <SelectItem value="11">Novembre</SelectItem>
-                    <SelectItem value="12">Décembre</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="year">Année</Label>
-                <Input
-                  id="year"
-                  type="number"
-                  value={payrollForm.year}
-                  onChange={(e) => setPayrollForm({ ...payrollForm, year: parseInt(e.target.value) })}
-                  required
-                />
-              </div>
-            </div>
-
-            <div>
-              <Label htmlFor="personnelType">Type de personnel (optionnel)</Label>
-              <Select
-                value={payrollForm.personnelType}
-                onValueChange={(value) => setPayrollForm({ ...payrollForm, personnelType: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Tous les types" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tous les types</SelectItem>
-                  {personnelTypes?.map((type) => (
-                    <SelectItem key={type.id} value={type.id}>
-                      {type.name}
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="subject">Matière</Label>
+            <Select
+              value={assignmentForm.subject}
+              onValueChange={(value) => {
+                const selectedSubject = [...classSubjects, ...availableSubjects].find(s => s.id === value);
+                setAssignmentForm({
+                  ...assignmentForm,
+                  subject: value,
+                  subjectName: selectedSubject?.name || ''
+                });
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Sélectionner une matière" />
+              </SelectTrigger>
+              <SelectContent>
+                {classSubjects?.length > 0 ? (
+                  classSubjects.map((subject) => (
+                    <SelectItem key={`class-${subject.id}`} value={subject.id}>
+                      {subject.name}
                     </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+                  ))
+                ) : (
+                  availableSubjects?.map((subject) => (
+                    <SelectItem key={`available-${subject.id}`} value={subject.id}>
+                      {subject.name}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="schoolYear">Année scolaire</Label>
+            <Input
+              id="schoolYear"
+              value={currentSchoolYear}
+              disabled
+              className="bg-gray-50"
+            />
+          </div>
+        </div>
 
-            <div className="flex justify-end space-x-2">
-              <Button type="button" variant="outline" onClick={() => setIsPayrollDialogOpen(false)}>
-                Annuler
-              </Button>
-              <Button type="submit">
-                Générer les fiches
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
-      {originalImageForCrop && (
-        <ImageCropperDialog
-          imageSrc={originalImageForCrop}
-          onCropComplete={handleCropComplete}
-          onCancel={handleCropCancel}
-          aspectRatio={1}
-        />
-      )}
-    </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="hoursPerWeek">Heures par semaine</Label>
+            <Input
+              id="hoursPerWeek"
+              type="number"
+              step="0.5"
+              min="0"
+              max="40"
+              value={assignmentForm.hoursPerWeek}
+              onChange={(e) => setAssignmentForm({ ...assignmentForm, hoursPerWeek: parseFloat(e.target.value) || 0 })}
+              placeholder="Ex: 2.0"
+              required
+            />
+          </div>
+          <div>
+            <Label htmlFor="semester">Semestre</Label>
+            <Select
+              value={assignmentForm.semester}
+              onValueChange={(value) => setAssignmentForm({ ...assignmentForm, semester: value })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Sélectionner un semestre" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Premier semestre">Premier semestre</SelectItem>
+                <SelectItem value="Second semestre">Second semestre</SelectItem>
+                <SelectItem value="Année complète">Année complète</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div className="flex items-center space-x-2">
+          <input
+            type="checkbox"
+            id="isMainTeacher"
+            checked={assignmentForm.isMainTeacher}
+            onChange={(e) => setAssignmentForm({ ...assignmentForm, isMainTeacher: e.target.checked })}
+          />
+          <Label htmlFor="isMainTeacher">Professeur principal</Label>
+        </div>
+
+        <div className="flex justify-end space-x-2">
+          <Button type="button" variant="outline" onClick={() => setIsAssignmentDialogOpen(false)}>
+            Annuler
+          </Button>
+          <Button type="submit">
+            Ajouter l'affectation
+          </Button>
+        </div>
+      </form>
+    </DialogContent>
+  </Dialog>
+
+  {/* Dialog pour ajouter un personnel */ }
+  <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+    <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col">
+      <DialogHeader className="flex-shrink-0">
+        <DialogTitle>Ajouter un nouveau personnel</DialogTitle>
+      </DialogHeader>
+      <form onSubmit={handleAddPersonnel} className="space-y-4 overflow-y-auto flex-1 pr-1">
+        {/* Upload de photo */}
+        <div className="flex justify-center mb-4">
+          <div className="text-center">
+            <Label htmlFor="photo" className="cursor-pointer">
+              <div className="w-24 h-24 mx-auto mb-2 border-2 border-dashed border-gray-300 rounded-full flex items-center justify-center overflow-hidden">
+                {photoPreview ? (
+                  <img
+                    src={photoPreview}
+                    alt="Photo de profil"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <User className="w-8 h-8 text-gray-400" />
+                )}
+              </div>
+              <span className="text-sm text-gray-600">Cliquer pour ajouter une photo</span>
+            </Label>
+            <Input
+              id="photo"
+              type="file"
+              accept="image/*"
+              onChange={handlePhotoChange}
+              className="hidden"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="fullName">Nom complet</Label>
+            <Input
+              id="fullName"
+              value={personnelForm.fullName}
+              onChange={(e) => setPersonnelForm({ ...personnelForm, fullName: e.target.value })}
+              required
+            />
+          </div>
+          <div>
+            <Label htmlFor="username">Nom d'utilisateur</Label>
+            <Input
+              id="username"
+              value={personnelForm.username}
+              onChange={(e) => setPersonnelForm({ ...personnelForm, username: e.target.value })}
+              required
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              value={personnelForm.email}
+              onChange={(e) => setPersonnelForm({ ...personnelForm, email: e.target.value })}
+              required
+            />
+          </div>
+          <div>
+            <Label htmlFor="phone">Téléphone</Label>
+            <Input
+              id="phone"
+              value={personnelForm.phone}
+              onChange={(e) => setPersonnelForm({ ...personnelForm, phone: e.target.value })}
+              required
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="personnelTypeId">Type de personnel</Label>
+            <Select
+              value={personnelForm.personnelTypeId}
+              onValueChange={(value) => setPersonnelForm({ ...personnelForm, personnelTypeId: value })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Sélectionner un type" />
+              </SelectTrigger>
+              <SelectContent>
+                {personnelTypes?.map((type) => (
+                  <SelectItem key={type.id} value={type.id}>
+                    {type.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="password">Mot de passe</Label>
+            <Input
+              id="password"
+              type="password"
+              value={personnelForm.password}
+              onChange={(e) => setPersonnelForm({ ...personnelForm, password: e.target.value })}
+              required
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="dateEmbauche">Date d'embauche</Label>
+            <Input
+              id="dateEmbauche"
+              type="date"
+              value={personnelForm.dateEmbauche}
+              onChange={(e) => setPersonnelForm({ ...personnelForm, dateEmbauche: e.target.value })}
+            />
+          </div>
+          <div>
+            <Label htmlFor="typeContrat">Type de contrat</Label>
+            <Select
+              value={personnelForm.typeContrat}
+              onValueChange={(value) => setPersonnelForm({ ...personnelForm, typeContrat: value })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Sélectionner un type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="CDI">CDI</SelectItem>
+                <SelectItem value="CDD">CDD</SelectItem>
+                <SelectItem value="Stage">Stage</SelectItem>
+                <SelectItem value="Vacataire">Vacataire</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="salaire">Salaire de base</Label>
+            <Input
+              id="salaire"
+              type="number"
+              value={personnelForm.salaire}
+              onChange={(e) => setPersonnelForm({ ...personnelForm, salaire: parseInt(e.target.value) })}
+            />
+          </div>
+          <div>
+            <Label htmlFor="experience">Années d'expérience</Label>
+            <Input
+              id="experience"
+              type="number"
+              value={personnelForm.experience}
+              onChange={(e) => setPersonnelForm({ ...personnelForm, experience: parseInt(e.target.value) })}
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="specialite">Spécialité</Label>
+            <Input
+              id="specialite"
+              value={personnelForm.specialite}
+              onChange={(e) => setPersonnelForm({ ...personnelForm, specialite: e.target.value })}
+            />
+          </div>
+          <div>
+            <Label htmlFor="diplome">Diplôme</Label>
+            <Input
+              id="diplome"
+              value={personnelForm.diplome}
+              onChange={(e) => setPersonnelForm({ ...personnelForm, diplome: e.target.value })}
+            />
+          </div>
+        </div>
+
+        <div className="flex justify-end space-x-2">
+          <Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+            Annuler
+          </Button>
+          <Button type="submit">
+            Ajouter le personnel
+          </Button>
+        </div>
+      </form>
+    </DialogContent>
+  </Dialog>
+
+  {/* Dialog pour les fiches de paie */ }
+  <Dialog open={isPayrollDialogOpen} onOpenChange={setIsPayrollDialogOpen}>
+    <DialogContent className="sm:max-w-[500px] max-h-[90vh] flex flex-col">
+      <DialogHeader className="flex-shrink-0">
+        <DialogTitle>Générer les fiches de paie</DialogTitle>
+      </DialogHeader>
+      <form onSubmit={handleGeneratePayroll} className="space-y-4 overflow-y-auto flex-1 pr-1">
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="month">Mois</Label>
+            <Select
+              value={payrollForm.month.toString()}
+              onValueChange={(value) => setPayrollForm({ ...payrollForm, month: parseInt(value) })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Sélectionner un mois" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1">Janvier</SelectItem>
+                <SelectItem value="2">Février</SelectItem>
+                <SelectItem value="3">Mars</SelectItem>
+                <SelectItem value="4">Avril</SelectItem>
+                <SelectItem value="5">Mai</SelectItem>
+                <SelectItem value="6">Juin</SelectItem>
+                <SelectItem value="7">Juillet</SelectItem>
+                <SelectItem value="8">Août</SelectItem>
+                <SelectItem value="9">Septembre</SelectItem>
+                <SelectItem value="10">Octobre</SelectItem>
+                <SelectItem value="11">Novembre</SelectItem>
+                <SelectItem value="12">Décembre</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="year">Année</Label>
+            <Input
+              id="year"
+              type="number"
+              value={payrollForm.year}
+              onChange={(e) => setPayrollForm({ ...payrollForm, year: parseInt(e.target.value) })}
+              required
+            />
+          </div>
+        </div>
+
+        <div>
+          <Label htmlFor="personnelType">Type de personnel (optionnel)</Label>
+          <Select
+            value={payrollForm.personnelType}
+            onValueChange={(value) => setPayrollForm({ ...payrollForm, personnelType: value })}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Tous les types" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous les types</SelectItem>
+              {personnelTypes?.map((type) => (
+                <SelectItem key={type.id} value={type.id}>
+                  {type.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="flex justify-end space-x-2">
+          <Button type="button" variant="outline" onClick={() => setIsPayrollDialogOpen(false)}>
+            Annuler
+          </Button>
+          <Button type="submit">
+            Générer les fiches
+          </Button>
+        </div>
+      </form>
+    </DialogContent>
+  </Dialog>
+  {
+    originalImageForCrop && (
+      <ImageCropperDialog
+        imageSrc={originalImageForCrop}
+        onCropComplete={handleCropComplete}
+        onCancel={handleCropCancel}
+        aspectRatio={1}
+      />
+    )
+  }
+    </div >
   );
 }

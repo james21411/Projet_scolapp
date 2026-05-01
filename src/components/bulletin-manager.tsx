@@ -109,6 +109,7 @@ interface Bulletin {
 // Sous-composant de vue pour le Passage de Classe
 function ClassAdvancementView({
   classes,
+  allSchoolClasses,
   availableLevels,
   availableYears,
   currentSchoolYear,
@@ -118,6 +119,7 @@ function ClassAdvancementView({
   setAdvancementDecisions
 }: {
   classes: { id: string, name: string, level?: string }[],
+  allSchoolClasses: { id: string, name: string, level?: string }[],
   availableLevels: string[],
   availableYears: string[],
   currentSchoolYear: string,
@@ -442,8 +444,8 @@ function ClassAdvancementView({
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent className="rounded-none">
-                          {availableClasses.map((ac, i) => (
-                            <SelectItem key={i} value={ac}>{ac}</SelectItem>
+                          {allSchoolClasses.map((ac, i) => (
+                            <SelectItem key={i} value={ac.name}>{ac.name} ({ac.level})</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -575,6 +577,7 @@ export default function BulletinManager({ schoolInfo }: { schoolInfo?: SchoolInf
   const [advancementDecisions, setAdvancementDecisions] = useState<Record<string, { decision: 'pass' | 'repeat' | 'exclude', targetClass: string }>>({});
   const [bulletins, setBulletins] = useState<Bulletin[]>([]);
   const [classes, setClasses] = useState<{ id: string, name: string, level?: string }[]>([]);
+  const [allSchoolClasses, setAllSchoolClasses] = useState<{ id: string, name: string, level?: string }[]>([]);
   const [availableLevels, setAvailableLevels] = useState<string[]>([]);
   const [levelsData, setLevelsData] = useState<any[]>([]);
 
@@ -1058,14 +1061,24 @@ export default function BulletinManager({ schoolInfo }: { schoolInfo?: SchoolInf
           setLevelsData(levelsDataResponse);
           const levels = levelsDataResponse.map((level: any) => level.name);
           setAvailableLevels(levels);
+
+          const allCls: { id: string, name: string, level?: string }[] = [];
+          levelsDataResponse.forEach((lvl: any) => {
+            if (lvl.classes) {
+              lvl.classes.forEach((c: any) => allCls.push({ id: c.id, name: c.name, level: lvl.name }));
+            }
+          });
+          setAllSchoolClasses(allCls);
           console.log(`✅ ${levels.length} niveaux chargés:`, levels);
         } else {
           setLevelsData([]);
           setAvailableLevels([]);
+          setAllSchoolClasses([]);
         }
       } else {
         setLevelsData([]);
         setAvailableLevels([]);
+        setAllSchoolClasses([]);
       }
 
       // Charger les périodes d'évaluation
@@ -1089,13 +1102,15 @@ export default function BulletinManager({ schoolInfo }: { schoolInfo?: SchoolInf
   const sortEvaluationPeriods = (periods: EvaluationPeriod[]) => {
     return periods.sort((a, b) => {
       // Priorité 1: Type de période (Séquence avant Trimestre)
-      const aType = a.name.toLowerCase();
-      const bType = b.name.toLowerCase();
+      const aType = String(a.type || '').toLowerCase();
+      const bType = String(b.type || '').toLowerCase();
+      const aName = String(a.name || '').toLowerCase();
+      const bName = String(b.name || '').toLowerCase();
 
-      const aIsSequence = aType.includes('seq') || aType.includes('séquence');
-      const bIsSequence = bType.includes('seq') || bType.includes('séquence');
-      const aIsTrimester = aType.includes('trim');
-      const bIsTrimester = bType.includes('trim');
+      const aIsSequence = aType === 'sequence' || aName.includes('seq') || aName.includes('séquence');
+      const bIsSequence = bType === 'sequence' || bName.includes('seq') || bName.includes('séquence');
+      const aIsTrimester = aType === 'trimestre' || aName.includes('trim');
+      const bIsTrimester = bType === 'trimestre' || bName.includes('trim');
 
       // Séquences en premier
       if (aIsSequence && !bIsSequence) return -1;
@@ -1137,8 +1152,8 @@ export default function BulletinManager({ schoolInfo }: { schoolInfo?: SchoolInf
         const finalPeriods = sortedPeriods;
 
         // Les trimesters et sequences pour le log
-        const trimesters = finalPeriods.filter((p: any) => p.name.toLowerCase().includes('trim'));
-        const sequences = finalPeriods.filter((p: any) => p.name.toLowerCase().includes('seq'));
+        const trimesters = finalPeriods.filter((p: any) => String(p.type || '').toLowerCase() === 'trimestre' || String(p.name || '').toLowerCase().includes('trim'));
+        const sequences = finalPeriods.filter((p: any) => String(p.type || '').toLowerCase() === 'sequence' || String(p.name || '').toLowerCase().includes('seq'));
 
         console.log('🏆 Trimestres trouvés (validés):', trimesters.length, trimesters.map((p: any) => p.name));
         console.log('📝 Séquences trouvées:', sequences.length, sequences.map((p: any) => p.name));
@@ -1275,15 +1290,15 @@ export default function BulletinManager({ schoolInfo }: { schoolInfo?: SchoolInf
 
             if (periodName.toLowerCase().includes('1er') || periodName.toLowerCase().includes('1st')) {
               // 1er trimestre : séquences 1 et 2
-              targetSequences = sequences.filter((seq: any) => seq.order === 1 || seq.order === 2);
+              targetSequences = sequences.filter((seq: any) => seq.id.includes('seq1') || seq.id.includes('seq2') || seq.name.includes('1ère') || seq.name.includes('2ème'));
               console.log('📚 1er trimestre → Séquences 1 et 2');
-            } else if (periodName.toLowerCase().includes('2ème') || periodName.toLowerCase().includes('2eme') || periodName.toLowerCase().includes('2nd')) {
+            } else if (periodName.toLowerCase().includes('2ème') || periodName.toLowerCase().includes('2eme') || periodName.toLowerCase().includes('2nd') || periodName.toLowerCase().includes('2e')) {
               // 2ème trimestre : séquences 3 et 4
-              targetSequences = sequences.filter((seq: any) => seq.order === 3 || seq.order === 4);
+              targetSequences = sequences.filter((seq: any) => seq.id.includes('seq3') || seq.id.includes('seq4') || seq.name.includes('3ème') || seq.name.includes('4ème'));
               console.log('📚 2ème trimestre → Séquences 3 et 4');
-            } else if (periodName.toLowerCase().includes('3ème') || periodName.toLowerCase().includes('3eme') || periodName.toLowerCase().includes('3rd')) {
+            } else if (periodName.toLowerCase().includes('3ème') || periodName.toLowerCase().includes('3eme') || periodName.toLowerCase().includes('3rd') || periodName.toLowerCase().includes('3e')) {
               // 3ème trimestre : séquences 5 et 6
-              targetSequences = sequences.filter((seq: any) => seq.order === 5 || seq.order === 6);
+              targetSequences = sequences.filter((seq: any) => seq.id.includes('seq5') || seq.id.includes('seq6') || seq.name.includes('5ème') || seq.name.includes('6ème'));
               console.log('📚 3ème trimestre → Séquences 5 et 6');
             } else {
               console.log('⚠️ Type de trimestre non reconnu:', periodName);
@@ -1292,8 +1307,8 @@ export default function BulletinManager({ schoolInfo }: { schoolInfo?: SchoolInf
               console.log('📚 Fallback: 2 premières séquences sélectionnées');
             }
 
-            // Trier les séquences cibles par numéro
-            targetSequences.sort((a, b) => a.order - b.order);
+            // Trier les séquences cibles par leur identifiant pour forcer seq1 puis seq2
+            targetSequences.sort((a, b) => a.id.localeCompare(b.id));
 
             console.log('🎯 Séquences cibles selon le trimestre:', targetSequences.map(s => ({ id: s.id, name: s.name })));
 
@@ -2388,8 +2403,8 @@ export default function BulletinManager({ schoolInfo }: { schoolInfo?: SchoolInf
                       </SelectTrigger>
                       <SelectContent className="rounded-none">
                         {(() => {
-                          const sequences = evaluationPeriods.filter(p => !p.name.toLowerCase().includes('trim'));
-                          const trimesters = evaluationPeriods.filter(p => p.name.toLowerCase().includes('trim'));
+                          const trimesters = evaluationPeriods.filter(p => String(p.type || '').toLowerCase() === 'trimestre' || String(p.name || '').toLowerCase().includes('trim'));
+                          const sequences = evaluationPeriods.filter(p => String(p.type || '').toLowerCase() === 'sequence' || String(p.name || '').toLowerCase().includes('seq'));
                           const others = evaluationPeriods.filter(p => !sequences.includes(p) && !trimesters.includes(p));
 
                           return (
@@ -2714,6 +2729,7 @@ export default function BulletinManager({ schoolInfo }: { schoolInfo?: SchoolInf
           {selectedClass ? (
             <ClassAdvancementView
               classes={classes}
+              allSchoolClasses={allSchoolClasses}
               availableLevels={availableLevels}
               availableYears={availableYears}
               currentSchoolYear={schoolYear}

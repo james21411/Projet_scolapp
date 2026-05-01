@@ -28,23 +28,23 @@ export interface ParentInfo {
 }
 
 export interface Student {
-  id: string;
-  nom: string;
-  prenom: string;
-  sexe: 'Masculin' | 'Féminin';
-  dateNaissance: string;
-  lieuNaissance: string;
-  nationalite: string;
-  acteNaissance?: string;
-  photoUrl?: string;
-  infoParent: ParentInfo;
-  infoParent2?: ParentInfo;
-  niveau: string;
-  classe: string;
-  anneeScolaire: string;
-  historiqueClasse: { annee: string; classe: string }[];
-  statut: StudentStatus;
-  createdAt: string;
+    id: string;
+    nom: string;
+    prenom: string;
+    sexe: 'Masculin' | 'Féminin';
+    dateNaissance: string;
+    lieuNaissance: string;
+    nationalite: string;
+    acteNaissance?: string;
+    photoUrl?: string;
+    infoParent: ParentInfo;
+    infoParent2?: ParentInfo;
+    niveau: string;
+    classe: string;
+    anneeScolaire: string;
+    historiqueClasse: { annee: string; classe: string }[];
+    statut: StudentStatus;
+    createdAt: string;
 }
 
 export type StudentFilters = {
@@ -116,19 +116,19 @@ export async function addStudent(studentData: Omit<Student, 'id' | 'historiqueCl
         createdAt: new Date().toISOString().slice(0, 19).replace('T', ' '),
     };
     await addStudentDb({
-      ...newStudent,
-      createdAt: newStudent.createdAt
+        ...newStudent,
+        createdAt: newStudent.createdAt
     });
     await logAction({ action: 'student_created', details: `New student ${newStudent.prenom} ${newStudent.nom} (${newStudent.id}) created with status 'Pré-inscrit'.` });
     return newStudent;
 }
 
 export async function updateStudent(studentId: string, updatedData: Student): Promise<Student> {
-  await updateStudentDb(studentId, {
-    ...updatedData,
-    createdAt: updatedData.createdAt || new Date().toISOString().slice(0, 19).replace('T', ' ')
-  });
-  return updatedData;
+    await updateStudentDb(studentId, {
+        ...updatedData,
+        createdAt: updatedData.createdAt || new Date().toISOString().slice(0, 19).replace('T', ' ')
+    });
+    return updatedData;
 }
 
 export async function updateStudentStatus(studentId: string, newStatus: StudentStatus): Promise<void> {
@@ -317,10 +317,10 @@ export async function updateStudentClass(studentId: string, newClass: string, re
     // Déterminer le nouveau niveau en consultant la base de données
     let newNiveau = 'Autre';
     for (const [level, levelData] of Object.entries(schoolStructure.levels)) {
-      if (levelData.classes.includes(newClass)) {
-        newNiveau = level;
-        break;
-      }
+        if (levelData.classes.includes(newClass)) {
+            newNiveau = level;
+            break;
+        }
     }
 
     const historique = Array.isArray(student.historiqueClasse) ? student.historiqueClasse : [];
@@ -359,11 +359,23 @@ export async function updateStudentClass(studentId: string, newClass: string, re
 }
 
 export async function processClassAdvancement(
-  advancementData: { studentId: string; newClass: string; hasPassed: boolean }[]
+    advancementData: { studentId: string; newClass: string; hasPassed: boolean }[]
 ): Promise<void> {
+    const { getSchoolStructure } = await import('./schoolService');
+    const schoolStructure = await getSchoolStructure();
+
     for (const adv of advancementData) {
         const student = await getStudentByIdDb(adv.studentId) as Student | null;
         if (!student) continue;
+
+        let newNiveau = student.niveau;
+        for (const [level, levelData] of Object.entries(schoolStructure.levels)) {
+            if ((levelData as any).classes.includes(adv.newClass)) {
+                newNiveau = level;
+                break;
+            }
+        }
+
         const historique = Array.isArray(student.historiqueClasse) ? student.historiqueClasse : [];
         let newStatut: StudentStatus = student.statut;
         if (adv.hasPassed) {
@@ -372,8 +384,8 @@ export async function processClassAdvancement(
             newStatut = 'Actif'; // ou 'Redoublant' si tu veux gérer ce statut
         }
         const newHistorique = [...historique, { annee: student.anneeScolaire, classe: adv.newClass }];
-        await updateStudentDb(adv.studentId, { classe: adv.newClass, historiqueClasse: newHistorique, statut: newStatut });
-        await logAction({ action: 'student_updated', details: `Élève ${student.prenom} ${student.nom} (${student.id}) avancé en '${adv.newClass}' (passage: ${adv.hasPassed ? 'oui' : 'non'}).` });
+        await updateStudentDb(adv.studentId, { classe: adv.newClass, niveau: newNiveau, historiqueClasse: newHistorique, statut: newStatut });
+        await logAction({ action: 'student_updated', details: `Élève ${student.prenom} ${student.nom} (${student.id}) avancé en '${adv.newClass}' (niveau: ${newNiveau}, passage: ${adv.hasPassed ? 'oui' : 'non'}).` });
     }
 }
 

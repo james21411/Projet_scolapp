@@ -578,15 +578,15 @@ export default function SaisieNotesAvancee({ currentUser, role, teacherId, schoo
 
       if (cachedSequences && cachedSequences.length > 0) {
         console.log(`📦 SaisieNotes: Utilisation du cache (${cachedSequences.length} séquences)`);
-        // Filtrer uniquement les séquences actives
-        setPeriods(cachedSequences.filter((p: any) => p.isActive === 1 || p.isActive === true));
+        // Filtrer uniquement les séquences actives ET qui sont bien des séquences (pas des trimestres)
+        setPeriods(cachedSequences.filter((p: any) => (p.isActive === 1 || p.isActive === true) && String(p.name || '').toLowerCase().includes('séquence')));
       } else {
         const periodsResponse = await fetch(`/api/evaluation-periods/sequences?schoolYear=${encodeURIComponent(yearToUse)}`);
         if (periodsResponse.ok) {
           const segments = await periodsResponse.json();
           const allSegments = Array.isArray(segments) ? segments : [];
-          // Filtrer uniquement les séquences actives
-          setPeriods(allSegments.filter((p: any) => p.isActive === 1 || p.isActive === true));
+          // Filtrer uniquement les séquences actives ET qui sont bien des séquences
+          setPeriods(allSegments.filter((p: any) => (p.isActive === 1 || p.isActive === true) && String(p.name || '').toLowerCase().includes('séquence')));
         }
       }
 
@@ -805,7 +805,7 @@ export default function SaisieNotesAvancee({ currentUser, role, teacherId, schoo
             throw new Error('Impossible de charger les périodes d\'évaluation');
           }
           const periodsData = await response.json();
-          const sequences = periodsData.filter((period: any) => period.name && period.name.includes('Séquence'));
+          const sequences = periodsData.filter((period: any) => period.name && period.name.toLowerCase().includes('séquence'));
           // Filtrer uniquement les séquences actives
           const activeSequences = sequences.filter((s: any) => s.isActive === 1 || s.isActive === true);
           setPeriods(activeSequences);
