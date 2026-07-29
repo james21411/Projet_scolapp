@@ -717,6 +717,7 @@ export default function FinancePaymentsSection({ schoolInfo }: { schoolInfo?: Sc
             cashier={rowReceiptData.cashier}
             cashierUsername={rowReceiptData.cashierUsername}
             reason={rowReceiptData.reason}
+            schoolYear={schoolYear || currentSchoolYear}
             autoPrint
             onPrinted={() => setShowRowReceipt(false)}
           />

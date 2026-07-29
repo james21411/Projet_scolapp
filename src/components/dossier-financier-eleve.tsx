@@ -478,6 +478,7 @@ export default function DossierFinancierEleve({ studentId, schoolYear, onClose, 
             cashier={installmentReceiptData.cashier}
             cashierUsername={installmentReceiptData.cashierUsername}
             reason={installmentReceiptData.reason}
+            schoolYear={data?.student?.anneeScolaire || schoolYear}
             autoPrint
             onPrinted={() => setShowInstallmentReceipt(false)}
           />
