@@ -56,17 +56,28 @@ export function getPoolForDb(dbName: string): mysql.Pool {
 
 // Déterminer la DB de manière dynamique (selon la session ou processus)
 export async function getCurrentDbName(): Promise<string> {
+    const defaultDb = process.env.MYSQL_DATABASE || 'scolapp';
     try {
+        // cookies() n'est disponible que dans l'App Router.
+        // Dans les Pages API routes, cette appel lève une erreur Invariant.
+        // On la détecte silencieusement et on retourne la DB par défaut.
         const cookieStore = await cookies();
         const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
         if (session && session.dbName) {
             return session.dbName;
         }
-        console.log("⚠️ getCurrentDbName: session.dbName est vide, retour au default");
-        return process.env.MYSQL_DATABASE || 'scolapp';
-    } catch (error) {
+        return defaultDb;
+    } catch (error: any) {
+        // Erreur silencieuse pour les Pages Router API routes
+        if (
+            error?.message?.includes('requestAsyncStorage') ||
+            error?.message?.includes('cookies()') ||
+            error?.message?.includes('Invariant')
+        ) {
+            return defaultDb;
+        }
         console.error("⚠️ getCurrentDbName Error:", error);
-        return process.env.MYSQL_DATABASE || 'scolapp';
+        return defaultDb;
     }
 }
 
