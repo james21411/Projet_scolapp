@@ -71,6 +71,7 @@ export default async function handler(req, res) {
       annualAverage: Math.round(annualAverage * 100) / 100,
       finalDecision,
       trimesterAverages
+    });
 
   } catch (error) {
     console.error(' ❌ Erreur lors de la récupération des données annuelles:', error);
