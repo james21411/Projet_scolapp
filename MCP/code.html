@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "outline": "#757684",
+                    "on-error-container": "#93000a",
+                    "on-tertiary-fixed-variant": "#005236",
+                    "inverse-on-surface": "#eaf1ff",
+                    "on-secondary-fixed": "#191c1e",
+                    "primary-fixed": "#dde1ff",
+                    "tertiary-container": "#00563a",
+                    "on-primary": "#ffffff",
+                    "primary": "#00288e",
+                    "surface-container-highest": "#d3e4fe",
+                    "on-primary-fixed": "#001453",
+                    "tertiary-fixed-dim": "#4edea3",
+                    "surface": "#f8f9ff",
+                    "on-primary-container": "#a8b8ff",
+                    "secondary-container": "#e0e3e5",
+                    "on-tertiary": "#ffffff",
+                    "on-surface-variant": "#444653",
+                    "primary-container": "#1e40af",
+                    "surface-container-low": "#eff4ff",
+                    "on-secondary-container": "#626567",
+                    "background": "#f8f9ff",
+                    "primary-fixed-dim": "#b8c4ff",
+                    "inverse-surface": "#213145",
+                    "surface-tint": "#3755c3",
+                    "surface-dim": "#cbdbf5",
+                    "inverse-primary": "#b8c4ff",
+                    "surface-container": "#e5eeff",
+                    "error-container": "#ffdad6",
+                    "outline-variant": "#c4c5d5",
+                    "on-surface": "#0b1c30",
+                    "on-background": "#0b1c30",
+                    "tertiary-fixed": "#6ffbbe",
+                    "secondary-fixed": "#e0e3e5",
+                    "secondary-fixed-dim": "#c4c7c9",
+                    "surface-container-lowest": "#ffffff",
+                    "tertiary": "#003d27",
+                    "surface-container-high": "#dce9ff",
+                    "error": "#ba1a1a",
+                    "on-secondary-fixed-variant": "#444749",
+                    "on-tertiary-container": "#3fd298",
+                    "on-primary-fixed-variant": "#173bab",
+                    "secondary": "#5c5f61",
+                    "on-tertiary-fixed": "#002113",
+                    "on-error": "#ffffff",
+                    "on-secondary": "#ffffff",
+                    "surface-variant": "#d3e4fe",
+                    "surface-bright": "#f8f9ff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "sm": "16px",
+                    "xl": "64px",
+                    "base": "4px",
+                    "margin": "32px",
+                    "md": "24px",
+                    "gutter": "24px",
+                    "xs": "8px",
+                    "lg": "40px"
+            },
+            "fontFamily": {
+                    "body-sm": ["Inter"],
+                    "button": ["Inter"],
+                    "body-md": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "label-caps": ["Inter"],
+                    "h2": ["Manrope"],
+                    "h1": ["Manrope"],
+                    "h3": ["Manrope"]
+            },
+            "fontSize": {
+                    "body-sm": ["14px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                    "button": ["15px", {"lineHeight": "1", "fontWeight": "500"}],
+                    "body-md": ["16px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                    "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                    "label-caps": ["12px", {"lineHeight": "1", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "h2": ["32px", {"lineHeight": "1.3", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "h1": ["40px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "h3": ["24px", {"lineHeight": "1.4", "letterSpacing": "0", "fontWeight": "600"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .bento-card {
+            background: #ffffff;
+            border-radius: 1rem;
+            box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+        }
+        .bento-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0px 10px 30px rgba(30, 64, 175, 0.08);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md">
+<!-- TopNavBar -->
+<nav class="fixed top-0 w-full z-50 bg-white/90 backdrop-blur-md border-b border-slate-100 shadow-sm">
+<div class="flex justify-between items-center h-16 px-6 md:px-12 max-w-7xl mx-auto">
+<div class="text-xl font-extrabold text-blue-900 tracking-tight">EduPulse</div>
+<div class="hidden md:flex space-x-8 items-center">
+<a class="font-['Manrope'] text-sm font-medium tracking-tight text-blue-700 border-b-2 border-blue-700 pb-1" href="#">Features</a>
+<a class="font-['Manrope'] text-sm font-medium tracking-tight text-slate-600 hover:text-blue-600 transition-colors" href="#">Solutions</a>
+<a class="font-['Manrope'] text-sm font-medium tracking-tight text-slate-600 hover:text-blue-600 transition-colors" href="#">Pricing</a>
+<a class="font-['Manrope'] text-sm font-medium tracking-tight text-slate-600 hover:text-blue-600 transition-colors" href="#">About</a>
+</div>
+<div class="flex items-center gap-4">
+<button class="px-4 py-2 text-blue-800 font-medium hover:bg-slate-50 transition-all duration-200 active:scale-95">Login</button>
+<button class="px-5 py-2.5 bg-primary text-on-primary rounded-lg font-button active:scale-95 transition-transform shadow-lg shadow-primary/20">Start Free Trial</button>
+</div>
+</div>
+</nav>
+<main class="pt-16">
+<!-- Hero Section -->
+<section class="relative overflow-hidden pt-20 pb-32 px-6 md:px-12 max-w-7xl mx-auto">
+<div class="grid lg:grid-cols-2 gap-12 items-center">
+<div class="z-10">
+<span class="inline-block py-1 px-3 mb-6 rounded-full bg-surface-container-high text-primary-container font-label-caps uppercase tracking-wider">The Future of Education</span>
+<h1 class="font-h1 text-h1 text-on-surface mb-6">Manage Your School with Confidence</h1>
+<p class="font-body-lg text-body-lg text-secondary mb-8 max-w-lg">Streamline administrative tasks, empower teachers, and engage parents with the most intuitive school management platform ever built.</p>
+<div class="flex flex-wrap gap-4">
+<button class="px-8 py-4 bg-primary text-on-primary rounded-xl font-button text-lg shadow-xl shadow-primary/25 hover:bg-primary-container transition-all">Get Started</button>
+<button class="px-8 py-4 bg-surface-container-low text-primary rounded-xl font-button text-lg flex items-center gap-2 hover:bg-surface-container transition-all">
+<span class="material-symbols-outlined">play_circle</span>
+                            Watch Demo
+                        </button>
+</div>
+</div>
+<div class="relative">
+<div class="absolute -top-20 -right-20 w-80 h-80 bg-surface-container-highest rounded-full blur-3xl opacity-50 -z-10"></div>
+<img alt="School Management Dashboard Preview" class="rounded-3xl shadow-2xl border border-white/50 w-full object-cover aspect-[4/3]" data-alt="A clean and modern digital dashboard interface shown on a high-resolution tablet screen, featuring organized charts, student performance metrics, and a professional blue color palette. The setting is a bright, airy school administrative office with soft natural lighting and a minimalist, focused atmosphere that reflects corporate precision." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDyajlKeqJPQizfhSQZS7DRbvtHoqimn8BF0qtmk6oLacxvXWyYPP0DUHmMYVp5MVBD1dAV6qJ8X_vpCUtXAMDqR9QiGx_ii2glyh_hKH4Av1e9aj4FkGdyhNzCfVZligU22Adlgf0BT2wzweKBAl5McoHSXN0_wuxuZs-jkzv1JLhpKM_inVHhtmkIrIS7WGETLxdFTAhC4WlrxXkdBmixh_vxOH0FgdLDnjjI9i52-wvv05jTP4a7v1uzmYq6H8LRIwktQkFnxeo"/>
+</div>
+</div>
+</section>
+<!-- Key Features (Bento Grid) -->
+<section class="py-24 px-6 md:px-12 bg-surface-container-low">
+<div class="max-w-7xl mx-auto">
+<div class="text-center mb-16">
+<h2 class="font-h2 text-h2 text-on-surface mb-4">Precision Built for Every Department</h2>
+<p class="font-body-md text-body-md text-secondary max-w-2xl mx-auto">A unified ecosystem that replaces fragmented tools with a single source of academic truth.</p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<!-- Feature Card 1 -->
+<div class="bento-card p-8 md:col-span-2 flex flex-col justify-between">
+<div>
+<div class="w-12 h-12 bg-primary-container/10 rounded-lg flex items-center justify-center text-primary-container mb-6">
+<span class="material-symbols-outlined">person_pin</span>
+</div>
+<h3 class="font-h3 text-h3 mb-3">Student Information System</h3>
+<p class="font-body-md text-secondary">A comprehensive profile for every learner. Track medical history, academic records, extracurricular activities, and behavioral notes in one secure place.</p>
+</div>
+<img alt="Student Information System" class="mt-8 rounded-xl h-48 w-full object-cover" data-alt="A diverse group of students engaged in collaborative learning in a modern, well-lit library environment. The scene is captured in high-key lighting with a focus on academic excellence and community. The color palette is clean, utilizing soft blues and whites to match the EduPulse brand identity." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBraaXMyrygVcXBzNQ6blJZac73YD2ol1OvLj40Rg3MIkajVBVzKA6W4fTcnVBm1nApUoWDagfxHzLaCMvWn8Z3zYqQZWh1r9DWnsfcowHs_K0dDeOl-aJsLRq4t3iqNUKrUQT5kqiaeAgkhWi9zQGlkj2DPSyz1Mx1oHaXuKkJwxZptW6MHNYkDEmAyrPO_ZjDMmV3RafON8o2eUeLtxU9Zf0t1XOZ-cIKsDhxnqRlQwOMcwtu8vrCpDs-NiuJyZJFlAJ_ogg6ODw"/>
+</div>
+<!-- Feature Card 2 -->
+<div class="bento-card p-8">
+<div class="w-12 h-12 bg-tertiary-container/10 rounded-lg flex items-center justify-center text-on-tertiary-fixed-variant mb-6">
+<span class="material-symbols-outlined">auto_awesome</span>
+</div>
+<h3 class="font-h3 text-h3 mb-3">Automated Grading</h3>
+<p class="font-body-md text-secondary">Set benchmarks once. Let EduPulse handle the calculations, weightage, and report card generation instantly.</p>
+</div>
+<!-- Feature Card 3 -->
+<div class="bento-card p-8">
+<div class="w-12 h-12 bg-surface-container-highest rounded-lg flex items-center justify-center text-primary-container mb-6">
+<span class="material-symbols-outlined">how_to_reg</span>
+</div>
+<h3 class="font-h3 text-h3 mb-3">Attendance Tracking</h3>
+<p class="font-body-md text-secondary">Biometric or manual entry. Send automatic alerts to parents when a student is absent.</p>
+</div>
+<!-- Feature Card 4 -->
+<div class="bento-card p-8 md:col-span-2 flex flex-col md:flex-row gap-8 items-center">
+<div class="flex-1">
+<div class="w-12 h-12 bg-primary-container/10 rounded-lg flex items-center justify-center text-primary-container mb-6">
+<span class="material-symbols-outlined">forum</span>
+</div>
+<h3 class="font-h3 text-h3 mb-3">Parent-Teacher Communication</h3>
+<p class="font-body-md text-secondary">Bridge the gap with instant messaging, announcement boards, and integrated event scheduling.</p>
+</div>
+<div class="flex-1 w-full bg-slate-50 p-4 rounded-xl border border-slate-100">
+<div class="flex items-center gap-3 mb-3">
+<div class="w-8 h-8 rounded-full bg-blue-100"></div>
+<div class="h-2 w-24 bg-blue-200 rounded"></div>
+</div>
+<div class="space-y-2">
+<div class="h-2 w-full bg-slate-200 rounded"></div>
+<div class="h-2 w-4/5 bg-slate-200 rounded"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Benefits Section -->
+<section class="py-24 px-6 md:px-12 max-w-7xl mx-auto">
+<div class="grid lg:grid-cols-2 gap-16 items-center">
+<div class="grid grid-cols-2 gap-4">
+<div class="space-y-4 pt-12">
+<div class="p-6 bg-white rounded-2xl shadow-sm border border-slate-50 flex flex-col gap-4">
+<span class="material-symbols-outlined text-tertiary-container text-3xl">schedule</span>
+<span class="font-bold text-lg">Save Time</span>
+<p class="text-body-sm text-secondary">Automate 60% of administrative overhead within the first month.</p>
+</div>
+<div class="p-6 bg-white rounded-2xl shadow-sm border border-slate-50 flex flex-col gap-4">
+<span class="material-symbols-outlined text-primary-container text-3xl">security</span>
+<span class="font-bold text-lg">Secure Data</span>
+<p class="text-body-sm text-secondary">Enterprise-grade encryption and FERPA-compliant storage systems.</p>
+</div>
+</div>
+<div class="space-y-4">
+<div class="p-6 bg-white rounded-2xl shadow-sm border border-slate-50 flex flex-col gap-4">
+<span class="material-symbols-outlined text-on-tertiary-container text-3xl">trending_up</span>
+<span class="font-bold text-lg">Improve Results</span>
+<p class="text-body-sm text-secondary">Identify struggling students early with predictive data analytics.</p>
+</div>
+<div class="p-6 bg-white rounded-2xl shadow-sm border border-slate-50 flex flex-col gap-4">
+<span class="material-symbols-outlined text-blue-400 text-3xl">groups</span>
+<span class="font-bold text-lg">Ease of Use</span>
+<p class="text-body-sm text-secondary">Designed for everyone from teachers to first-time parent users.</p>
+</div>
+</div>
+</div>
+<div>
+<h2 class="font-h2 text-h2 text-on-surface mb-6">Institutional Reliability, Redefined.</h2>
+<p class="font-body-lg text-body-lg text-secondary mb-8">EduPulse isn't just software; it's a foundation for your institution's growth. We've balanced modern speed with the gravity and precision required for academic management.</p>
+<ul class="space-y-4">
+<li class="flex items-center gap-3">
+<span class="material-symbols-outlined text-on-tertiary-container" data-weight="fill">check_circle</span>
+<span class="font-medium">99.9% System Uptime Guarantee</span>
+</li>
+<li class="flex items-center gap-3">
+<span class="material-symbols-outlined text-on-tertiary-container" data-weight="fill">check_circle</span>
+<span class="font-medium">24/7 Dedicated Academic Support</span>
+</li>
+<li class="flex items-center gap-3">
+<span class="material-symbols-outlined text-on-tertiary-container" data-weight="fill">check_circle</span>
+<span class="font-medium">Regular Security Audits &amp; Compliance Updates</span>
+</li>
+</ul>
+</div>
+</div>
+</section>
+<!-- Testimonials -->
+<section class="py-24 px-6 md:px-12 bg-primary-container text-on-primary">
+<div class="max-w-7xl mx-auto text-center">
+<div class="mb-16">
+<span class="font-label-caps uppercase text-on-primary-container">Wall of Trust</span>
+<h2 class="font-h2 text-h2 mt-4">Voices from the Classroom</h2>
+</div>
+<div class="grid md:grid-cols-3 gap-8">
+<div class="p-8 bg-white/10 backdrop-blur-sm rounded-2xl text-left">
+<p class="font-body-lg text-white mb-6 italic">"EduPulse has completely transformed how our faculty manages their grading work-flow. The accuracy is unmatched."</p>
+<div class="flex items-center gap-4">
+<img alt="Dr. Sarah Jenkins" class="w-12 h-12 rounded-full object-cover" data-alt="A professional headshot of a female school principal in her 40s, smiling warmly in a professional academic setting. The lighting is soft and flattering, emphasizing a mood of trust and leadership. The background is a soft-focus library, and the overall style is clean and high-fidelity to match the EduPulse corporate brand." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDrAMRQpPT0jBYaCpI-o7E876g1PYHjWkNeckkyMMlKgmmohQp7AgGfbEQ4hpWaX2y8uYyMl8AIHL2K1aLe3VIWojgCHu-jYsgKcxaJ8qSLtiuFiNROuwD2VVb7J85GWRFBuwywg8BU3zelzAQXtlhYqTIs84Yk2-caS2YtfRmw5YPTgnMC9JmS_8Rp0uFbA6vsbQiPpOvoNxdfSf4TbaRFUEFJ17kixQ32zgHzptaK9iau8W-SBoYuRK5in9rgl_sbIV1p45EPxtI"/>
+<div>
+<p class="font-bold">Dr. Sarah Jenkins</p>
+<p class="text-sm opacity-80">Principal, St. Andrews Academy</p>
+</div>
+</div>
+</div>
+<div class="p-8 bg-white/10 backdrop-blur-sm rounded-2xl text-left">
+<p class="font-body-lg text-white mb-6 italic">"The parent portal is a game-changer. Communication has increased by 40%, and our parent satisfaction scores are at an all-time high."</p>
+<div class="flex items-center gap-4">
+<img alt="Mark Thompson" class="w-12 h-12 rounded-full object-cover" data-alt="A professional headshot of a male administrative director in a clean, modern office environment. He looks confident and approachable, illuminated by cool, balanced studio lighting. The image style is polished and professional, reinforcing the academic precision and reliability of the EduPulse platform." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDUBwqFFRXgdSvUPln93xJEx55KprSAsXaqYilYw7GyvSLmpsUh6YUjfdxYuqVXHjQjKzVUuLxhfjhcdL_CjITlOz3GDDr4uardgCre28viBsIQ32JTeP4XkAkS9EIQM1srkNKP7PeewP2MomQso1hOv4Om_HN0Jz4cZ9arDDwYRVJQ4JOPN94i60yU4yei31SB7Om4zIOumRRE9SmnWRjnAf8Y3SIshLp59vltKOiT6IuEaLu27aSa8istU6w1kg5fmiI2HRR8xYQ"/>
+<div>
+<p class="font-bold">Mark Thompson</p>
+<p class="text-sm opacity-80">Director, Oakwood Schools</p>
+</div>
+</div>
+</div>
+<div class="p-8 bg-white/10 backdrop-blur-sm rounded-2xl text-left">
+<p class="font-body-lg text-white mb-6 italic">"Switching to EduPulse was the best administrative decision we've made in a decade. The onboarding was incredibly smooth."</p>
+<div class="flex items-center gap-4">
+<img alt="Elena Rodriguez" class="w-12 h-12 rounded-full object-cover" data-alt="A professional headshot of a middle-aged female educator in a brightly lit classroom. She is smiling confidently, symbolizing the success of administrative efficiency. The color palette is vibrant yet professional, aligning with the EduPulse brand values of accessible authority." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBtfUKw6IRZjDJbBedYMenrbWav-bbubdTXxWVM3Z5wpk_BappS4DRMhbunG7HMfGBpaFWTn6_82D5UgsTwewtX9AncnCqmJO7GQ5e1j-NGh_Kj0dGq_m2n3H2Z-LkP6_KQDmPXRCVRtrJUA9mUm2OD34CgtxCso_Mr9wqvtQwomNUcn24ZLPLW29IxYfAp3HyEriBw-OVXY6g90wzTsOr4O3xxojAuyh9NZjaUA8gdY2y2jpTsdL2-FWfgx1V7DtcYt8gJzS3pUnA"/>
+<div>
+<p class="font-bold">Elena Rodriguez</p>
+<p class="text-sm opacity-80">Registrar, International School</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Pricing Section -->
+<section class="py-24 px-6 md:px-12 max-w-7xl mx-auto">
+<div class="text-center mb-16">
+<h2 class="font-h2 text-h2 text-on-surface mb-4">Scalable Plans for Every School</h2>
+<p class="font-body-md text-secondary">Start with the essentials and scale as your institution grows.</p>
+</div>
+<div class="grid md:grid-cols-3 gap-8">
+<!-- Basic -->
+<div class="p-8 rounded-2xl border border-slate-200 bg-white flex flex-col">
+<h3 class="font-h3 text-h3 mb-2">Basic</h3>
+<p class="text-sm text-secondary mb-6">Ideal for smaller learning centers.</p>
+<div class="mb-8">
+<span class="text-4xl font-extrabold text-on-surface">$49</span>
+<span class="text-secondary">/mo</span>
+</div>
+<ul class="space-y-4 mb-10 flex-grow">
+<li class="flex items-center gap-2 text-body-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-on-tertiary-container text-lg">check</span>
+                            Up to 100 Students
+                        </li>
+<li class="flex items-center gap-2 text-body-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-on-tertiary-container text-lg">check</span>
+                            Standard SIS
+                        </li>
+<li class="flex items-center gap-2 text-body-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-on-tertiary-container text-lg">check</span>
+                            Attendance Portal
+                        </li>
+</ul>
+<button class="w-full py-3 rounded-lg border-2 border-primary text-primary font-button hover:bg-slate-50 transition-all">Select Plan</button>
+</div>
+<!-- Pro -->
+<div class="p-8 rounded-2xl border-2 border-primary bg-white shadow-xl flex flex-col relative">
+<div class="absolute -top-4 left-1/2 -translate-x-1/2 bg-primary text-on-primary px-4 py-1 rounded-full text-xs font-bold uppercase tracking-widest">Most Popular</div>
+<h3 class="font-h3 text-h3 mb-2">Pro</h3>
+<p class="text-sm text-secondary mb-6">Perfect for mid-sized institutions.</p>
+<div class="mb-8">
+<span class="text-4xl font-extrabold text-on-surface">$199</span>
+<span class="text-secondary">/mo</span>
+</div>
+<ul class="space-y-4 mb-10 flex-grow">
+<li class="flex items-center gap-2 text-body-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-on-tertiary-container text-lg" data-weight="fill">check_circle</span>
+                            Up to 1000 Students
+                        </li>
+<li class="flex items-center gap-2 text-body-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-on-tertiary-container text-lg" data-weight="fill">check_circle</span>
+                            Automated Grading
+                        </li>
+<li class="flex items-center gap-2 text-body-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-on-tertiary-container text-lg" data-weight="fill">check_circle</span>
+                            Parent Mobile App
+                        </li>
+<li class="flex items-center gap-2 text-body-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-on-tertiary-container text-lg" data-weight="fill">check_circle</span>
+                            Priority Email Support
+                        </li>
+</ul>
+<button class="w-full py-3 rounded-lg bg-primary text-on-primary font-button shadow-lg shadow-primary/20 hover:bg-primary-container transition-all">Select Plan</button>
+</div>
+<!-- Enterprise -->
+<div class="p-8 rounded-2xl border border-slate-200 bg-white flex flex-col">
+<h3 class="font-h3 text-h3 mb-2">Enterprise</h3>
+<p class="text-sm text-secondary mb-6">Full customization for large districts.</p>
+<div class="mb-8">
+<span class="text-4xl font-extrabold text-on-surface">Custom</span>
+</div>
+<ul class="space-y-4 mb-10 flex-grow">
+<li class="flex items-center gap-2 text-body-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-on-tertiary-container text-lg">check</span>
+                            Unlimited Students
+                        </li>
+<li class="flex items-center gap-2 text-body-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-on-tertiary-container text-lg">check</span>
+                            Predictive Analytics AI
+                        </li>
+<li class="flex items-center gap-2 text-body-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-on-tertiary-container text-lg">check</span>
+                            API Access &amp; Integrations
+                        </li>
+<li class="flex items-center gap-2 text-body-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-on-tertiary-container text-lg">check</span>
+                            Dedicated Account Manager
+                        </li>
+</ul>
+<button class="w-full py-3 rounded-lg border-2 border-primary text-primary font-button hover:bg-slate-50 transition-all">Contact Sales</button>
+</div>
+</div>
+</section>
+<!-- CTA Section -->
+<section class="py-24 px-6 md:px-12 max-w-7xl mx-auto">
+<div class="bg-surface-container rounded-3xl p-12 md:p-20 text-center relative overflow-hidden">
+<div class="absolute top-0 right-0 p-8 opacity-10">
+<span class="material-symbols-outlined text-9xl">school</span>
+</div>
+<h2 class="font-h2 text-h2 text-on-surface mb-6 relative z-10">Ready to transform your school?</h2>
+<p class="font-body-lg text-body-lg text-secondary mb-10 max-w-2xl mx-auto relative z-10">Join 500+ institutions today and experience the gold standard in educational management.</p>
+<div class="flex flex-wrap justify-center gap-4 relative z-10">
+<button class="px-8 py-4 bg-primary text-on-primary rounded-xl font-button text-lg shadow-xl shadow-primary/25 hover:bg-primary-container transition-all">Get Started Free</button>
+<button class="px-8 py-4 bg-white text-primary rounded-xl font-button text-lg border border-slate-200 hover:bg-slate-50 transition-all">Request a Demo</button>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="bg-slate-50 border-t border-slate-200 w-full">
+<div class="max-w-7xl mx-auto px-6 py-16 grid grid-cols-2 md:grid-cols-4 gap-8">
+<div class="col-span-2 md:col-span-1">
+<div class="text-lg font-bold text-blue-900 mb-6">EduPulse</div>
+<p class="font-body-sm text-slate-500 max-w-xs">© 2024 EduPulse Management Systems. Academic Precision for modern institutions.</p>
+</div>
+<div>
+<h4 class="font-bold text-on-surface mb-6">Product</h4>
+<ul class="space-y-4">
+<li><a class="text-slate-500 hover:text-blue-600 transition-colors hover:underline decoration-blue-500 underline-offset-4" href="#">SIS System</a></li>
+<li><a class="text-slate-500 hover:text-blue-600 transition-colors hover:underline decoration-blue-500 underline-offset-4" href="#">Gradebook</a></li>
+<li><a class="text-slate-500 hover:text-blue-600 transition-colors hover:underline decoration-blue-500 underline-offset-4" href="#">Attendance</a></li>
+<li><a class="text-slate-500 hover:text-blue-600 transition-colors hover:underline decoration-blue-500 underline-offset-4" href="#">Schedule</a></li>
+</ul>
+</div>
+<div>
+<h4 class="font-bold text-on-surface mb-6">Company</h4>
+<ul class="space-y-4">
+<li><a class="text-slate-500 hover:text-blue-600 transition-colors hover:underline decoration-blue-500 underline-offset-4" href="#">About Us</a></li>
+<li><a class="text-slate-500 hover:text-blue-600 transition-colors hover:underline decoration-blue-500 underline-offset-4" href="#">Careers</a></li>
+<li><a class="text-slate-500 hover:text-blue-600 transition-colors hover:underline decoration-blue-500 underline-offset-4" href="#">Case Studies</a></li>
+<li><a class="text-slate-500 hover:text-blue-600 transition-colors hover:underline decoration-blue-500 underline-offset-4" href="#">Contact</a></li>
+</ul>
+</div>
+<div>
+<h4 class="font-bold text-on-surface mb-6">Legal Info</h4>
+<ul class="space-y-4">
+<li><a class="text-slate-500 hover:text-blue-600 transition-colors hover:underline decoration-blue-500 underline-offset-4" href="#">Privacy Policy</a></li>
+<li><a class="text-slate-500 hover:text-blue-600 transition-colors hover:underline decoration-blue-500 underline-offset-4" href="#">Terms of Service</a></li>
+<li><a class="text-slate-500 hover:text-blue-600 transition-colors hover:underline decoration-blue-500 underline-offset-4" href="#">Cookie Policy</a></li>
+<li><a class="text-slate-500 hover:text-blue-600 transition-colors hover:underline decoration-blue-500 underline-offset-4" href="#">Security</a></li>
+</ul>
+</div>
+</div>
+</footer>
+</body></html>
