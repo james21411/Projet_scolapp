@@ -338,7 +338,7 @@ function applyTheme(themeId: string) {
       root.classList.remove('dark');
     }
 
-    localStorage.setItem('scolapp-theme-id', themeId);
+    localStorage.setItem('fosilamaster-theme-id', themeId);
   }
 }
 
@@ -8205,11 +8205,11 @@ function SettingsTab({ role, currentUser, currentThemeId, onThemeChange }: { rol
   const handleCreateSchoolInfo = async () => {
     try {
       await createSchoolInfo({
-        name: "ScolApp Visuel Academy",
+        name: "FosilaMaster Visuel Academy",
         slogan: "L'excellence à votre portée",
         address: "Yaoundé, Cameroun",
         phone: "(+237) 699 99 99 99",
-        email: "contact@scolapp.com",
+        email: "contact@fosilamaster.com",
         bp: "1234",
         logoUrl: null,
         currentSchoolYear: `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`,
@@ -8244,7 +8244,7 @@ function SettingsTab({ role, currentUser, currentThemeId, onThemeChange }: { rol
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `scolapp-backup-${new Date().toISOString().slice(0, 10)}.sql`;
+        a.download = `fosilamaster-backup-${new Date().toISOString().slice(0, 10)}.sql`;
         document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);
@@ -8479,7 +8479,7 @@ function TableauDeBord({ role, currentUser }: { role: string, currentUser: User 
     getSchoolInfo().then(setSchoolInfo);
 
     // Charger le thème au démarrage
-    const savedThemeId = localStorage.getItem('scolapp-theme-id');
+    const savedThemeId = localStorage.getItem('fosilamaster-theme-id');
     if (savedThemeId) {
       setCurrentThemeId(savedThemeId);
       applyTheme(savedThemeId);
@@ -8792,7 +8792,7 @@ function TableauDeBord({ role, currentUser }: { role: string, currentUser: User 
             <Logo className="h-8 w-8 flex-shrink-0" logoUrl={schoolInfo?.logoUrl} />
             <div className="flex flex-col min-w-0">
               <span className="font-bold text-base leading-tight truncate">
-                {schoolInfo?.name || 'ScolApp'}
+                {schoolInfo?.name || 'FosilaMaster'}
               </span>
               <span className="text-xs text-muted-foreground leading-tight">
                 Gestion Scolaire

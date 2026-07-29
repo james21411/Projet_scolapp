@@ -1,9 +1,9 @@
--- Script d'initialisation de la base de données ScolApp
+-- Script d'initialisation de la base de données FosilaMaster
 -- Ce script sera exécuté automatiquement lors du premier démarrage
 
 -- Créer la base de données si elle n'existe pas
 CREATE DATABASE IF NOT EXISTS scolapp;
-USE scolapp;
+USE fosilamaster;
 
 -- Créer les tables si elles n'existent pas
 -- (Les tables seront créées par les migrations existantes)

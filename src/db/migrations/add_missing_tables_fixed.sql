@@ -1,7 +1,7 @@
 -- Script corrigé pour ajouter les tables manquantes pour les matières et notes
 -- À exécuter dans votre base de données MySQL
 
-USE scolapp;
+USE fosilamaster;
 
 -- 1. Table des matières
 CREATE TABLE IF NOT EXISTS subjects (
@@ -194,7 +194,7 @@ INSERT IGNORE INTO grading_settings (settingKey, settingValue, description, cate
 
 -- Vérification des tables créées
 SELECT 'Tables créées avec succès!' as Status;
-SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = 'scolapp' AND TABLE_NAME IN (
+SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = 'fosilamaster' AND TABLE_NAME IN (
   'subjects', 'subject_coefficients', 'evaluation_types', 'evaluation_periods', 
   'grades', 'period_averages', 'general_averages', 'grading_settings', 'report_cards'
 ) ORDER BY TABLE_NAME; 

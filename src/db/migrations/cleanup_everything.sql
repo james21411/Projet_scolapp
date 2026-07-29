@@ -1,7 +1,7 @@
 -- Script de nettoyage COMPLET - Supprime TOUT
 -- ATTENTION: Cette opération est IRREVERSIBLE !
 
-USE scolapp;
+USE fosilamaster;
 
 -- 1. Désactiver les vérifications de clés étrangères temporairement
 SET FOREIGN_KEY_CHECKS = 0;

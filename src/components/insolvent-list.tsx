@@ -533,7 +533,7 @@ export default function InsolventList({ schoolYear, onClose, onViewStudentDetail
     // Informations de base
     pdf.setFontSize(10);
     pdf.setFont('helvetica', 'normal');
-    pdf.text(`Établissement: ScolApp Visuel Academy`, 20, currentY);
+    pdf.text(`Établissement: FosilaMaster Visuel Academy`, 20, currentY);
     currentY += 5;
     pdf.text(`Année scolaire: ${schoolYear}`, 20, currentY);
     currentY += 5;

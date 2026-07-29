@@ -97,7 +97,7 @@ export default async function handler(req, res) {
     doc.pipe(res);
 
     // En-tête (Style réduit pour laisser place au tableau)
-    doc.fontSize(14).font('Helvetica-Bold').text(schoolInfo.name || 'SCOLAPP ACADEMY', { align: 'center' });
+    doc.fontSize(14).font('Helvetica-Bold').text(schoolInfo.name || 'FOSILAMASTER ACADEMY', { align: 'center' });
     doc.fontSize(8).font('Helvetica').text(schoolInfo.address || '', { align: 'center' });
     doc.moveDown(1);
 

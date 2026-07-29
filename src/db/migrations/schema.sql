@@ -1,4 +1,4 @@
--- Schéma MySQL pour ScolApp
+-- Schéma MySQL pour FosilaMaster
 CREATE TABLE IF NOT EXISTS users (
   id VARCHAR(255) PRIMARY KEY,
   username VARCHAR(255) NOT NULL UNIQUE,
@@ -226,7 +226,7 @@ CREATE TABLE IF NOT EXISTS school_info (
 
 -- Insérer une ligne par défaut si la table est vide
 INSERT INTO school_info (name, slogan, address, phone, email, bp, logoUrl, currentSchoolYear, currency)
-SELECT 'ScolApp Visuel Academy', 'L''excellence à votre portée', 'Yaoundé, Cameroun', '(+237) 699 99 99 99', 'contact@scolapp.com', '1234', NULL, CONCAT(YEAR(CURDATE()), '-', YEAR(CURDATE())+1), 'XAF'
+SELECT 'FosilaMaster Visuel Academy', 'L''excellence à votre portée', 'Yaoundé, Cameroun', '(+237) 699 99 99 99', 'contact@fosilamaster.com', '1234', NULL, CONCAT(YEAR(CURDATE()), '-', YEAR(CURDATE())+1), 'XAF'
 WHERE NOT EXISTS (SELECT 1 FROM school_info);
 
 CREATE TABLE IF NOT EXISTS audit_logs (

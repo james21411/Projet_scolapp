@@ -2,7 +2,7 @@ const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
-console.log('🚀 Création d\'un lanceur .bat pour ScolApp...');
+console.log('🚀 Création d\'un lanceur .bat pour FosilaMaster...');
 
 // Étape 1: Vérifier que le build Next.js existe
 if (!fs.existsSync('.next')) {
@@ -22,7 +22,7 @@ if (!fs.existsSync('dist')) {
 }
 
 // Étape 3: Créer le lanceur principal
-const launcherDir = 'dist/scolapp-launcher';
+const launcherDir = 'dist/fosilamaster-launcher';
 if (!fs.existsSync(launcherDir)) {
   fs.mkdirSync(launcherDir, { recursive: true });
 }
@@ -66,11 +66,11 @@ filesToCopy.forEach(file => {
 // Créer le lanceur principal
 const launcherScript = `
 @echo off
-title ScolApp Desktop - Lanceur
+title FosilaMaster Desktop - Lanceur
 color 0A
 
 echo ========================================
-echo           ScolApp Desktop
+echo           FosilaMaster Desktop
 echo ========================================
 echo.
 echo 🚀 Démarrage de l'application...
@@ -133,25 +133,25 @@ echo ✅ Application fermée avec succès !
 pause
 `.trim();
 
-fs.writeFileSync(path.join(launcherDir, 'Lancer ScolApp.bat'), launcherScript);
+fs.writeFileSync(path.join(launcherDir, 'Lancer FosilaMaster.bat'), launcherScript);
 
 // Créer un lanceur rapide
 const quickLauncherScript = `
 @echo off
 cd /d "%~dp0"
-start "" "Lancer ScolApp.bat"
+start "" "Lancer FosilaMaster.bat"
 `.trim();
 
-fs.writeFileSync(path.join(launcherDir, '🚀 Lancer ScolApp.bat'), quickLauncherScript);
+fs.writeFileSync(path.join(launcherDir, '🚀 Lancer FosilaMaster.bat'), quickLauncherScript);
 
 // Créer un lanceur alternatif qui utilise concurrently
 const launcherConcurrentScript = `
 @echo off
-title ScolApp Desktop - Lanceur Concurrent
+title FosilaMaster Desktop - Lanceur Concurrent
 color 0B
 
 echo ========================================
-echo           ScolApp Desktop
+echo           FosilaMaster Desktop
 echo ========================================
 echo.
 echo 🚀 Démarrage avec concurrently (comme npm run electron-dev)...
@@ -190,15 +190,15 @@ echo ✅ Application fermée !
 pause
 `.trim();
 
-fs.writeFileSync(path.join(launcherDir, 'Lancer ScolApp Concurrent.bat'), launcherConcurrentScript);
+fs.writeFileSync(path.join(launcherDir, 'Lancer FosilaMaster Concurrent.bat'), launcherConcurrentScript);
 
 // Créer un fichier README
 const readmeContent = `
-# ScolApp - Lanceur Desktop
+# FosilaMaster - Lanceur Desktop
 
 ## 🚀 Lancement rapide
 
-**Double-cliquez sur :** \`Lancer ScolApp.bat\`
+**Double-cliquez sur :** \`Lancer FosilaMaster.bat\`
 
 ## 📋 Ce que fait le lanceur
 
@@ -218,13 +218,13 @@ const readmeContent = `
 - \`.next\` - Application Next.js compilée
 - \`public\` - Fichiers publics et Electron
 - \`package.json\` - Configuration
-- \`Lancer ScolApp.bat\` - Lanceur principal
-- \`🚀 Lancer ScolApp.bat\` - Raccourci
+- \`Lancer FosilaMaster.bat\` - Lanceur principal
+- \`🚀 Lancer FosilaMaster.bat\` - Raccourci
 
 ## 💡 Utilisation
 
 1. Assurez-vous que \`npm install\` a été exécuté dans le dossier parent
-2. Double-cliquez sur \`Lancer ScolApp.bat\`
+2. Double-cliquez sur \`Lancer FosilaMaster.bat\`
 3. L'application se lance automatiquement !
 
 ## 🐛 Dépannage
@@ -259,9 +259,9 @@ fs.writeFileSync(path.join(launcherDir, 'Test Serveur.bat'), testScript);
 
 console.log('✅ Lanceur .bat créé avec succès !');
 console.log(`📁 Le lanceur se trouve dans: ${path.resolve(launcherDir)}`);
-console.log('💡 Pour lancer: double-cliquez sur "Lancer ScolApp.bat"');
+console.log('💡 Pour lancer: double-cliquez sur "Lancer FosilaMaster.bat"');
 console.log('⚠️  Assurez-vous que node_modules est installé dans le dossier parent');
 
 console.log('\n🎉 Création du lanceur terminée !');
-console.log('📁 Vérifiez le dossier dist/scolapp-launcher/');
+console.log('📁 Vérifiez le dossier dist/fosilamaster-launcher/');
 console.log('💡 Pour tester l\'app: npm run electron-dev');

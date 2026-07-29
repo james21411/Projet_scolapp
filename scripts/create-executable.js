@@ -25,7 +25,7 @@ try {
   }
 
   // Créer la structure de l'exécutable
-  const exeDir = 'dist/scolapp-executable';
+  const exeDir = 'dist/fosilamaster-executable';
   if (!fs.existsSync(exeDir)) {
     fs.mkdirSync(exeDir, { recursive: true });
   }
@@ -71,7 +71,7 @@ try {
   const launcherScript = `
 @echo off
 echo ========================================
-echo           ScolApp Desktop
+echo           FosilaMaster Desktop
 echo ========================================
 echo.
 echo Lancement de l'application...
@@ -94,15 +94,15 @@ echo Application fermée.
 pause
   `.trim();
 
-  fs.writeFileSync(path.join(exeDir, 'ScolApp.bat'), launcherScript);
+  fs.writeFileSync(path.join(exeDir, 'FosilaMaster.bat'), launcherScript);
 
   // Créer un fichier README
   const readmeContent = `
-# ScolApp - Exécutable Local
+# FosilaMaster - Exécutable Local
 
 ## 🚀 Lancement rapide
 
-Double-cliquez sur \`ScolApp.bat\` pour démarrer l'application !
+Double-cliquez sur \`FosilaMaster.bat\` pour démarrer l'application !
 
 ## 📋 Prérequis
 
@@ -114,12 +114,12 @@ Double-cliquez sur \`ScolApp.bat\` pour démarrer l'application !
 - \`.next\` - Application Next.js compilée
 - \`public\` - Fichiers publics et Electron
 - \`package.json\` - Configuration
-- \`ScolApp.bat\` - Lanceur principal
+- \`FosilaMaster.bat\` - Lanceur principal
 
 ## 💡 Utilisation
 
 1. Assurez-vous que \`npm install\` a été exécuté dans le dossier parent
-2. Double-cliquez sur \`ScolApp.bat\`
+2. Double-cliquez sur \`FosilaMaster.bat\`
 3. L'application se lance dans une fenêtre Electron
 
 ## 🐛 Dépannage
@@ -136,14 +136,14 @@ Si l'application ne se lance pas :
   const shortcutContent = `
 @echo off
 cd /d "%~dp0"
-start "" "ScolApp.bat"
+start "" "FosilaMaster.bat"
   `.trim();
 
-  fs.writeFileSync(path.join(exeDir, 'Lancer ScolApp.bat'), shortcutContent);
+  fs.writeFileSync(path.join(exeDir, 'Lancer FosilaMaster.bat'), shortcutContent);
 
   console.log('✅ Exécutable Electron créé avec succès !');
   console.log(`📁 L'exécutable se trouve dans: ${path.resolve(exeDir)}`);
-  console.log('💡 Pour lancer: double-cliquez sur ScolApp.bat');
+  console.log('💡 Pour lancer: double-cliquez sur FosilaMaster.bat');
   console.log('⚠️  Assurez-vous que node_modules est installé dans le dossier parent');
 
 } catch (error) {

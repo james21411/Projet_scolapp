@@ -26,7 +26,7 @@ try {
 
   // Copier les fichiers nécessaires
   const sourceDir = '.';
-  const targetDir = 'dist/scolapp';
+  const targetDir = 'dist/fosilamaster';
 
   // Créer la structure
   if (!fs.existsSync(targetDir)) {

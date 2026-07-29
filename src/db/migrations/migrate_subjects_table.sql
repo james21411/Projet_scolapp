@@ -1,7 +1,7 @@
 -- Script de migration pour la table subjects
 -- Crée une nouvelle table avec auto-increment et migre les données
 
-USE scolapp;
+USE fosilamaster;
 
 -- 1. Désactiver les vérifications de clés étrangères
 SET FOREIGN_KEY_CHECKS = 0;

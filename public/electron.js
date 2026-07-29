@@ -38,7 +38,7 @@ function createWindow() {
       contextIsolation: true,
       enableRemoteModule: false
     },
-    title: 'ScolApp - Gestion Scolaire',
+    title: 'FosilaMaster - Gestion Scolaire',
     show: false // Ne pas afficher immédiatement
   });
 

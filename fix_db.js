@@ -9,10 +9,10 @@ async function run() {
     password: process.env.MYSQL_PASSWORD,
   });
 
-  const [dbs] = await conn.query('SHOW DATABASES LIKE "scolapp_%"');
+  const [dbs] = await conn.query('SHOW DATABASES LIKE "fosilamaster_%"');
   for (const db of dbs) {
     const dbName = Object.values(db)[0];
-    if (dbName === 'scolapp_registry') continue;
+    if (dbName === 'fosilamaster_registry') continue;
     
     await conn.query(`USE \`${dbName}\``);
     

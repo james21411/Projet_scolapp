@@ -1,7 +1,7 @@
 -- Script pour supprimer TOUS les types et périodes d'évaluation
 -- ATTENTION: Cette opération est IRREVERSIBLE !
 
-USE scolapp;
+USE fosilamaster;
 
 -- 1. Supprimer d'abord toutes les notes liées aux périodes d'évaluation
 DELETE FROM grades WHERE evaluationPeriodId IN (SELECT id FROM evaluation_periods);

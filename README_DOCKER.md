@@ -1,4 +1,4 @@
-# 🐳 Guide de déploiement ScolApp avec Docker
+# 🐳 Guide de déploiement FosilaMaster avec Docker
 
 ## 📋 Prérequis
 
@@ -11,7 +11,7 @@
 ### 1. Cloner le projet
 ```bash
 git clone [url-du-projet]
-cd scolapp
+cd fosilamaster
 ```
 
 ### 2. Déployer avec Docker
@@ -36,7 +36,7 @@ docker-compose ps
 
 - **Application web** : http://localhost
 - **Base de données MySQL** : localhost:3306
-- **Utilisateur MySQL** : scolapp / scolapp123
+- **Utilisateur MySQL** : fosilamaster / fosilamaster123
 
 ## 👤 Utilisateurs par défaut
 
@@ -55,7 +55,7 @@ docker-compose ps
 docker-compose logs
 
 # Service spécifique
-docker-compose logs scolapp
+docker-compose logs fosilamaster
 docker-compose logs mysql
 ```
 
@@ -66,17 +66,17 @@ docker-compose down
 
 ### Redémarrer un service
 ```bash
-docker-compose restart scolapp
+docker-compose restart fosilamaster
 ```
 
 ### Sauvegarder la base de données
 ```bash
-docker exec scolapp-mysql mysqldump -u scolapp -pscolapp123 scolapp > backup.sql
+docker exec fosilamaster-mysql mysqldump -u fosilamaster -pfosilamaster123 fosilamaster > backup.sql
 ```
 
 ### Restaurer la base de données
 ```bash
-docker exec -i scolapp-mysql mysql -u scolapp -pscolapp123 scolapp < backup.sql
+docker exec -i fosilamaster-mysql mysql -u fosilamaster -pfosilamaster123 fosilamaster < backup.sql
 ```
 
 ## 🔧 Configuration réseau local
@@ -121,7 +121,7 @@ docker ps
 ### Sauvegarde automatique
 ```bash
 # Créer un script de sauvegarde
-echo "0 2 * * * docker exec scolapp-mysql mysqldump -u scolapp -pscolapp123 scolapp > /backup/scolapp_$(date +%Y%m%d).sql" | crontab -
+echo "0 2 * * * docker exec fosilamaster-mysql mysqldump -u fosilamaster -pfosilamaster123 fosilamaster > /backup/fosilamaster_$(date +%Y%m%d).sql" | crontab -
 ```
 
 ## 🆘 Dépannage
@@ -132,16 +132,16 @@ echo "0 2 * * * docker exec scolapp-mysql mysqldump -u scolapp -pscolapp123 scol
 docker-compose logs mysql
 
 # Se connecter à MySQL
-docker exec -it scolapp-mysql mysql -u scolapp -pscolapp123
+docker exec -it fosilamaster-mysql mysql -u fosilamaster -pfosilamaster123
 ```
 
 ### Problème d'accès à l'application
 ```bash
 # Vérifier les logs de l'app
-docker-compose logs scolapp
+docker-compose logs fosilamaster
 
 # Redémarrer l'application
-docker-compose restart scolapp
+docker-compose restart fosilamaster
 ```
 
 ### Problème de réseau
@@ -157,7 +157,7 @@ netstat -an | grep :3306
 Modifier `docker-compose.yml` :
 ```yaml
 services:
-  scolapp:
+  fosilamaster:
     deploy:
       resources:
         limits:
@@ -168,8 +168,8 @@ services:
 ### Sauvegarde et restauration
 ```bash
 # Sauvegarder
-docker exec scolapp-mysql mysqldump -u scolapp -pscolapp123 scolapp > scolapp_backup.sql
+docker exec fosilamaster-mysql mysqldump -u fosilamaster -pfosilamaster123 fosilamaster > fosilamaster_backup.sql
 
 # Restaurer
-docker exec -i scolapp-mysql mysql -u scolapp -pscolapp123 scolapp < scolapp_backup.sql
+docker exec -i fosilamaster-mysql mysql -u fosilamaster -pfosilamaster123 fosilamaster < fosilamaster_backup.sql
 ``` 

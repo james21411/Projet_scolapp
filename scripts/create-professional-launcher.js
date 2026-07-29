@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-console.log('🚀 Création d\'un lanceur professionnel pour ScolApp...');
+console.log('🚀 Création d\'un lanceur professionnel pour FosilaMaster...');
 
 // Fonction pour obtenir l'IP locale
 function getLocalIP() {
@@ -36,7 +36,7 @@ if (!fs.existsSync('dist')) {
 }
 
 // Étape 3: Créer le lanceur professionnel
-const launcherDir = 'dist/scolapp-professional';
+const launcherDir = 'dist/fosilamaster-professional';
 if (!fs.existsSync(launcherDir)) {
   fs.mkdirSync(launcherDir, { recursive: true });
 }

@@ -1,7 +1,7 @@
 -- Script pour corriger la structure de la table subjects
 -- Permet l'ajout de nouvelles matières avec des IDs auto-générés
 
-USE scolapp;
+USE fosilamaster;
 
 -- 1. Vérifier la structure actuelle
 DESCRIBE subjects;

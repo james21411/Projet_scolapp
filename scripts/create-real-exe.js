@@ -48,7 +48,7 @@ function createWindow() {
       contextIsolation: true,
       enableRemoteModule: false
     },
-    title: 'ScolApp - Gestion Scolaire',
+    title: 'FosilaMaster - Gestion Scolaire',
     show: false
   });
 
@@ -88,7 +88,7 @@ fs.writeFileSync(entryFile, entryContent);
 
 // Étape 4: Créer la structure de l'application
 console.log('📁 Création de la structure de l\'application...');
-const appDir = 'dist/scolapp-app';
+const appDir = 'dist/fosilamaster-app';
 if (!fs.existsSync(appDir)) {
   fs.mkdirSync(appDir, { recursive: true });
 }
@@ -132,14 +132,14 @@ filesToCopy.forEach(file => {
 // Étape 5: Créer l'exécutable avec pkg
 console.log('⚡ Création de l\'exécutable .exe...');
 try {
-  const pkgCommand = `npx pkg ${entryFile} --target node18-win-x64 --output dist/ScolApp.exe`;
+  const pkgCommand = `npx pkg ${entryFile} --target node18-win-x64 --output dist/FosilaMaster.exe`;
   execSync(pkgCommand, { stdio: 'inherit' });
   console.log('✅ Exécutable .exe créé avec succès !');
 } catch (error) {
   console.log('⚠️ Création avec pkg échouée, création d\'un exécutable alternatif...');
   
   // Créer un exécutable alternatif avec un script batch amélioré
-  const exeDir = 'dist/scolapp-exe';
+  const exeDir = 'dist/fosilamaster-exe';
   if (!fs.existsSync(exeDir)) {
     fs.mkdirSync(exeDir, { recursive: true });
   }
@@ -176,11 +176,11 @@ try {
   // Créer un script de lancement amélioré
   const launcherScript = `
 @echo off
-title ScolApp Desktop
+title FosilaMaster Desktop
 color 0A
 
 echo ========================================
-echo           ScolApp Desktop
+echo           FosilaMaster Desktop
 echo ========================================
 echo.
 
@@ -202,7 +202,7 @@ if not exist "..\\node_modules\\.bin\\electron.cmd" (
 )
 
 echo ✅ Vérifications terminées
-echo 🚀 Lancement de ScolApp...
+echo 🚀 Lancement de FosilaMaster...
 echo.
 
 REM Lancer l'application
@@ -214,20 +214,20 @@ echo Application fermée.
 pause
   `.trim();
 
-  fs.writeFileSync(path.join(exeDir, 'ScolApp.exe.bat'), launcherScript);
+  fs.writeFileSync(path.join(exeDir, 'FosilaMaster.exe.bat'), launcherScript);
 
   // Créer un raccourci Windows
   const shortcutContent = `
 @echo off
 cd /d "%~dp0"
-start "" "ScolApp.exe.bat"
+start "" "FosilaMaster.exe.bat"
   `.trim();
 
-  fs.writeFileSync(path.join(exeDir, 'Lancer ScolApp.bat'), shortcutContent);
+  fs.writeFileSync(path.join(exeDir, 'Lancer FosilaMaster.bat'), shortcutContent);
 
   console.log('✅ Exécutable alternatif créé !');
   console.log(`📁 L'application se trouve dans: ${path.resolve(exeDir)}`);
-  console.log('💡 Pour lancer: double-cliquez sur ScolApp.exe.bat');
+  console.log('💡 Pour lancer: double-cliquez sur FosilaMaster.exe.bat');
 }
 
 // Nettoyer le fichier temporaire

@@ -142,7 +142,7 @@ async function resetAutoIncrement(connection, tableName) {
 }
 
 async function cleanupDatabase() {
-    console.log('🧹 SCRIPT DE NETTOYAGE DE BASE DE DONNÉES SCOLAPP');
+    console.log('🧹 SCRIPT DE NETTOYAGE DE BASE DE DONNÉES FOSILAMASTER');
     console.log('================================================');
     console.log('⚠️  ATTENTION: Cette opération va supprimer TOUTES les données de test');
     console.log('📋 Données supprimées: élèves, notes, paiements, présences, bulletins, etc.');

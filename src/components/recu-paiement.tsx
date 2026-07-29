@@ -383,7 +383,7 @@ export function RecuPaiement({
 
                   {/* Pied de page */}
                   <div className="border-t border-gray-300 p-2 text-center text-xs text-gray-600 h-[15.5mm] flex items-center justify-center">
-                    Ce reçu est généré automatiquement par le système ScolApp — Généré le {currentDateTime}
+                    Ce reçu est généré automatiquement par le système FosilaMaster — Généré le {currentDateTime}
                   </div>
                 </div>
                 {/* Ligne de coupe en pointillés */}
@@ -492,7 +492,7 @@ export function RecuPaiement({
 
                   {/* Pied de page */}
                   <div className="border-t border-gray-300 p-2 text-center text-xs text-gray-600 h-[15.5mm] flex items-center justify-center">
-                    Ce reçu est généré automatiquement par le système ScolApp — Généré le {currentDateTime}
+                    Ce reçu est généré automatiquement par le système FosilaMaster — Généré le {currentDateTime}
                   </div>
                 </div>
               </div>

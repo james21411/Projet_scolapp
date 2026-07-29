@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# Script de déploiement ScolApp avec Docker
+# Script de déploiement FosilaMaster avec Docker
 
-echo "🚀 Déploiement de ScolApp avec Docker..."
+echo "🚀 Déploiement de FosilaMaster avec Docker..."
 
 # Vérifier si Docker est installé
 if ! command -v docker &> /dev/null; then

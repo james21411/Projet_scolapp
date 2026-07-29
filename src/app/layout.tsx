@@ -3,7 +3,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
-  title: 'ScolApp',
+  title: 'FosilaMaster',
   description: 'Application de gestion scolaire et financière',
 };
 

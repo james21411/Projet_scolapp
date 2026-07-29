@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
     return new NextResponse(csvContent, {
       headers: {
         'Content-Type': 'text/csv',
-        'Content-Disposition': `attachment; filename="scolapp-data-${new Date().toISOString().slice(0, 10)}.csv"`
+        'Content-Disposition': `attachment; filename="fosilamaster-data-${new Date().toISOString().slice(0, 10)}.csv"`
       }
     });
 

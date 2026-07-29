@@ -1,7 +1,7 @@
 -- Script alternatif pour corriger la table subjects avec UUID
 -- Garde les IDs en VARCHAR mais génère automatiquement des UUID
 
-USE scolapp;
+USE fosilamaster;
 
 -- 1. Vérifier la structure actuelle
 DESCRIBE subjects;

@@ -25,7 +25,7 @@ try {
   }
 
   // Créer la structure
-  const targetDir = 'dist/scolapp';
+  const targetDir = 'dist/fosilamaster';
   if (!fs.existsSync(targetDir)) {
     fs.mkdirSync(targetDir, { recursive: true });
   }
@@ -77,7 +77,7 @@ try {
   // Créer un script de lancement
   const launcherScript = `
 @echo off
-echo Lancement de ScolApp...
+echo Lancement de FosilaMaster...
 echo.
 echo Note: Assurez-vous que node_modules est installé dans le dossier parent
 echo.
@@ -90,7 +90,7 @@ pause
 
   // Créer un fichier README
   const readmeContent = `
-# ScolApp - Package Local
+# FosilaMaster - Package Local
 
 ## Installation
 

@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
     let backupSQL = '';
 
     // En-tête du fichier SQL
-    backupSQL += `-- Sauvegarde ScolApp - ${new Date().toISOString()}\n`;
+    backupSQL += `-- Sauvegarde FosilaMaster - ${new Date().toISOString()}\n`;
     backupSQL += `-- Généré automatiquement\n\n`;
 
     // Pour chaque table
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     return new NextResponse(backupSQL, {
       headers: {
         'Content-Type': 'application/sql',
-        'Content-Disposition': `attachment; filename="scolapp-backup-${new Date().toISOString().slice(0, 10)}.sql"`
+        'Content-Disposition': `attachment; filename="fosilamaster-backup-${new Date().toISOString().slice(0, 10)}.sql"`
       }
     });
 

@@ -3,7 +3,7 @@
 -- Vérifier si la table existe
 SELECT COUNT(*) as table_exists 
 FROM information_schema.tables 
-WHERE table_schema = 'scolapp' AND table_name = 'subjects';
+WHERE table_schema = 'fosilamaster' AND table_name = 'subjects';
 
 -- Si la table n'existe pas, la créer
 CREATE TABLE IF NOT EXISTS subjects (

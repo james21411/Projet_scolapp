@@ -1,7 +1,7 @@
 -- Script CORRIGÉ pour corriger la structure de la table subjects
 -- Supprime d'abord la clé primaire existante, puis la recrée
 
-USE scolapp;
+USE fosilamaster;
 
 -- 1. Vérifier la structure actuelle
 DESCRIBE subjects;

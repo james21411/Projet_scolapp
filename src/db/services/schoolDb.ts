@@ -34,11 +34,11 @@ export async function resetSchoolInfo(): Promise<void> {
   await pool.query('DELETE FROM school_info');
   const sql = `INSERT INTO school_info (name, slogan, address, phone, email, bp, logoUrl, currentSchoolYear, currency) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
   const params = [
-    'ScolApp Visuel Academy',
+    'FosilaMaster Visuel Academy',
     "L'excellence à votre portée",
     'Yaoundé, Cameroun',
     '(+237) 699 99 99 99',
-    'contact@scolapp.com',
+    'contact@fosilamaster.com',
     '1234',
     null,
     `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`,

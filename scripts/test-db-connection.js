@@ -18,12 +18,12 @@ async function testDatabaseConnection() {
     const [rows] = await connection.execute('SELECT 1 as test');
     console.log('✅ Requête de test réussie:', rows);
     
-    // Vérifier si la base scolapp existe
+    // Vérifier si la base fosilamaster existe
     const [databases] = await connection.execute('SHOW DATABASES');
-    const scolappExists = databases.some(db => db.Database === 'scolapp');
-    console.log('📊 Base scolapp existe:', scolappExists);
+    const fosilamasterExists = databases.some(db => db.Database === 'fosilamaster');
+    console.log('📊 Base fosilamaster existe:', fosilamasterExists);
     
-    if (scolappExists) {
+    if (fosilamasterExists) {
       // Vérifier les tables
       const [tables] = await connection.execute('SHOW TABLES');
       console.log('📋 Tables disponibles:', tables.map(t => Object.values(t)[0]));
@@ -37,7 +37,7 @@ async function testDatabaseConnection() {
     console.log('💡 Solutions possibles :');
     console.log('1. Vérifier que MySQL est démarré');
     console.log('2. Vérifier les identifiants de connexion');
-    console.log('3. Vérifier que la base scolapp existe');
+    console.log('3. Vérifier que la base fosilamaster existe');
   }
 }
 

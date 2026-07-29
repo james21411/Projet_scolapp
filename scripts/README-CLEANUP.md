@@ -98,7 +98,7 @@ Les scripts utilisent les variables d'environnement suivantes :
 DB_HOST=localhost
 DB_USER=root
 DB_PASSWORD=
-DB_NAME=scolapp
+DB_NAME=fosilamaster
 DB_PORT=3306
 ```
 

@@ -2,10 +2,10 @@ const fs = require('fs-extra');
 const path = require('path');
 
 async function createDeploymentPackage() {
-    console.log('🚀 Création du package de déploiement ScolApp...');
+    console.log('🚀 Création du package de déploiement FosilaMaster...');
     
     const sourceDir = '.';
-    const deployDir = 'dist/scolapp-deployment';
+    const deployDir = 'dist/fosilamaster-deployment';
     
     try {
         // Nettoyer le dossier de déploiement
@@ -49,14 +49,14 @@ async function createDeploymentPackage() {
         
         // Créer le script d'installation
         const installScript = `@echo off
-title ScolApp - Installation et Déploiement
+title FosilaMaster - Installation et Déploiement
 color 0A
 
 echo ========================================
-echo           SCOLAPP - DÉPLOIEMENT
+echo           FOSILAMASTER - DÉPLOIEMENT
 echo ========================================
 echo.
-echo 🚀 Installation et déploiement de ScolApp...
+echo 🚀 Installation et déploiement de FosilaMaster...
 echo.
 
 REM Vérifier que Node.js est installé
@@ -100,28 +100,28 @@ echo.
 
 REM Créer le lanceur
 echo 🚀 Création du lanceur...
-echo @echo off > "Lancer ScolApp.bat"
-echo title ScolApp Desktop >> "Lancer ScolApp.bat"
-echo color 0A >> "Lancer ScolApp.bat"
-echo. >> "Lancer ScolApp.bat"
-echo echo ======================================== >> "Lancer ScolApp.bat"
-echo echo           SCOLAPP DESKTOP >> "Lancer ScolApp.bat"
-echo echo ======================================== >> "Lancer ScolApp.bat"
-echo echo. >> "Lancer ScolApp.bat"
-echo echo 🚀 Démarrage de l'application... >> "Lancer ScolApp.bat"
-echo echo. >> "Lancer ScolApp.bat"
-echo echo 📡 Démarrage du serveur Next.js... >> "Lancer ScolApp.bat"
-echo start /B "Next.js Server" cmd /c "npm start" >> "Lancer ScolApp.bat"
-echo echo. >> "Lancer ScolApp.bat"
-echo echo ⏳ Attente du serveur... >> "Lancer ScolApp.bat"
-echo timeout /t 5 /nobreak ^>nul >> "Lancer ScolApp.bat"
-echo echo. >> "Lancer ScolApp.bat"
-echo echo 🖥️ Lancement de l'interface Electron... >> "Lancer ScolApp.bat"
-echo "node_modules\\.bin\\electron.cmd" . >> "Lancer ScolApp.bat"
-echo echo. >> "Lancer ScolApp.bat"
-echo echo 🔄 Fermeture du serveur... >> "Lancer ScolApp.bat"
-echo taskkill /f /im node.exe ^>nul 2^>^&1 >> "Lancer ScolApp.bat"
-echo pause >> "Lancer ScolApp.bat"
+echo @echo off > "Lancer FosilaMaster.bat"
+echo title FosilaMaster Desktop >> "Lancer FosilaMaster.bat"
+echo color 0A >> "Lancer FosilaMaster.bat"
+echo. >> "Lancer FosilaMaster.bat"
+echo echo ======================================== >> "Lancer FosilaMaster.bat"
+echo echo           FOSILAMASTER DESKTOP >> "Lancer FosilaMaster.bat"
+echo echo ======================================== >> "Lancer FosilaMaster.bat"
+echo echo. >> "Lancer FosilaMaster.bat"
+echo echo 🚀 Démarrage de l'application... >> "Lancer FosilaMaster.bat"
+echo echo. >> "Lancer FosilaMaster.bat"
+echo echo 📡 Démarrage du serveur Next.js... >> "Lancer FosilaMaster.bat"
+echo start /B "Next.js Server" cmd /c "npm start" >> "Lancer FosilaMaster.bat"
+echo echo. >> "Lancer FosilaMaster.bat"
+echo echo ⏳ Attente du serveur... >> "Lancer FosilaMaster.bat"
+echo timeout /t 5 /nobreak ^>nul >> "Lancer FosilaMaster.bat"
+echo echo. >> "Lancer FosilaMaster.bat"
+echo echo 🖥️ Lancement de l'interface Electron... >> "Lancer FosilaMaster.bat"
+echo "node_modules\\.bin\\electron.cmd" . >> "Lancer FosilaMaster.bat"
+echo echo. >> "Lancer FosilaMaster.bat"
+echo echo 🔄 Fermeture du serveur... >> "Lancer FosilaMaster.bat"
+echo taskkill /f /im node.exe ^>nul 2^>^&1 >> "Lancer FosilaMaster.bat"
+echo pause >> "Lancer FosilaMaster.bat"
 
 echo ✅ Lanceur créé
 echo.
@@ -131,7 +131,7 @@ echo           🎉 DÉPLOIEMENT TERMINÉ !
 echo ========================================
 echo.
 echo 📱 Pour lancer l'application :
-echo    Double-cliquez sur "Lancer ScolApp.bat"
+echo    Double-cliquez sur "Lancer FosilaMaster.bat"
 echo.
 echo 🌐 Accès local : http://localhost:3000
 echo.
@@ -143,7 +143,7 @@ pause
         await fs.writeFile(path.join(deployDir, 'Installation et Deploiement.bat'), installScript);
         
         // Créer le README de déploiement
-        const readmeContent = `# ScolApp - Package de Déploiement
+        const readmeContent = `# FosilaMaster - Package de Déploiement
 
 ## 🚀 Installation sur un nouvel ordinateur
 
@@ -154,7 +154,7 @@ pause
 ### 🔧 Installation automatique
 1. **Double-cliquez** sur \`Installation et Deploiement.bat\`
 2. **Attendez** que l'installation se termine
-3. **Lancez** l'application avec \`Lancer ScolApp.bat\`
+3. **Lancez** l'application avec \`Lancer FosilaMaster.bat\`
 
 ### 📁 Fichiers inclus
 - ✅ Code source de l'application
@@ -175,7 +175,7 @@ pause
 - **Pas de fichiers lourds** (.next, node_modules)
 
 ---
-**ScolApp Desktop** - Gestion scolaire professionnelle
+**FosilaMaster Desktop** - Gestion scolaire professionnelle
 `;
 
         await fs.writeFile(path.join(deployDir, 'README-DEPLOIEMENT.md'), readmeContent);
@@ -200,10 +200,10 @@ pause
         console.log(`📊 Taille du package: ${(size / 1024 / 1024).toFixed(2)} MB`);
         
         console.log('\n🎯 Pour déployer sur un autre PC :');
-        console.log('1. Copiez le dossier "scolapp-deployment"');
+        console.log('1. Copiez le dossier "fosilamaster-deployment"');
         console.log('2. Double-cliquez sur "Installation et Deploiement.bat"');
         console.log('3. Attendez la fin de l\'installation');
-        console.log('4. Lancez avec "Lancer ScolApp.bat"');
+        console.log('4. Lancez avec "Lancer FosilaMaster.bat"');
         
     } catch (error) {
         console.error('❌ Erreur lors de la création du package:', error);

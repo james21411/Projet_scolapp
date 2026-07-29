@@ -1,9 +1,9 @@
 {
-  "name": "scolapp",
+  "name": "fosilamaster",
   "version": "0.1.0",
   "private": true,
   "description": "Application de gestion scolaire avec interface Electron",
-  "author": "ScolApp Team",
+  "author": "FosilaMaster Team",
   "main": "public/electron.js",
   "homepage": "./",
   "scripts": {
@@ -37,8 +37,8 @@
     "test-cleanup": "node scripts/test-cleanup.js"
   },
   "build": {
-    "appId": "com.scolapp.desktop",
-    "productName": "ScolApp",
+    "appId": "com.fosilamaster.desktop",
+    "productName": "FosilaMaster",
     "directories": {
       "output": "dist"
     },

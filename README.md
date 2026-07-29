@@ -1,8 +1,8 @@
-# ScolApp Visuel - Système de Gestion Scolaire
+# FosilaMaster Visuel - Système de Gestion Scolaire
 
 ## 📋 Description
 
-ScolApp Visuel est une application web moderne de gestion scolaire développée avec Next.js 15, TypeScript et MySQL. Elle offre une solution complète pour la gestion des élèves, des paiements, des notes, des présences et de l'administration scolaire.
+FosilaMaster Visuel est une application web moderne de gestion scolaire développée avec Next.js 15, TypeScript et MySQL. Elle offre une solution complète pour la gestion des élèves, des paiements, des notes, des présences et de l'administration scolaire.
 
 ## ✨ Fonctionnalités Principales
 
@@ -79,7 +79,7 @@ MYSQL_HOST=localhost
 MYSQL_PORT=3306
 MYSQL_USER=root
 MYSQL_PASSWORD=votre_mot_de_passe
-MYSQL_DATABASE=scolapp
+MYSQL_DATABASE=fosilamaster
 
 # Configuration Firebase (optionnel)
 FIREBASE_API_KEY=votre_api_key
@@ -98,14 +98,14 @@ SECRET_COOKIE_PASSWORD=votre_secret_password_32_caracteres
 #### Créer la Base de Données
 
 ```sql
-CREATE DATABASE scolapp CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE fosilamaster CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
 #### Exécuter les Scripts d'Initialisation
 
 ```bash
 # Se connecter à MySQL
-mysql -u root -p scolapp
+mysql -u root -p fosilamaster
 
 # Exécuter le schéma principal
 source src/db/migrations/schema.sql
@@ -186,7 +186,7 @@ pr/
 | `MYSQL_PORT` | Port MySQL | 3306 |
 | `MYSQL_USER` | Utilisateur MySQL | root |
 | `MYSQL_PASSWORD` | Mot de passe MySQL | - |
-| `MYSQL_DATABASE` | Nom de la base | scolapp |
+| `MYSQL_DATABASE` | Nom de la base | fosilamaster |
 | `SECRET_COOKIE_PASSWORD` | Secret pour les sessions | - |
 
 ### Scripts Disponibles
@@ -280,7 +280,7 @@ MYSQL_HOST=votre_host_production
 MYSQL_PORT=3306
 MYSQL_USER=votre_user_production
 MYSQL_PASSWORD=votre_password_production
-MYSQL_DATABASE=scolapp_prod
+MYSQL_DATABASE=fosilamaster_prod
 SECRET_COOKIE_PASSWORD=votre_secret_tres_long_et_complexe
 ```
 
@@ -297,10 +297,10 @@ SECRET_COOKIE_PASSWORD=votre_secret_tres_long_et_complexe
 
 ```bash
 # Sauvegarde complète
-mysqldump -u root -p scolapp > backup_$(date +%Y%m%d_%H%M%S).sql
+mysqldump -u root -p fosilamaster > backup_$(date +%Y%m%d_%H%M%S).sql
 
 # Restauration
-mysql -u root -p scolapp < backup_file.sql
+mysql -u root -p fosilamaster < backup_file.sql
 ```
 
 ### Mises à Jour
@@ -359,6 +359,6 @@ Ce projet est sous licence MIT. Voir le fichier `LICENSE` pour plus de détails.
 
 ---
 
-**ScolApp Visuel** - L'excellence à votre portée 🎓 # Projet-Scolapp
+**FosilaMaster Visuel** - L'excellence à votre portée 🎓 # Projet-Scolapp
 
-# Projet_scolapp
+# Projet_fosilamaster

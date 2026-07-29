@@ -154,7 +154,7 @@ function LoginForm() {
         }
     }
 
-    const displayName = schoolInfo?.name || 'ScolApp'
+    const displayName = schoolInfo?.name || 'FosilaMaster'
 
     return (
         <div className="login-root">
@@ -178,7 +178,7 @@ function LoginForm() {
                                 <Sparkles size={32} className="text-[#002113]" />
                             </div>
                         </div>
-                        <h1 className="login-brand-title font-roboto">ScolApp</h1>
+                        <h1 className="login-brand-title font-roboto">FosilaMaster</h1>
                         <p className="login-brand-subtitle">
                             La plateforme de gestion scolaire intelligente pour les établissements africains.
                         </p>
@@ -205,7 +205,7 @@ function LoginForm() {
                         </div>
 
                         <div className="login-brand-footer">
-                            <p className="text-[#5c5f61] text-xs">© 2026 ScolApp • Version 2.0</p>
+                            <p className="text-[#5c5f61] text-xs">© 2026 FosilaMaster • Version 2.0</p>
                         </div>
                     </div>
                 </motion.div>
@@ -325,7 +325,7 @@ function LoginForm() {
                                             {schoolLoading ? 'Chargement...' : `Bienvenue`}
                                         </h2>
                                         <p className="login-form-subtitle">
-                                            {displayName !== 'ScolApp' ? (
+                                            {displayName !== 'FosilaMaster' ? (
                                                 <span className="text-blue-300 font-semibold">{displayName}</span>
                                             ) : (
                                                 'Connectez-vous à votre espace'
@@ -426,7 +426,7 @@ function LoginForm() {
                                 <p className="text-[#5c5f61] text-sm">
                                     Votre école n'est pas encore inscrite ?{' '}
                                     <Link href="/register" className="text-[#0b1c30] hover:text-[#000000] font-bold">
-                                        Créer un compte ScolApp →
+                                        Créer un compte FosilaMaster →
                                     </Link>
                                 </p>
                             </div>

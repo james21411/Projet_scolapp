@@ -129,7 +129,7 @@ export function SecurityManager() {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `scolapp-backup-${new Date().toISOString().slice(0, 10)}.sql`;
+        a.download = `fosilamaster-backup-${new Date().toISOString().slice(0, 10)}.sql`;
         document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);
@@ -171,7 +171,7 @@ export function SecurityManager() {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `scolapp-data-${new Date().toISOString().slice(0, 10)}.csv`;
+        a.download = `fosilamaster-data-${new Date().toISOString().slice(0, 10)}.csv`;
         document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);
@@ -211,7 +211,7 @@ export function SecurityManager() {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `scolapp-data-${new Date().toISOString().slice(0, 10)}.json`;
+        a.download = `fosilamaster-data-${new Date().toISOString().slice(0, 10)}.json`;
         document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);

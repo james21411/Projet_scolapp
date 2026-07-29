@@ -1,5 +1,5 @@
 services:
-  scolapp:
+  fosilamaster:
     build:
       context: .
       dockerfile: Dockerfile
@@ -9,15 +9,15 @@ services:
       - NODE_ENV=production
       - NEXT_TELEMETRY_DISABLED=1
       - DB_HOST=mysql
-      - DB_USER=scolapp
-      - DB_PASSWORD=scolapp123
+      - DB_USER=fosilamaster
+      - DB_PASSWORD=fosilamaster123
       - DB_NAME=scolapp
       - DB_PORT=3306
     depends_on:
       mysql:
         condition: service_healthy
     networks:
-      - scolapp-network
+      - fosilamaster-network
     restart: unless-stopped
 
   mysql:
@@ -27,13 +27,13 @@ services:
     environment:
       - MYSQL_ROOT_PASSWORD=root123
       - MYSQL_DATABASE=scolapp
-      - MYSQL_USER=scolapp
-      - MYSQL_PASSWORD=scolapp123
+      - MYSQL_USER=fosilamaster
+      - MYSQL_PASSWORD=fosilamaster123
     volumes:
       - mysql_data:/var/lib/mysql
       - ./database:/docker-entrypoint-initdb.d
     networks:
-      - scolapp-network
+      - fosilamaster-network
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
@@ -44,5 +44,5 @@ volumes:
   mysql_data:
 
 networks:
-  scolapp-network:
+  fosilamaster-network:
     driver: bridge

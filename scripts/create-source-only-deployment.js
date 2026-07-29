@@ -5,7 +5,7 @@ async function createSourceOnlyDeployment() {
     console.log('🚀 Création du package de déploiement CODE SOURCE SEULEMENT...');
     
     const sourceDir = '.';
-    const deployDir = 'dist/scolapp-source-only';
+    const deployDir = 'dist/fosilamaster-source-only';
     
     try {
         // Nettoyer le dossier de déploiement
@@ -50,11 +50,11 @@ async function createSourceOnlyDeployment() {
         
         // Créer le script d'installation source-only
         const installScript = `@echo off
-title ScolApp - Installation CODE SOURCE SEULEMENT
+title FosilaMaster - Installation CODE SOURCE SEULEMENT
 color 0E
 
 echo ========================================
-echo    SCOLAPP - CODE SOURCE SEULEMENT
+echo    FOSILAMASTER - CODE SOURCE SEULEMENT
 echo ========================================
 echo.
 echo 🚀 Installation depuis le code source...
@@ -102,28 +102,28 @@ echo.
 
 REM Créer le lanceur source-only
 echo 🚀 Création du lanceur...
-echo @echo off > "Lancer ScolApp Source.bat"
-echo title ScolApp Desktop - Code Source >> "Lancer ScolApp Source.bat"
-echo color 0E >> "Lancer ScolApp Source.bat"
-echo echo ======================================== >> "Lancer ScolApp Source.bat"
-echo echo      SCOLAPP DESKTOP - SOURCE >> "Lancer ScolApp Source.bat"
-echo echo ======================================== >> "Lancer ScolApp Source.bat"
-echo echo. >> "Lancer ScolApp Source.bat"
-echo echo 🚀 Démarrage de l'application... >> "Lancer ScolApp Source.bat"
-echo echo 💡 Version code source uniquement >> "Lancer ScolApp Source.bat"
-echo echo. >> "Lancer ScolApp Source.bat"
-echo echo 📡 Démarrage du serveur Next.js... >> "Lancer ScolApp Source.bat"
-echo start /B "Next.js Server" cmd /c "npm start" >> "Lancer ScolApp Source.bat"
-echo echo. >> "Lancer ScolApp Source.bat"
-echo echo ⏳ Attente du serveur... >> "Lancer ScolApp Source.bat"
-echo timeout /t 5 /nobreak ^>nul >> "Lancer ScolApp Source.bat"
-echo echo. >> "Lancer ScolApp Source.bat"
-echo echo 🖥️ Lancement de l'interface Electron... >> "Lancer ScolApp Source.bat"
-echo "node_modules\\.bin\\electron.cmd" . >> "Lancer ScolApp Source.bat"
-echo echo. >> "Lancer ScolApp Source.bat"
-echo echo 🔄 Fermeture du serveur... >> "Lancer ScolApp Source.bat"
-echo taskkill /f /im node.exe ^>nul 2^>^&1 >> "Lancer ScolApp Source.bat"
-echo pause >> "Lancer ScolApp Source.bat"
+echo @echo off > "Lancer FosilaMaster Source.bat"
+echo title FosilaMaster Desktop - Code Source >> "Lancer FosilaMaster Source.bat"
+echo color 0E >> "Lancer FosilaMaster Source.bat"
+echo echo ======================================== >> "Lancer FosilaMaster Source.bat"
+echo echo      FOSILAMASTER DESKTOP - SOURCE >> "Lancer FosilaMaster Source.bat"
+echo echo ======================================== >> "Lancer FosilaMaster Source.bat"
+echo echo. >> "Lancer FosilaMaster Source.bat"
+echo echo 🚀 Démarrage de l'application... >> "Lancer FosilaMaster Source.bat"
+echo echo 💡 Version code source uniquement >> "Lancer FosilaMaster Source.bat"
+echo echo. >> "Lancer FosilaMaster Source.bat"
+echo echo 📡 Démarrage du serveur Next.js... >> "Lancer FosilaMaster Source.bat"
+echo start /B "Next.js Server" cmd /c "npm start" >> "Lancer FosilaMaster Source.bat"
+echo echo. >> "Lancer FosilaMaster Source.bat"
+echo echo ⏳ Attente du serveur... >> "Lancer FosilaMaster Source.bat"
+echo timeout /t 5 /nobreak ^>nul >> "Lancer FosilaMaster Source.bat"
+echo echo. >> "Lancer FosilaMaster Source.bat"
+echo echo 🖥️ Lancement de l'interface Electron... >> "Lancer FosilaMaster Source.bat"
+echo "node_modules\\.bin\\electron.cmd" . >> "Lancer FosilaMaster Source.bat"
+echo echo. >> "Lancer FosilaMaster Source.bat"
+echo echo 🔄 Fermeture du serveur... >> "Lancer FosilaMaster Source.bat"
+echo taskkill /f /im node.exe ^>nul 2^>^&1 >> "Lancer FosilaMaster Source.bat"
+echo pause >> "Lancer FosilaMaster Source.bat"
 
 echo ✅ Lanceur créé
 echo.
@@ -133,7 +133,7 @@ echo           🎉 INSTALLATION TERMINÉE !
 echo ========================================
 echo.
 echo 📱 Pour lancer l'application :
-echo    Double-cliquez sur "Lancer ScolApp Source.bat"
+echo    Double-cliquez sur "Lancer FosilaMaster Source.bat"
 echo.
 echo 🌐 Accès local : http://localhost:3000
 echo.
@@ -145,7 +145,7 @@ pause
         await fs.writeFile(path.join(deployDir, 'Installation CODE SOURCE.bat'), installScript);
         
         // Créer le README source-only
-        const readmeContent = `# ScolApp - Package CODE SOURCE SEULEMENT
+        const readmeContent = `# FosilaMaster - Package CODE SOURCE SEULEMENT
 
 ## 🚀 Installation depuis le code source
 
@@ -156,7 +156,7 @@ pause
 ### 🔧 Installation automatique
 1. **Double-cliquez** sur \`Installation CODE SOURCE.bat\`
 2. **Attendez** que l'installation se termine
-3. **Lancez** l'application avec \`Lancer ScolApp Source.bat\`
+3. **Lancez** l'application avec \`Lancer FosilaMaster Source.bat\`
 
 ### 📁 Fichiers inclus (CODE SOURCE SEULEMENT)
 - ✅ Code source complet de l'application
@@ -192,7 +192,7 @@ pause
 4. **Prêt** à l'emploi !
 
 ---
-**ScolApp Desktop - Code Source** - Gestion scolaire professionnelle
+**FosilaMaster Desktop - Code Source** - Gestion scolaire professionnelle
 `;
 
         await fs.writeFile(path.join(deployDir, 'README-CODE-SOURCE.md'), readmeContent);
@@ -205,10 +205,10 @@ pause
         console.log(`📊 Taille du package CODE SOURCE: ${(size / 1024 / 1024).toFixed(2)} MB`);
         
         console.log('\n🎯 Pour déployer sur un autre PC :');
-        console.log('1. Copiez le dossier "scolapp-source-only" (très léger !)');
+        console.log('1. Copiez le dossier "fosilamaster-source-only" (très léger !)');
         console.log('2. Double-cliquez sur "Installation CODE SOURCE.bat"');
         console.log('3. Attendez la fin de l\'installation');
-        console.log('4. Lancez avec "Lancer ScolApp Source.bat"');
+        console.log('4. Lancez avec "Lancer FosilaMaster Source.bat"');
         
         console.log('\n💡 AVANTAGE MAJEUR :');
         console.log('   • Votre dossier actuel : ~8 GB');

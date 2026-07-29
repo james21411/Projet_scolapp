@@ -14,16 +14,16 @@ async function cleanupDist() {
         
         // Dossiers et fichiers lourds à supprimer
         const heavyItems = [
-            'scolapp-professional/.next',
-            'scolapp-professional/node_modules',
-            'scolapp-professional/public/.next',
-            'scolapp-professional/public/node_modules',
-            'scolapp-professional/.next',
-            'scolapp-professional/node_modules',
-            'scolapp-executable/.next',
-            'scolapp-executable/node_modules',
-            'scolapp-launcher/.next',
-            'scolapp-launcher/node_modules'
+            'fosilamaster-professional/.next',
+            'fosilamaster-professional/node_modules',
+            'fosilamaster-professional/public/.next',
+            'fosilamaster-professional/public/node_modules',
+            'fosilamaster-professional/.next',
+            'fosilamaster-professional/node_modules',
+            'fosilamaster-executable/.next',
+            'fosilamaster-executable/node_modules',
+            'fosilamaster-launcher/.next',
+            'fosilamaster-launcher/node_modules'
         ];
         
         let totalFreed = 0;

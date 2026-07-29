@@ -1,7 +1,7 @@
 -- Script pour supprimer TOUTES les matières de la base de données
 -- ATTENTION: Cette opération est IRREVERSIBLE !
 
-USE scolapp;
+USE fosilamaster;
 
 -- 1. Supprimer d'abord toutes les notes liées aux matières
 DELETE FROM grades WHERE subjectId IN (SELECT id FROM subjects);

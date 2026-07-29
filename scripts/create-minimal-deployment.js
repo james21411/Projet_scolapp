@@ -2,10 +2,10 @@ const fs = require('fs-extra');
 const path = require('path');
 
 async function createMinimalDeployment() {
-    console.log('🚀 Création du package de déploiement MINIMAL ScolApp...');
+    console.log('🚀 Création du package de déploiement MINIMAL FosilaMaster...');
     
     const sourceDir = '.';
-    const deployDir = 'dist/scolapp-minimal';
+    const deployDir = 'dist/fosilamaster-minimal';
     
     try {
         // Nettoyer le dossier de déploiement
@@ -47,14 +47,14 @@ async function createMinimalDeployment() {
         
         // Créer le script d'installation minimal
         const installScript = `@echo off
-title ScolApp - Installation MINIMALE
+title FosilaMaster - Installation MINIMALE
 color 0C
 
 echo ========================================
-echo        SCOLAPP - DÉPLOIEMENT MINIMAL
+echo        FOSILAMASTER - DÉPLOIEMENT MINIMAL
 echo ========================================
 echo.
-echo 🚀 Installation minimale de ScolApp...
+echo 🚀 Installation minimale de FosilaMaster...
 echo 💡 Version ultra-légère pour déploiement rapide
 echo.
 
@@ -99,28 +99,28 @@ echo.
 
 REM Créer le lanceur minimal
 echo 🚀 Création du lanceur minimal...
-echo @echo off > "Lancer ScolApp Minimal.bat"
-echo title ScolApp Desktop - Version Minimale >> "Lancer ScolApp Minimal.bat"
-echo color 0C >> "Lancer ScolApp Minimal.bat"
-echo echo ======================================== >> "Lancer ScolApp Minimal.bat"
-echo echo      SCOLAPP DESKTOP - MINIMAL >> "Lancer ScolApp Minimal.bat"
-echo echo ======================================== >> "Lancer ScolApp Minimal.bat"
-echo echo. >> "Lancer ScolApp Minimal.bat"
-echo echo 🚀 Démarrage de l'application... >> "Lancer ScolApp Minimal.bat"
-echo echo 💡 Version minimale pour déploiement rapide >> "Lancer ScolApp Minimal.bat"
-echo echo. >> "Lancer ScolApp Minimal.bat"
-echo echo 📡 Démarrage du serveur Next.js... >> "Lancer ScolApp Minimal.bat"
-echo start /B "Next.js Server" cmd /c "npm start" >> "Lancer ScolApp Minimal.bat"
-echo echo. >> "Lancer ScolApp Minimal.bat"
-echo echo ⏳ Attente du serveur... >> "Lancer ScolApp Minimal.bat"
-echo timeout /t 5 /nobreak ^>nul >> "Lancer ScolApp Minimal.bat"
-echo echo. >> "Lancer ScolApp Minimal.bat"
-echo echo 🖥️ Lancement de l'interface Electron... >> "Lancer ScolApp Minimal.bat"
-echo "node_modules\\.bin\\electron.cmd" . >> "Lancer ScolApp Minimal.bat"
-echo echo. >> "Lancer ScolApp Minimal.bat"
-echo echo 🔄 Fermeture du serveur... >> "Lancer ScolApp Minimal.bat"
-echo taskkill /f /im node.exe ^>nul 2^>^&1 >> "Lancer ScolApp Minimal.bat"
-echo pause >> "Lancer ScolApp Minimal.bat"
+echo @echo off > "Lancer FosilaMaster Minimal.bat"
+echo title FosilaMaster Desktop - Version Minimale >> "Lancer FosilaMaster Minimal.bat"
+echo color 0C >> "Lancer FosilaMaster Minimal.bat"
+echo echo ======================================== >> "Lancer FosilaMaster Minimal.bat"
+echo echo      FOSILAMASTER DESKTOP - MINIMAL >> "Lancer FosilaMaster Minimal.bat"
+echo echo ======================================== >> "Lancer FosilaMaster Minimal.bat"
+echo echo. >> "Lancer FosilaMaster Minimal.bat"
+echo echo 🚀 Démarrage de l'application... >> "Lancer FosilaMaster Minimal.bat"
+echo echo 💡 Version minimale pour déploiement rapide >> "Lancer FosilaMaster Minimal.bat"
+echo echo. >> "Lancer FosilaMaster Minimal.bat"
+echo echo 📡 Démarrage du serveur Next.js... >> "Lancer FosilaMaster Minimal.bat"
+echo start /B "Next.js Server" cmd /c "npm start" >> "Lancer FosilaMaster Minimal.bat"
+echo echo. >> "Lancer FosilaMaster Minimal.bat"
+echo echo ⏳ Attente du serveur... >> "Lancer FosilaMaster Minimal.bat"
+echo timeout /t 5 /nobreak ^>nul >> "Lancer FosilaMaster Minimal.bat"
+echo echo. >> "Lancer FosilaMaster Minimal.bat"
+echo echo 🖥️ Lancement de l'interface Electron... >> "Lancer FosilaMaster Minimal.bat"
+echo "node_modules\\.bin\\electron.cmd" . >> "Lancer FosilaMaster Minimal.bat"
+echo echo. >> "Lancer FosilaMaster Minimal.bat"
+echo echo 🔄 Fermeture du serveur... >> "Lancer FosilaMaster Minimal.bat"
+echo taskkill /f /im node.exe ^>nul 2^>^&1 >> "Lancer FosilaMaster Minimal.bat"
+echo pause >> "Lancer FosilaMaster Minimal.bat"
 
 echo ✅ Lanceur minimal créé
 echo.
@@ -130,7 +130,7 @@ echo           🎉 DÉPLOIEMENT MINIMAL TERMINÉ !
 echo ========================================
 echo.
 echo 📱 Pour lancer l'application :
-echo    Double-cliquez sur "Lancer ScolApp Minimal.bat"
+echo    Double-cliquez sur "Lancer FosilaMaster Minimal.bat"
 echo.
 echo 🌐 Accès local : http://localhost:3000
 echo.
@@ -142,7 +142,7 @@ pause
         await fs.writeFile(path.join(deployDir, 'Installation MINIMALE.bat'), installScript);
         
         // Créer le README minimal
-        const readmeContent = `# ScolApp - Package de Déploiement MINIMAL
+        const readmeContent = `# FosilaMaster - Package de Déploiement MINIMAL
 
 ## 🚀 Installation MINIMALE sur un nouvel ordinateur
 
@@ -153,7 +153,7 @@ pause
 ### 🔧 Installation automatique
 1. **Double-cliquez** sur \`Installation MINIMALE.bat\`
 2. **Attendez** que l'installation se termine
-3. **Lancez** l'application avec \`Lancer ScolApp Minimal.bat\`
+3. **Lancez** l'application avec \`Lancer FosilaMaster Minimal.bat\`
 
 ### 📁 Fichiers inclus (VERSION MINIMALE)
 - ✅ Code source essentiel uniquement
@@ -181,7 +181,7 @@ pause
 - Idéal pour utilisation en production
 
 ---
-**ScolApp Desktop Minimal** - Gestion scolaire professionnelle
+**FosilaMaster Desktop Minimal** - Gestion scolaire professionnelle
 `;
 
         await fs.writeFile(path.join(deployDir, 'README-MINIMAL.md'), readmeContent);
@@ -194,10 +194,10 @@ pause
         console.log(`📊 Taille du package MINIMAL: ${(size / 1024 / 1024).toFixed(2)} MB`);
         
         console.log('\n🎯 Pour déployer sur un autre PC :');
-        console.log('1. Copiez le dossier "scolapp-minimal" (très léger !)');
+        console.log('1. Copiez le dossier "fosilamaster-minimal" (très léger !)');
         console.log('2. Double-cliquez sur "Installation MINIMALE.bat"');
         console.log('3. Attendez la fin de l\'installation');
-        console.log('4. Lancez avec "Lancer ScolApp Minimal.bat"');
+        console.log('4. Lancez avec "Lancer FosilaMaster Minimal.bat"');
         
         console.log('\n💡 AVANTAGE MAJEUR :');
         console.log('   • Votre dossier actuel : ~8 GB');

@@ -53,7 +53,7 @@ export function RapportListeEleves({ students, title }: StudentListReportProps) 
 
         // Titre et en-tête
         doc.setFontSize(18);
-        doc.text("ScolApp Visuel Academy", 105, 20, { align: 'center' });
+        doc.text("FosilaMaster Visuel Academy", 105, 20, { align: 'center' });
         doc.setFontSize(14);
         doc.text(title, 105, 30, { align: 'center' });
         doc.setFontSize(10);
@@ -113,7 +113,7 @@ export function RapportListeEleves({ students, title }: StudentListReportProps) 
                 <ScrollArea className="h-[50vh] w-full border rounded-md">
                      <div className="p-4">
                          <div className="text-center mb-6 hidden print:block">
-                            <h1 className="text-2xl font-bold">ScolApp Visuel Academy</h1>
+                            <h1 className="text-2xl font-bold">FosilaMaster Visuel Academy</h1>
                             <h2 className="text-xl font-semibold">{title}</h2>
                             <p>Généré le: {new Date().toLocaleDateString('fr-FR')}</p>
                          </div>

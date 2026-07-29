@@ -1,5 +1,5 @@
 -- ===========================================
--- OPTIMISATION DE LA BASE DE DONNÉES SCOLAPP
+-- OPTIMISATION DE LA BASE DE DONNÉES FOSILAMASTER
 -- Script pour créer les index et optimiser les performances
 -- ===========================================
 

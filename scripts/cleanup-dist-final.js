@@ -15,11 +15,11 @@ async function cleanupDistFinal() {
         
         // Dossiers à SUPPRIMER (versions obsolètes)
         const foldersToDelete = [
-            'scolapp',
-            'scolapp-app', 
-            'scolapp-executable',
-            'scolapp-launcher',
-            'scolapp-minimal',
+            'fosilamaster',
+            'fosilamaster-app', 
+            'fosilamaster-executable',
+            'fosilamaster-launcher',
+            'fosilamaster-minimal',
             'win-unpacked'
         ];
         
@@ -58,14 +58,14 @@ async function cleanupDistFinal() {
             }
         }
         
-        // Nettoyer les dossiers lourds dans scolapp-professional
-        console.log('\n🧹 Nettoyage des dossiers lourds dans scolapp-professional...');
+        // Nettoyer les dossiers lourds dans fosilamaster-professional
+        console.log('\n🧹 Nettoyage des dossiers lourds dans fosilamaster-professional...');
         
         const professionalHeavyItems = [
-            'scolapp-professional/.next',
-            'scolapp-professional/node_modules',
-            'scolapp-professional/public/.next',
-            'scolapp-professional/public/node_modules'
+            'fosilamaster-professional/.next',
+            'fosilamaster-professional/node_modules',
+            'fosilamaster-professional/public/.next',
+            'fosilamaster-professional/public/node_modules'
         ];
         
         for (const item of professionalHeavyItems) {
@@ -140,18 +140,18 @@ pause
         const instructions = `# 📋 INSTRUCTIONS DE NETTOYAGE FINAL
 
 ## ✅ Ce qui a été GARDÉ :
-- **scolapp-professional/** - Version finale et complète
-  - ✅ Nom de domaine scolapp.local
+- **fosilamaster-professional/** - Version finale et complète
+  - ✅ Nom de domaine fosilamaster.local
   - ✅ Page web React moderne
   - ✅ Tous les lanceurs professionnels
   - ✅ Configuration réseau complète
 
 ## ❌ Ce qui a été SUPPRIMÉ :
-- scolapp/ (version ancienne)
-- scolapp-app/ (version basique)
-- scolapp-executable/ (version ancienne)
-- scolapp-launcher/ (version ancienne)
-- scolapp-minimal/ (version de test)
+- fosilamaster/ (version ancienne)
+- fosilamaster-app/ (version basique)
+- fosilamaster-executable/ (version ancienne)
+- fosilamaster-launcher/ (version ancienne)
+- fosilamaster-minimal/ (version de test)
 - win-unpacked/ (build Electron obsolète)
 - builder-effective-config.yaml (config obsolète)
 - Tous les dossiers .next et node_modules
@@ -163,12 +163,12 @@ pause
 - **Structure claire** et professionnelle
 
 ## 🚀 Pour déployer sur un autre PC :
-1. Copiez le dossier "scolapp-professional" (très léger maintenant !)
+1. Copiez le dossier "fosilamaster-professional" (très léger maintenant !)
 2. Utilisez les lanceurs inclus
 3. Ou créez un package de déploiement avec npm run create-source-only
 
 ---
-**ScolApp Desktop - Version Finale Nettoyée**
+**FosilaMaster Desktop - Version Finale Nettoyée**
 `;
 
         await fs.writeFile(path.join(distDir, '📋 INSTRUCTIONS NETTOYAGE FINAL.md'), instructions);
@@ -176,7 +176,7 @@ pause
         console.log('\n📋 Fichier d\'instructions créé: "📋 INSTRUCTIONS NETTOYAGE FINAL.md"');
         
         console.log('\n🎯 RÉSUMÉ FINAL :');
-        console.log('   ✅ Gardé : scolapp-professional (version finale)');
+        console.log('   ✅ Gardé : fosilamaster-professional (version finale)');
         console.log('   ❌ Supprimé : 6 versions obsolètes + fichiers lourds');
         console.log('   💾 Espace libéré : plusieurs GB');
         console.log('   🚀 Dossier dist maintenant propre et professionnel !');

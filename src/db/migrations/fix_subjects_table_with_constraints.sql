@@ -1,7 +1,7 @@
 -- Script pour corriger la table subjects en gérant les contraintes
 -- Gère les clés étrangères avant de modifier la structure
 
-USE scolapp;
+USE fosilamaster;
 
 -- 1. Vérifier les contraintes existantes
 SELECT 
