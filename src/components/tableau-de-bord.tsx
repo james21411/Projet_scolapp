@@ -3211,22 +3211,24 @@ function PaymentSearchDialog({
       {showDossierDialog && dossierDialogProps && (
         <PrintDossierAfterPayment {...dossierDialogProps} />
       )}
-      <DialogHeader>
-        <div className="flex items-center justify-between pr-12">
-          <DialogTitle>Encaisser un Paiement</DialogTitle>
+      <DialogHeader className="text-center sm:text-left">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left pr-8">
+          <DialogTitle className="text-xl font-bold text-slate-800 text-center sm:text-left w-full">Encaisser un Paiement</DialogTitle>
           {selectedStudent && (
-            <Button size="sm" onClick={() => setEditPaymentsOpen(true)} className="mr-2 bg-blue-600 text-white hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-blue-500">
+            <Button size="sm" onClick={() => setEditPaymentsOpen(true)} className="bg-blue-600 text-white hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-blue-500 shrink-0">
               Modifier un paiement
             </Button>
           )}
         </div>
-        {/* <DialogDescription>Recherchez un élève pour consulter son dossier et enregistrer un paiement.</DialogDescription> */}
+        <DialogDescription className="text-center sm:text-left text-slate-500 text-xs mt-1">
+          {selectedStudent ? `Dossier de ${selectedStudent.prenom} ${selectedStudent.nom} (${selectedStudent.classe})` : "Recherchez un élève pour enregistrer un paiement."}
+        </DialogDescription>
       </DialogHeader>
 
       {/* Sélection du type de paiement si un élève est sélectionné */}
       {selectedStudent && !paymentType && (
-        <div className="space-y-4 p-4 border rounded-none bg-gray-50">
-          <h3 className="font-semibold text-lg">Choisissez le type de paiement :</h3>
+        <div className="space-y-4 p-4 border rounded-xl bg-slate-50 text-center sm:text-left">
+          <h3 className="font-semibold text-base text-slate-800 text-center sm:text-left">Choisissez le type de paiement :</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Button
               onClick={() => {
@@ -3272,7 +3274,7 @@ function PaymentSearchDialog({
             </Button>
           </div>
           {registrationFee <= 0 && (
-            <div className="text-sm text-amber-600 bg-amber-50 p-3 rounded border border-amber-200">
+            <div className="text-sm text-amber-600 bg-amber-50 p-3 rounded-lg border border-amber-200">
               ⚠️ Les frais d'inscription ne sont pas configurés pour la classe {selectedStudent.classe}.
               Configurez-les d'abord dans les paramètres avant de pouvoir encaisser des frais d'inscription.
             </div>
@@ -3280,31 +3282,38 @@ function PaymentSearchDialog({
         </div>
       )}
 
-      <div className="max-h-[70vh] overflow-y-auto pr-2">
+      <div className="max-h-[70vh] overflow-y-auto pr-1">
         {!selectedStudent ? (
-          <Command shouldFilter={false} className="mt-4">
-            <CommandInput
-              value={searchQuery}
-              onValueChange={setSearchQuery}
-              placeholder="Rechercher par nom ou matricule..."
-            />
-            {searchResults.length > 0 && (
-              <CommandList>
-                <CommandEmpty>Aucun élève trouvé.</CommandEmpty>
-                <CommandGroup>
-                  {searchResults.map(student => (
-                    <CommandItem
-                      key={student.id}
-                      value={`${student.prenom} ${student.nom} ${student.id}`}
-                      onSelect={() => selectStudent(student)}
-                    >
-                      {student.prenom} {student.nom} ({student.id})
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-              </CommandList>
-            )}
-          </Command>
+          <div className="py-4 flex flex-col items-center justify-center w-full">
+            <div className="w-full max-w-xl mx-auto">
+              <Command shouldFilter={false} className="border border-slate-200 rounded-xl shadow-sm overflow-hidden bg-white">
+                <CommandInput
+                  value={searchQuery}
+                  onValueChange={setSearchQuery}
+                  placeholder="🔍 Rechercher un élève par nom ou matricule..."
+                  className="h-12 text-center text-sm"
+                />
+                {searchResults.length > 0 && (
+                  <CommandList className="max-h-60 overflow-y-auto p-2">
+                    <CommandEmpty>Aucun élève trouvé.</CommandEmpty>
+                    <CommandGroup heading="Élèves trouvés">
+                      {searchResults.map(student => (
+                        <CommandItem
+                          key={student.id}
+                          value={`${student.prenom} ${student.nom} ${student.id}`}
+                          onSelect={() => selectStudent(student)}
+                          className="cursor-pointer py-2 px-3 rounded-lg hover:bg-blue-50 transition-colors flex items-center justify-between"
+                        >
+                          <span className="font-semibold text-slate-800">{student.prenom} {student.nom}</span>
+                          <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-mono">{student.id} ({student.classe})</span>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                )}
+              </Command>
+            </div>
+          </div>
         ) : null}
 
         {isPaymentLoading && <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin" /></div>}
@@ -4959,6 +4968,7 @@ function FinanceTab({ role, currentUser, schoolInfo }: { role: string, currentUs
   const [openInsolventList, setOpenInsolventList] = useState(false);
   const [openAdvancedReminderDialog, setOpenAdvancedReminderDialog] = useState(false);
   const [openRiskSettingsDialog, setOpenRiskSettingsDialog] = useState(false);
+  const [activeFinanceTab, setActiveFinanceTab] = useState("overview");
 
   // État pour stocker les données financières des élèves recherchés
   const [studentFinancialData, setStudentFinancialData] = useState<{ [key: string]: any }>({});
@@ -5359,8 +5369,26 @@ function FinanceTab({ role, currentUser, schoolInfo }: { role: string, currentUs
   };
   return (
     <div className="space-y-4">
-      <Tabs defaultValue="overview">
-        <TabsList className="grid w-full grid-cols-5">
+      <Tabs value={activeFinanceTab} onValueChange={setActiveFinanceTab} className="w-full">
+        {/* Mobile: Liste déroulante pour basculer facilement entre sous-menus */}
+        <div className="md:hidden w-full mb-3">
+          <label htmlFor="finance-subtabs-select" className="sr-only">Sous-menu Finance</label>
+          <select
+            id="finance-subtabs-select"
+            value={activeFinanceTab}
+            onChange={(e) => setActiveFinanceTab(e.target.value)}
+            className="w-full h-10 px-3 border border-slate-300 rounded-lg bg-white text-slate-800 font-semibold text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="overview">📊 Vue d'Ensemble</option>
+            <option value="management">📋 Gestion & Suivi</option>
+            <option value="inscription-fees">📝 Frais d'Inscription</option>
+            <option value="reports">📈 Rapports Financiers</option>
+            <option value="payments">💳 Paiements</option>
+          </select>
+        </div>
+
+        {/* Desktop: Onglets grilles classiques */}
+        <TabsList className="hidden md:grid w-full grid-cols-5">
           <TabsTrigger value="overview">Vue d'Ensemble</TabsTrigger>
           <TabsTrigger value="management">Gestion & Suivi</TabsTrigger>
           <TabsTrigger value="inscription-fees">Frais d'Inscription</TabsTrigger>
@@ -8908,79 +8936,92 @@ function TableauDeBord({ role, currentUser }: { role: string, currentUser: User 
           </div>
         </header>
 
-        {/* Barre de navigation pour les sous-menus de Paramètres - scrollable horizontalement sur mobile */}
+        {/* Barre de navigation pour les sous-menus de Paramètres - Liste déroulante sur mobile, onglets sur PC */}
         {activeTab.startsWith('parametres') && (
-          <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            <div className="flex h-12 items-center px-4 overflow-x-auto">
+          <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 py-2">
+            {/* Mobile: Liste déroulante */}
+            <div className="md:hidden">
+              <label htmlFor="settings-subnav-select" className="sr-only">Sous-menu Paramètres</label>
+              <select
+                id="settings-subnav-select"
+                value={activeTab}
+                onChange={(e) => setActiveTab(e.target.value)}
+                className="w-full h-10 px-3 border border-slate-300 rounded-lg bg-white text-slate-800 font-semibold text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="parametres">⚙️ Général</option>
+                <option value="parametres-classes">🏫 Classes & Niveaux</option>
+                <option value="parametres-matieres">📚 Matières & Notes</option>
+                <option value="parametres-sequences">📅 Séquences & Trimestres</option>
+                <option value="parametres-finances-services">💼 Services Optionnels</option>
+                <option value="parametres-frais">💳 Frais & Paiement</option>
+                <option value="parametres-securite">🔒 Sécurité</option>
+                <option value="parametres-audit">📜 Audit / Logs</option>
+                <option value="parametres-presence">📲 Présence NFC</option>
+              </select>
+            </div>
+
+            {/* PC/Desktop: Barre horizontale classique */}
+            <div className="hidden md:flex h-10 items-center overflow-x-auto">
               <nav className="flex items-center gap-4 text-sm font-medium whitespace-nowrap">
                 <button
                   onClick={() => setActiveTab('parametres')}
-                  className={`transition-colors hover:text-foreground/80 ${activeTab === 'parametres' ? 'text-blue-600' : 'text-muted-foreground'
-                    }`}
+                  className={`transition-colors hover:text-foreground/80 ${activeTab === 'parametres' ? 'text-blue-600 font-semibold' : 'text-muted-foreground'}`}
                 >
                   Général
                 </button>
                 <span className="text-gray-300">|</span>
                 <button
                   onClick={() => setActiveTab('parametres-classes')}
-                  className={`transition-colors hover:text-foreground/80 ${activeTab === 'parametres-classes' ? 'text-blue-600' : 'text-muted-foreground'
-                    }`}
+                  className={`transition-colors hover:text-foreground/80 ${activeTab === 'parametres-classes' ? 'text-blue-600 font-semibold' : 'text-muted-foreground'}`}
                 >
                   Classes
                 </button>
                 <span className="text-gray-300">|</span>
                 <button
                   onClick={() => setActiveTab('parametres-matieres')}
-                  className={`transition-colors hover:text-foreground/80 ${activeTab === 'parametres-matieres' ? 'text-blue-600' : 'text-muted-foreground'
-                    }`}
+                  className={`transition-colors hover:text-foreground/80 ${activeTab === 'parametres-matieres' ? 'text-blue-600 font-semibold' : 'text-muted-foreground'}`}
                 >
                   Matières & Notes
                 </button>
                 <span className="text-gray-300">|</span>
                 <button
                   onClick={() => setActiveTab('parametres-sequences')}
-                  className={`transition-colors hover:text-foreground/80 ${activeTab === 'parametres-sequences' ? 'text-blue-600' : 'text-muted-foreground'
-                    }`}
+                  className={`transition-colors hover:text-foreground/80 ${activeTab === 'parametres-sequences' ? 'text-blue-600 font-semibold' : 'text-muted-foreground'}`}
                 >
                   Séquences
                 </button>
                 <span className="text-gray-300">|</span>
                 <button
                   onClick={() => setActiveTab('parametres-finances-services')}
-                  className={`transition-colors hover:text-foreground/80 ${activeTab === 'parametres-finances-services' ? 'text-blue-600' : 'text-muted-foreground'
-                    }`}
+                  className={`transition-colors hover:text-foreground/80 ${activeTab === 'parametres-finances-services' ? 'text-blue-600 font-semibold' : 'text-muted-foreground'}`}
                 >
                   Finances (Services)
                 </button>
                 <span className="text-gray-300">|</span>
                 <button
                   onClick={() => setActiveTab('parametres-frais')}
-                  className={`transition-colors hover:text-foreground/80 ${activeTab === 'parametres-frais' ? 'text-blue-600' : 'text-muted-foreground'
-                    }`}
+                  className={`transition-colors hover:text-foreground/80 ${activeTab === 'parametres-frais' ? 'text-blue-600 font-semibold' : 'text-muted-foreground'}`}
                 >
                   Frais & Paiement
                 </button>
                 <span className="text-gray-300">|</span>
                 <button
                   onClick={() => setActiveTab('parametres-securite')}
-                  className={`transition-colors hover:text-foreground/80 ${activeTab === 'parametres-securite' ? 'text-blue-600' : 'text-muted-foreground'
-                    }`}
+                  className={`transition-colors hover:text-foreground/80 ${activeTab === 'parametres-securite' ? 'text-blue-600 font-semibold' : 'text-muted-foreground'}`}
                 >
                   Sécurité
                 </button>
                 <span className="text-gray-300">|</span>
                 <button
                   onClick={() => setActiveTab('parametres-audit')}
-                  className={`transition-colors hover:text-foreground/80 ${activeTab === 'parametres-audit' ? 'text-blue-600' : 'text-muted-foreground'
-                    }`}
+                  className={`transition-colors hover:text-foreground/80 ${activeTab === 'parametres-audit' ? 'text-blue-600 font-semibold' : 'text-muted-foreground'}`}
                 >
                   Audit/Logs
                 </button>
                 <span className="text-gray-300">|</span>
                 <button
                   onClick={() => setActiveTab('parametres-presence')}
-                  className={`transition-colors hover:text-foreground/80 ${activeTab === 'parametres-presence' ? 'text-blue-600' : 'text-muted-foreground'
-                    }`}
+                  className={`transition-colors hover:text-foreground/80 ${activeTab === 'parametres-presence' ? 'text-blue-600 font-semibold' : 'text-muted-foreground'}`}
                 >
                   Présence
                 </button>
