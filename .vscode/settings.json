@@ -1,4 +1,20 @@
 {
     "IDX.aI.enableInlineCompletion": true,
-    "IDX.aI.enableCodebaseIndexing": true
+    "IDX.aI.enableCodebaseIndexing": true,
+
+    // ── Tailwind CSS : supprimer les faux avertissements du validateur CSS ──
+    // @tailwind, @apply, @layer sont des directives Tailwind valides.
+    // Le validateur CSS natif de VS Code ne les connaît pas, d'où ces warnings.
+    "css.lint.unknownAtRules": "ignore",
+    "scss.lint.unknownAtRules": "ignore",
+    "less.lint.unknownAtRules": "ignore",
+
+    // Utiliser le language service Tailwind si l'extension est installée
+    "css.validate": false,
+    "scss.validate": false,
+
+    // Fichiers associés à Tailwind
+    "files.associations": {
+        "*.css": "tailwindcss"
+    }
 }

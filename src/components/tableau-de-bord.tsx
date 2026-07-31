@@ -763,31 +763,26 @@ function DashboardTab({ schoolInfo }: { schoolInfo: SchoolInfo | null }) {
                   subject: "Recouvrement",
                   value: financialSummary?.totals && financialSummary.totals.totalDue > 0 ? Math.min(100, Math.round((financialSummary.totals.totalPaid / financialSummary.totals.totalDue) * 100)) : 0,
                   fullMark: 100,
-                  description: "Pourcentage des frais scolaires perçus par rapport au total attendu."
                 },
                 {
                   subject: "Élèves Actifs",
                   value: Math.min(100, Math.round((totalStudents / 200) * 100)),
                   fullMark: 100,
-                  description: `Taux d'occupation : ${totalStudents} élèves actifs sur 200 ciblés.`
                 },
                 {
                   subject: "Enseignants",
                   value: Math.min(100, Math.round((totalTeachers / 20) * 100)),
                   fullMark: 100,
-                  description: `${totalTeachers} enseignant(s) en poste sur un objectif de 20.`
                 },
                 {
                   subject: "Classes",
                   value: schoolStructure ? Math.min(100, Math.round((Object.values(schoolStructure.levels || {}).reduce((sum: number, lvl: any) => sum + (lvl.classes?.length || 0), 0) / 15) * 100)) : 0,
                   fullMark: 100,
-                  description: "Nombre de classes actives par rapport à la capacité maximale."
                 },
                 {
                   subject: "Solvabilité",
-                  value: financialSummary?.totals && financialSummary.totals.totalDue > 0 ? Math.max(0, Math.round(100 - (financialSummary.totals.totalUnpaid / financialSummary.totals.totalDue) * 100)) : 100,
+                  value: financialSummary?.totals && financialSummary.totals.totalDue > 0 ? Math.max(0, Math.round(100 - (financialSummary.totals.outstanding / financialSummary.totals.totalDue) * 100)) : 100,
                   fullMark: 100,
-                  description: "Score d'assainissement : faibles impayés = score élevé."
                 },
               ]} />
             </CardContent>
@@ -3454,7 +3449,7 @@ function PaymentSearchDialog({
               {/* Situation des Tranches sur toute la largeur */}
               <div className="w-full">
                 <h3 className="font-semibold text-lg border-b pb-2">Situation des Tranches</h3>
-                <div className="w-full">
+                <div className="w-full overflow-x-auto -webkit-overflow-scrolling-touch">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -3510,6 +3505,7 @@ function PaymentSearchDialog({
                   </Table>
                 </div>
               </div>
+
               {/* En dessous : Encaissement + Résumé Financier */}
               <div className="flex flex-col md:flex-row gap-8 w-full">
                 {/* Colonne 1 : Nouvel Encaissement */}
@@ -5919,7 +5915,7 @@ function FinanceTab({ role, currentUser, schoolInfo }: { role: string, currentUs
       </Tabs>
 
       <Dialog open={openPaymentDialog} onOpenChange={setOpenPaymentDialog}>
-        <DialogContent className="max-w-4xl">
+        <DialogContent className="w-full sm:max-w-5xl sm:max-h-[90vh] sm:overflow-y-auto">
           <PaymentSearchDialog
             allStudents={allStudents}
             schoolYear={selectedSchoolYear}
@@ -8872,7 +8868,7 @@ function TableauDeBord({ role, currentUser }: { role: string, currentUser: User 
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+        <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4 bg-background">
           <SidebarTrigger className="-ml-1" />
           <div className="flex items-center gap-2 px-2 flex-1">
             <h1 className="text-lg font-semibold">
@@ -8912,11 +8908,11 @@ function TableauDeBord({ role, currentUser }: { role: string, currentUser: User 
           </div>
         </header>
 
-        {/* Barre de navigation pour les sous-menus de Paramètres */}
+        {/* Barre de navigation pour les sous-menus de Paramètres - scrollable horizontalement sur mobile */}
         {activeTab.startsWith('parametres') && (
           <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            <div className="flex h-12 items-center px-4">
-              <nav className="flex items-center gap-4 text-sm font-medium">
+            <div className="flex h-12 items-center px-4 overflow-x-auto">
+              <nav className="flex items-center gap-4 text-sm font-medium whitespace-nowrap">
                 <button
                   onClick={() => setActiveTab('parametres')}
                   className={`transition-colors hover:text-foreground/80 ${activeTab === 'parametres' ? 'text-blue-600' : 'text-muted-foreground'

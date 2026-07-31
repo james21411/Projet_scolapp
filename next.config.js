@@ -10,7 +10,14 @@ const nextConfig = {
   },
   // Configuration pour mysql2
   experimental: {
-    serverComponentsExternalPackages: ['mysql2']
+    serverComponentsExternalPackages: ['mysql2'],
+    serverActions: {
+      allowedOrigins: [
+        'fosilamaster.verificationticket.com',
+        'localhost:3005',
+        'localhost:3000',
+      ]
+    }
   },
   // Configuration pour éviter les erreurs de build
   typescript: {
