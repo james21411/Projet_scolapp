@@ -238,6 +238,37 @@ const cleanValue = (value: any): string | null => {
   return strValue.length > 0 ? strValue : null;
 };
 
+const normalizeClassName = (value: string) =>
+  value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[’']/g, "'")
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+
+const parseFeeAmount = (value: unknown) => {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+  if (typeof value === 'string') {
+    const compact = value.replace(/\s/g, '');
+    const normalized = compact.includes(',')
+      ? compact.replace(/\./g, '').replace(',', '.')
+      : compact;
+    const amount = parseFloat(normalized);
+    return Number.isFinite(amount) ? amount : 0;
+  }
+  return 0;
+};
+
+const getClassFeeStructure = (feeData: any, className: string) => {
+  if (!feeData || !className) return null;
+  if (feeData[className]) return feeData[className];
+
+  const normalizedClassName = normalizeClassName(className);
+  const matchedKey = Object.keys(feeData).find((key) => normalizeClassName(key) === normalizedClassName);
+  return matchedKey ? feeData[matchedKey] : null;
+};
+
 const roles: UserRole[] = [
   "Admin",
   "Direction",
@@ -2241,13 +2272,8 @@ function StudentsTab({ role, currentUser, schoolInfo }: { role: string, currentU
             const feeStructureResponse = await fetch('/api/finance/fee-structure');
             if (feeStructureResponse.ok) {
               const feeStructure = await feeStructureResponse.json();
-              const classFee = feeStructure[student.classe];
-              // Convertir le format français (10000,00) vers le format JavaScript (10000.00)
-              const registrationAmount = classFee ? (
-                typeof classFee.registrationFee === 'string'
-                  ? parseFloat(classFee.registrationFee.replace(',', '.'))
-                  : classFee.registrationFee
-              ) : 0;
+              const classFee = getClassFeeStructure(feeStructure, student.classe);
+              const registrationAmount = classFee ? parseFeeAmount(classFee.registrationFee) : 0;
 
               if (registrationAmount > 0) {
                 toast({
@@ -2365,13 +2391,8 @@ function StudentsTab({ role, currentUser, schoolInfo }: { role: string, currentU
           const feeStructureResponse = await fetch('/api/finance/fee-structure');
           const feeStructure = await feeStructureResponse.json();
 
-          const classFee = feeStructure[student.classe];
-          // Convertir le format français (10000,00) vers le format JavaScript (10000.00)
-          const registrationAmount = classFee ? (
-            typeof classFee.registrationFee === 'string'
-              ? parseFloat(classFee.registrationFee.replace(',', '.'))
-              : classFee.registrationFee
-          ) : 0;
+          const classFee = getClassFeeStructure(feeStructure, student.classe);
+          const registrationAmount = classFee ? parseFeeAmount(classFee.registrationFee) : 0;
 
           if (registrationAmount > 0) {
             // Créer le paiement d'inscription
@@ -2486,7 +2507,7 @@ function StudentsTab({ role, currentUser, schoolInfo }: { role: string, currentU
                   <span>Inscrire un élève</span>
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-6xl rounded-none border-slate-300 p-0 overflow-hidden">
+              <DialogContent className="sm:max-w-6xl max-h-[92vh] rounded-none border-slate-300 p-0 overflow-hidden flex flex-col">
                 <DialogHeader className="bg-slate-50 border-b border-slate-200 py-4 px-6">
                   <DialogTitle className="text-sm font-black uppercase text-slate-800 tracking-wider">Formulaire d'Inscription</DialogTitle>
                   <DialogDescription className="text-[11px] font-medium text-slate-500 uppercase">
@@ -2837,12 +2858,9 @@ function PaymentSearchDialog({
       if (feeRes.ok) {
         const feeData = await feeRes.json();
         setFeeStructure(feeData);
-        const classFee = feeData[student.classe];
-        if (classFee && classFee.registrationFee) {
-          // Convertir le format français (10000,00) vers le format JavaScript (10000.00)
-          const fee = typeof classFee.registrationFee === 'string'
-            ? parseFloat(classFee.registrationFee.replace(',', '.'))
-            : classFee.registrationFee;
+        const classFee = getClassFeeStructure(feeData, student.classe);
+        if (classFee) {
+          const fee = parseFeeAmount(classFee.registrationFee);
           setRegistrationFee(fee);
         } else {
           setRegistrationFee(0);
@@ -3275,7 +3293,7 @@ function PaymentSearchDialog({
           </div>
           {registrationFee <= 0 && (
             <div className="text-sm text-amber-600 bg-amber-50 p-3 rounded-lg border border-amber-200">
-              ⚠️ Les frais d'inscription ne sont pas configurés pour la classe {selectedStudent.classe}.
+              Les frais d'inscription ne sont pas configurés pour la classe {selectedStudent.classe}.
               Configurez-les d'abord dans les paramètres avant de pouvoir encaisser des frais d'inscription.
             </div>
           )}
@@ -3290,7 +3308,7 @@ function PaymentSearchDialog({
                 <CommandInput
                   value={searchQuery}
                   onValueChange={setSearchQuery}
-                  placeholder="🔍 Rechercher un élève par nom ou matricule..."
+                  placeholder="Rechercher un élève par nom ou matricule..."
                   className="h-12 text-center text-sm"
                 />
                 {searchResults.length > 0 && (
@@ -5372,19 +5390,22 @@ function FinanceTab({ role, currentUser, schoolInfo }: { role: string, currentUs
       <Tabs value={activeFinanceTab} onValueChange={setActiveFinanceTab} className="w-full">
         {/* Mobile: Liste déroulante pour basculer facilement entre sous-menus */}
         <div className="md:hidden w-full mb-3">
-          <label htmlFor="finance-subtabs-select" className="sr-only">Sous-menu Finance</label>
-          <select
-            id="finance-subtabs-select"
+          <Label htmlFor="finance-subtabs-select" className="sr-only">Sous-menu Finance</Label>
+          <Select
             value={activeFinanceTab}
-            onChange={(e) => setActiveFinanceTab(e.target.value)}
-            className="w-full h-10 px-3 border border-slate-300 rounded-lg bg-white text-slate-800 font-semibold text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            onValueChange={setActiveFinanceTab}
           >
-            <option value="overview">📊 Vue d'Ensemble</option>
-            <option value="management">📋 Gestion & Suivi</option>
-            <option value="inscription-fees">📝 Frais d'Inscription</option>
-            <option value="reports">📈 Rapports Financiers</option>
-            <option value="payments">💳 Paiements</option>
-          </select>
+            <SelectTrigger id="finance-subtabs-select" className="w-full h-10 rounded-none border-slate-300 bg-white text-slate-800 font-semibold text-sm shadow-sm">
+              <SelectValue placeholder="Sous-menu Finance" />
+            </SelectTrigger>
+            <SelectContent className="rounded-none">
+              <SelectItem value="overview">Vue d'Ensemble</SelectItem>
+              <SelectItem value="management">Gestion & Suivi</SelectItem>
+              <SelectItem value="inscription-fees">Frais d'Inscription</SelectItem>
+              <SelectItem value="reports">Rapports Financiers</SelectItem>
+              <SelectItem value="payments">Paiements</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Desktop: Onglets grilles classiques */}
@@ -8941,23 +8962,26 @@ function TableauDeBord({ role, currentUser }: { role: string, currentUser: User 
           <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 py-2">
             {/* Mobile: Liste déroulante */}
             <div className="md:hidden">
-              <label htmlFor="settings-subnav-select" className="sr-only">Sous-menu Paramètres</label>
-              <select
-                id="settings-subnav-select"
+              <Label htmlFor="settings-subnav-select" className="sr-only">Sous-menu Paramètres</Label>
+              <Select
                 value={activeTab}
-                onChange={(e) => setActiveTab(e.target.value)}
-                className="w-full h-10 px-3 border border-slate-300 rounded-lg bg-white text-slate-800 font-semibold text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                onValueChange={setActiveTab}
               >
-                <option value="parametres">⚙️ Général</option>
-                <option value="parametres-classes">🏫 Classes & Niveaux</option>
-                <option value="parametres-matieres">📚 Matières & Notes</option>
-                <option value="parametres-sequences">📅 Séquences & Trimestres</option>
-                <option value="parametres-finances-services">💼 Services Optionnels</option>
-                <option value="parametres-frais">💳 Frais & Paiement</option>
-                <option value="parametres-securite">🔒 Sécurité</option>
-                <option value="parametres-audit">📜 Audit / Logs</option>
-                <option value="parametres-presence">📲 Présence NFC</option>
-              </select>
+                <SelectTrigger id="settings-subnav-select" className="w-full h-10 rounded-none border-slate-300 bg-white text-slate-800 font-semibold text-sm shadow-sm">
+                  <SelectValue placeholder="Sous-menu Paramètres" />
+                </SelectTrigger>
+                <SelectContent className="rounded-none">
+                  <SelectItem value="parametres">Général</SelectItem>
+                  <SelectItem value="parametres-classes">Classes & Niveaux</SelectItem>
+                  <SelectItem value="parametres-matieres">Matières & Notes</SelectItem>
+                  <SelectItem value="parametres-sequences">Séquences & Trimestres</SelectItem>
+                  <SelectItem value="parametres-finances-services">Services Optionnels</SelectItem>
+                  <SelectItem value="parametres-frais">Frais & Paiement</SelectItem>
+                  <SelectItem value="parametres-securite">Sécurité</SelectItem>
+                  <SelectItem value="parametres-audit">Audit / Logs</SelectItem>
+                  <SelectItem value="parametres-presence">Présence NFC</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {/* PC/Desktop: Barre horizontale classique */}

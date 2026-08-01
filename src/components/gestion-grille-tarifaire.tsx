@@ -9,12 +9,32 @@ import { Label } from "@/components/ui/label";
 import { type FeeStructure } from "@/services/financeService";
 import type { SchoolStructure } from '@/services/schoolService';
 import { useToast } from '@/hooks/use-toast';
-import { PlusCircle, Save, Trash2, Wrench, Zap, Printer } from 'lucide-react';
+import { AlertTriangle, PlusCircle, Save, Trash2, Wrench, Zap, Printer } from 'lucide-react';
 import { Separator } from './ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+
+const normalizeClassName = (value: string) =>
+    value
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[’']/g, "'")
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toLowerCase();
+
+const findFeeKey = (fees: FeeStructure, className: string) => {
+    if (fees[className]) return className;
+    const normalizedClassName = normalizeClassName(className);
+    return Object.keys(fees).find(key => normalizeClassName(key) === normalizedClassName);
+};
+
+const getFeeForClass = (fees: FeeStructure, className: string) => {
+    const key = findFeeKey(fees, className);
+    return key ? fees[key] : undefined;
+};
 
 export function GestionGrilleTarifaire() {
     const [feeStructure, setFeeStructure] = useState<FeeStructure>({});
@@ -63,14 +83,18 @@ export function GestionGrilleTarifaire() {
                 }
             });
             
-            // Initialiser les frais pour les classes manquantes
+            const normalizedFees: FeeStructure = {};
             allCls.forEach(cls => {
-                if (!fees[cls]) {
-                    fees[cls] = { registrationFee: 0, total: 0, installments: [] };
+                normalizedFees[cls] = getFeeForClass(fees, cls) || { registrationFee: 0, total: 0, installments: [] };
+            });
+
+            Object.keys(fees || {}).forEach(cls => {
+                if (!getFeeForClass(normalizedFees, cls)) {
+                    normalizedFees[cls] = fees[cls];
                 }
             });
 
-            setFeeStructure(fees);
+            setFeeStructure(normalizedFees);
         } catch (error) {
             console.error('Erreur lors du chargement des données:', error);
         } finally {
@@ -225,6 +249,7 @@ export function GestionGrilleTarifaire() {
                 title: 'Sauvegarde réussie',
                 description: `La structure des frais pour la classe ${className} a été mise à jour.`
             });
+            await fetchData();
         } catch (error: any) {
             console.error('Erreur lors de la sauvegarde:', error);
             toast({ 
@@ -269,7 +294,13 @@ export function GestionGrilleTarifaire() {
                 toast({ variant: 'destructive', title: "Structure invalide", description: `La grille de ${year} est vide ou invalide.` });
                 return;
             }
-            setFeeStructure(data);
+            setFeeStructure(prev => {
+                const next = { ...prev };
+                Object.keys(next).forEach(cls => {
+                    next[cls] = getFeeForClass(data, cls) || next[cls];
+                });
+                return next;
+            });
             toast({ title: 'Structure chargée', description: `Configuration importée depuis ${year}. N'oubliez pas de sauvegarder par classe.` });
         } catch (e) {
             toast({ variant: 'destructive', title: 'Erreur', description: e instanceof Error ? e.message : 'Impossible de charger la structure' });
@@ -767,8 +798,9 @@ export function GestionGrilleTarifaire() {
                                     </div>
                                 </div>
                                 {Math.abs(currentClassData.installments.reduce((sum, inst) => sum + (inst.amount || 0), 0) - currentClassData.total) >= 0.01 && (
-                                    <div className="mt-2 text-xs text-red-600">
-                                        ⚠️ La somme des tranches doit être égale au total de la scolarité (sans les frais d'inscription)
+                                    <div className="mt-2 flex items-start gap-2 text-xs text-red-600">
+                                        <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                                        <span>La somme des tranches doit être égale au total de la scolarité (sans les frais d'inscription)</span>
                                     </div>
                                 )}
                             </div>
@@ -843,8 +875,9 @@ export function GestionGrilleTarifaire() {
                     
                     {!selectedClass && (
                         <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-                            <p className="text-sm text-yellow-800">
-                                ⚠️ Aucune classe sélectionnée. Sélectionnez une classe pour imprimer sa grille tarifaire spécifique.
+                            <p className="flex items-start gap-2 text-sm text-yellow-800">
+                                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                                <span>Aucune classe sélectionnée. Sélectionnez une classe pour imprimer sa grille tarifaire spécifique.</span>
                             </p>
                         </div>
                     )}
