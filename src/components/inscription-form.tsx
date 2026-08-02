@@ -347,10 +347,10 @@ export function InscriptionForm({ isEditing = false, studentData, onSuccess, onC
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className="flex h-full min-h-0 flex-col">
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="flex min-h-0 flex-1 flex-col">
-          <ScrollArea className="min-h-0 flex-1 p-4 bg-white border border-slate-200">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="flex h-full min-h-0 flex-col">
+          <ScrollArea className="h-[calc(92dvh-150px)] min-h-0 p-4 bg-white border border-slate-200 sm:h-[70vh]">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-8">
 
               {/* Colonne 1: Infos Élève */}

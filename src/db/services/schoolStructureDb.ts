@@ -153,6 +153,7 @@ export async function updateClass(levelName: string, oldClassName: string, newCl
     await executeQuery('UPDATE students SET classe = ? WHERE classe = ?', [newClassName, oldClassName]);
     await executeQuery('UPDATE teacher_assignments SET className = ? WHERE className = ?', [newClassName, oldClassName]);
     await executeQuery('UPDATE class_subjects SET className = ? WHERE className = ?', [newClassName, oldClassName]);
+    await executeQuery('UPDATE fee_structures SET className = ? WHERE className = ?', [newClassName, oldClassName]);
 
     // Log de l'action
     await logActionWithUser(

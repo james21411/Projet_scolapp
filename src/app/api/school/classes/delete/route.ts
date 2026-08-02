@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { deleteClass } from '@/services/schoolService';
 import { getCurrentUser } from '@/lib/auth';
+import { cacheInvalidate } from '@/lib/cache';
+import { getCurrentDbName } from '@/db/mysql';
 
 export async function DELETE(request: NextRequest) {
   try {
@@ -17,6 +19,8 @@ export async function DELETE(request: NextRequest) {
 
     const currentUser = await getCurrentUser();
     await deleteClass(level, className, currentUser || undefined);
+    const dbName = await getCurrentDbName();
+    cacheInvalidate(dbName);
     
     return NextResponse.json({ success: true });
   } catch (error: any) {

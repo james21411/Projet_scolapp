@@ -2507,7 +2507,7 @@ function StudentsTab({ role, currentUser, schoolInfo }: { role: string, currentU
                   <span>Inscrire un élève</span>
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-6xl max-h-[92vh] rounded-none border-slate-300 p-0 overflow-hidden flex flex-col">
+              <DialogContent className="sm:max-w-6xl h-[92dvh] sm:h-auto sm:max-h-[92vh] rounded-none border-slate-300 p-0 overflow-hidden flex flex-col">
                 <DialogHeader className="bg-slate-50 border-b border-slate-200 py-4 px-6">
                   <DialogTitle className="text-sm font-black uppercase text-slate-800 tracking-wider">Formulaire d'Inscription</DialogTitle>
                   <DialogDescription className="text-[11px] font-medium text-slate-500 uppercase">
@@ -7813,7 +7813,7 @@ function ClassManager({ onUpdate }: { onUpdate: () => void }) {
   const [addingValue, setAddingValue] = useState("");
 
   useEffect(() => {
-    fetch('/api/school/structure')
+    fetch('/api/school/structure', { cache: 'no-store' })
       .then(response => response.json())
       .then(setStructure)
       .catch(error => {
@@ -7822,13 +7822,13 @@ function ClassManager({ onUpdate }: { onUpdate: () => void }) {
       });
   }, []);
 
-  const refreshStructure = useCallback(() => {
-    fetch('/api/school/structure')
-      .then(response => response.json())
-      .then(setStructure)
-      .catch(error => {
-        console.error('Erreur lors du rechargement de la structure:', error);
-      });
+  const refreshStructure = useCallback(async () => {
+    try {
+      const response = await fetch('/api/school/structure', { cache: 'no-store' });
+      setStructure(await response.json());
+    } catch (error) {
+      console.error('Erreur lors du rechargement de la structure:', error);
+    }
     onUpdate();
   }, [onUpdate]);
 
@@ -7853,7 +7853,7 @@ function ClassManager({ onUpdate }: { onUpdate: () => void }) {
         });
 
         if (response.ok) {
-          refreshStructure();
+          await refreshStructure();
           setIsAdding(null);
           setAddingValue("");
           toast({ title: "Classe ajoutée", description: `La classe ${addingValue} a été ajoutée.` });
@@ -7887,7 +7887,7 @@ function ClassManager({ onUpdate }: { onUpdate: () => void }) {
 
         if (response.ok) {
           await updateStudentClassNameInRecords(isEditing.oldName, editingValue);
-          refreshStructure();
+          await refreshStructure();
           setIsEditing(null);
           setEditingValue("");
           toast({ title: "Classe modifiée", description: `${isEditing.oldName} est devenue ${editingValue}.` });
@@ -7909,7 +7909,7 @@ function ClassManager({ onUpdate }: { onUpdate: () => void }) {
         });
 
         if (response.ok) {
-          refreshStructure();
+          await refreshStructure();
           toast({ title: "Classe supprimée", description: `La classe ${className} a été supprimée.` });
         } else {
           toast({ variant: 'destructive', title: "Erreur", description: "Impossible de supprimer la classe." });
