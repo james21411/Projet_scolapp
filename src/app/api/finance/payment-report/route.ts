@@ -1,8 +1,15 @@
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getAllPayments } from '@/db/services/paymentDb';
 import { getAllStudents } from '@/db/services/studentDb';
+
+const NO_STORE_HEADERS = {
+  'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+  Pragma: 'no-cache',
+  Expires: '0',
+};
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,7 +23,7 @@ export async function GET(request: NextRequest) {
     if (!schoolYear) {
       return NextResponse.json(
         { error: 'L\'année scolaire est requise' },
-        { status: 400 }
+        { status: 400, headers: NO_STORE_HEADERS }
       );
     }
 
@@ -70,12 +77,12 @@ export async function GET(request: NextRequest) {
         totalPayments: enrichedPayments.length,
         filters: { schoolYear, className, method }
       }
-    });
+    }, { headers: NO_STORE_HEADERS });
   } catch (error) {
     console.error('Erreur lors de la génération du rapport de paiements:', error);
     return NextResponse.json(
       { error: 'Erreur lors de la génération du rapport de paiements' },
-      { status: 500 }
+      { status: 500, headers: NO_STORE_HEADERS }
     );
   }
 } 

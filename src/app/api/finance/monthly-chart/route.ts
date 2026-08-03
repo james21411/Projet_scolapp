@@ -1,8 +1,15 @@
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getMonthlyFinancialChartData } from '@/services/financeService';
 import pool from '@/db/mysql';
+
+const NO_STORE_HEADERS = {
+  'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+  Pragma: 'no-cache',
+  Expires: '0',
+};
 
 export async function GET(request: NextRequest) {
   console.log('🔍 API monthly-chart: Request received');
@@ -18,7 +25,7 @@ export async function GET(request: NextRequest) {
       console.log('❌ API monthly-chart: No school year provided');
       return NextResponse.json(
         { error: 'School year is required' },
-        { status: 400 }
+        { status: 400, headers: NO_STORE_HEADERS }
       );
     }
 
@@ -93,12 +100,12 @@ export async function GET(request: NextRequest) {
       return { ...item, total: (item.total || 0) + add };
     });
 
-    return NextResponse.json(merged);
+    return NextResponse.json(merged, { headers: NO_STORE_HEADERS });
   } catch (error) {
     console.error('Error fetching monthly chart data:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
-      { status: 500 }
+      { status: 500, headers: NO_STORE_HEADERS }
     );
   }
 } 

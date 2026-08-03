@@ -120,6 +120,53 @@ export type StudentWithBalance = {
   };
 };
 
+type FinanceTypeFilter = 'all' | 'scolarite' | 'inscription' | 'services' | string | undefined;
+
+function isRegistrationPayment(payment: Pick<Payment, 'reason'> | any): boolean {
+  return typeof payment?.reason === 'string' && payment.reason.toLowerCase().includes('inscription');
+}
+
+function paymentMatchesFinanceType(payment: Pick<Payment, 'reason'> | any, financeType?: FinanceTypeFilter): boolean {
+  if (!financeType || financeType === 'all') return true;
+  if (financeType === 'services') return false;
+  const isInscription = isRegistrationPayment(payment);
+  if (financeType === 'inscription') return isInscription;
+  if (financeType === 'scolarite') return !isInscription;
+  return true;
+}
+
+function sumPayments(payments: any[], financeType?: FinanceTypeFilter): number {
+  return payments.reduce((sum: number, payment: any) => {
+    if (!paymentMatchesFinanceType(payment, financeType)) return sum;
+    return sum + Number(payment.amount || 0);
+  }, 0);
+}
+
+function getInstallments(installments: any): any[] {
+  if (!installments) return [];
+  if (Array.isArray(installments)) return installments;
+  if (typeof installments === 'string') {
+    try {
+      const parsed = JSON.parse(installments);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
+function getPaymentInstallmentsPaid(payment: any): any[] {
+  return getInstallments(payment?.installmentsPaid);
+}
+
+function getFeeTotalDue(feeRow: any, financeType?: FinanceTypeFilter): number {
+  if (!feeRow || financeType === 'services') return 0;
+  if (financeType === 'scolarite') return Number(feeRow.total || 0);
+  if (financeType === 'inscription') return Number(feeRow.registrationFee || 0);
+  return Number(feeRow.total || 0) + Number(feeRow.registrationFee || 0);
+}
+
 export type RecentActivity = {
   id: string;
   type: string;
@@ -134,19 +181,12 @@ export async function getStudentFinancialSummary(studentId: string, schoolYear: 
   if (!student) return { totalPaid: 0, totalDue: 0, outstanding: 0, installments: [] };
   const payments = (await getAllPayments() as any[]).filter((p: any) => p.studentId === studentId && p.schoolYear === schoolYear);
   const feeRow = await getFeeStructureByClassName(student.classe);
-  const totalDue = feeRow ? Number(feeRow.total) : 0;
+  const totalDue = getFeeTotalDue(feeRow);
 
   // Vérifier s'il y a des paiements migrés
   const hasMigratedPayments = payments.some((p: any) => p.reason && p.reason.includes('Migration'));
 
-  // Calculer le total payé en excluant les frais d'inscription
-  const totalPaid = payments.reduce((sum: number, p: any) => {
-    // Exclure les paiements d'inscription du calcul du total payé
-    if (p.reason && p.reason.toLowerCase().includes('inscription')) {
-      return sum; // Ne pas inclure les frais d'inscription
-    }
-    return sum + Number(p.amount);
-  }, 0);
+  const totalPaid = sumPayments(payments);
 
   // Si l'élève a des paiements migrés et a payé plus que le total requis,
   // considérer qu'il est à jour avec la nouvelle structure
@@ -155,13 +195,15 @@ export async function getStudentFinancialSummary(studentId: string, schoolYear: 
   }
   // Ajout des tranches (installments) avec calcul du solde (balance)
   let installments = [];
-  if (feeRow && Array.isArray(feeRow.installments)) {
-    installments = feeRow.installments.map((inst: any) => {
+  const feeInstallments = getInstallments(feeRow?.installments);
+  if (feeInstallments.length > 0) {
+    installments = feeInstallments.map((inst: any) => {
       // Calcul du montant payé pour cette tranche
       let paidForThis = 0;
       for (const p of payments) {
-        if (p.installmentsPaid && Array.isArray(p.installmentsPaid)) {
-          const found = p.installmentsPaid.find((ip: any) => ip.id === inst.id);
+        const installmentsPaid = getPaymentInstallmentsPaid(p);
+        if (installmentsPaid.length > 0) {
+          const found = installmentsPaid.find((ip: any) => ip.id === inst.id);
           if (found) paidForThis += Number(found.amount || 0);
         } else if (p.reason && typeof p.reason === 'string' && p.reason.toLowerCase().includes(inst.id.toLowerCase())) {
           paidForThis += Number(p.amount || 0);
@@ -283,12 +325,6 @@ export async function getOverallFinancialSummary(
     feeStructureMap.set(fee.className, fee);
   });
 
-  // Allowed Finance Types logic
-  const isFinanceAll = !filters?.financeType || filters.financeType === 'all';
-  const isScolarite = isFinanceAll || filters.financeType === 'scolarite';
-  const isInscription = isFinanceAll || filters.financeType === 'inscription';
-  const isServicesOnly = filters?.financeType === 'services';
-
   // Traiter chaque niveau et ses classes
   for (const [levelName, levelData] of Object.entries(schoolStructure.levels)) {
     // If level filter is active, skip other levels
@@ -310,15 +346,7 @@ export async function getOverallFinancialSummary(
       const feeStructure = feeStructureMap.get(className);
 
       // Calcul du dû total
-      let classTotalDue = 0;
-      if (!isServicesOnly && feeStructure) {
-        if (isScolarite) {
-          classTotalDue += classStudents.length * Number(feeStructure.total || 0);
-        }
-        if (isInscription) {
-          classTotalDue += classStudents.length * Number(feeStructure.registrationFee || 0);
-        }
-      }
+      const classTotalDue = classStudents.length * getFeeTotalDue(feeStructure, filters?.financeType);
 
       // Calculer les paiements pour cette classe
       const classPayments = payments.filter((p: any) =>
@@ -326,25 +354,7 @@ export async function getOverallFinancialSummary(
         classStudents.some((s: any) => s.id === p.studentId)
       );
 
-      // Calculer le total payé en fonction des filtres finance
-      const classTotalPaid = classPayments.reduce((sum: number, p: any) => {
-        const isPaymentInscription = p.reason && p.reason.toLowerCase().includes('inscription');
-
-        if (isServicesOnly) {
-          // Les services financiers purs ne sont pas dans "payments", mais dans financial_transactions.
-          return sum;
-        }
-
-        if (isFinanceAll) {
-          return sum + Number(p.amount);
-        } else if (isScolarite && !isPaymentInscription) {
-          return sum + Number(p.amount);
-        } else if (isInscription && isPaymentInscription) {
-          return sum + Number(p.amount);
-        }
-
-        return sum;
-      }, 0);
+      const classTotalPaid = sumPayments(classPayments, filters?.financeType);
 
       // Ajouter aux totaux du niveau
       if (byLevel[levelName]) {
@@ -374,28 +384,21 @@ export async function getClassFinancialSummary(className: string, schoolYear: st
   const students = (await getAllStudents() as any[]).filter((s: any) => s.classe === className && s.anneeScolaire === schoolYear);
   const payments = await getAllPayments() as any[];
   const feeRow = await getFeeStructureByClassName(className);
-  const totalDue = students.length * (feeRow ? Number(feeRow.total) : 0);
+  const perStudentDue = getFeeTotalDue(feeRow);
+  const totalDue = students.length * perStudentDue;
   let totalPaid = 0;
   const studentsWithBalance: StudentWithBalance[] = [];
   for (const student of students) {
     const studentPayments = payments.filter((p: any) => p.studentId === student.id && p.schoolYear === schoolYear);
-    // Calculer le total payé en excluant les frais d'inscription
-    const paid = studentPayments.reduce((sum: number, p: any) => {
-      // Exclure les paiements d'inscription du calcul du total payé
-      if (p.reason && p.reason.toLowerCase().includes('inscription')) {
-        return sum; // Ne pas inclure les frais d'inscription
-      }
-      return sum + Number(p.amount);
-    }, 0);
+    const paid = sumPayments(studentPayments);
     totalPaid += paid;
-    const totalDue = feeRow ? Number(feeRow.total) : 0;
     studentsWithBalance.push({
       studentId: student.id,
       name: student.nom + ' ' + student.prenom,
       class: student.classe,
       totalPaid: paid,
-      outstanding: Math.max(0, totalDue - paid),
-      totalDue: totalDue
+      outstanding: Math.max(0, perStudentDue - paid),
+      totalDue: perStudentDue
     });
   }
   return {
@@ -437,14 +440,7 @@ export async function getFilteredFinancialData(filters: FinancialReportFilters):
   if (filters.schoolYear) filtered = filtered.filter((s: any) => s.anneeScolaire === filters.schoolYear);
   return filtered.map((s: any) => {
     const studentPayments = payments.filter((p: any) => p.studentId === s.id && (!filters.schoolYear || p.schoolYear === filters.schoolYear));
-    // Calculer le total payé en excluant les frais d'inscription
-    const totalPaid = studentPayments.reduce((sum: number, p: any) => {
-      // Exclure les paiements d'inscription du calcul du total payé
-      if (p.reason && p.reason.toLowerCase().includes('inscription')) {
-        return sum; // Ne pas inclure les frais d'inscription
-      }
-      return sum + Number(p.amount);
-    }, 0);
+    const totalPaid = sumPayments(studentPayments);
     return {
       studentId: s.id,
       name: s.nom + ' ' + s.prenom,
@@ -542,16 +538,9 @@ export async function getStudentsWithBalance(schoolYear: string): Promise<Studen
     if (s.anneeScolaire !== schoolYear) continue;
 
     const feeRow = feeStructures.find((f: any) => f.className === s.classe);
-    const totalDue = feeRow ? Number(feeRow.total) : 0;
+    const totalDue = getFeeTotalDue(feeRow);
     const studentPayments = payments.filter((p: any) => p.studentId === s.id && p.schoolYear === schoolYear);
-    // Calculer le total payé en excluant les frais d'inscription
-    const totalPaid = studentPayments.reduce((sum: number, p: any) => {
-      // Exclure les paiements d'inscription du calcul du total payé
-      if (p.reason && p.reason.toLowerCase().includes('inscription')) {
-        return sum; // Ne pas inclure les frais d'inscription
-      }
-      return sum + Number(p.amount);
-    }, 0);
+    const totalPaid = sumPayments(studentPayments);
     // Vérifier s'il y a des paiements migrés
     const hasMigratedPayments = studentPayments.some((p: any) => p.reason && p.reason.includes('Migration'));
 
@@ -568,8 +557,9 @@ export async function getStudentsWithBalance(schoolYear: string): Promise<Studen
         // Calculer le montant payé pour cette tranche
         let paidForThis = 0;
         for (const p of studentPayments) {
-          if (p.installmentsPaid && Array.isArray(p.installmentsPaid)) {
-            const found = p.installmentsPaid.find((ip: any) => ip.id === inst.id);
+          const installmentsPaid = getPaymentInstallmentsPaid(p);
+          if (installmentsPaid.length > 0) {
+            const found = installmentsPaid.find((ip: any) => ip.id === inst.id);
             if (found) paidForThis += Number(found.amount || 0);
           } else if (p.reason && typeof p.reason === 'string' && p.reason.toLowerCase().includes(inst.id.toLowerCase())) {
             paidForThis += Number(p.amount || 0);
@@ -786,7 +776,7 @@ export async function getRecentActivities(limit: number = 5): Promise<RecentActi
 // Paiement d'inscription
 export async function findRegistrationPayment(studentId: string, schoolYear: string): Promise<Payment | null> {
   const all = await getAllPayments();
-  return (all as Payment[]).find(p => p.studentId === studentId && p.schoolYear === schoolYear && p.reason && p.reason.toLowerCase().includes('inscription')) || null;
+  return (all as Payment[]).find(p => p.studentId === studentId && p.schoolYear === schoolYear && isRegistrationPayment(p)) || null;
 }
 
 // Nouvelle fonction pour calculer le résumé des frais d'inscription
@@ -802,8 +792,11 @@ export async function getRegistrationFeeSummary(studentId: string, schoolYear: s
   const feeRow = await getFeeStructureByClassName(student.classe);
   const totalRegistrationFee = feeRow ? Number(feeRow.registrationFee) : 0;
 
-  const registrationPayment = await findRegistrationPayment(studentId, schoolYear);
-  const paidRegistrationFee = registrationPayment ? Number(registrationPayment.amount) : 0;
+  const allPayments = await getAllPayments();
+  const registrationPayments = (allPayments as Payment[])
+    .filter(p => p.studentId === studentId && p.schoolYear === schoolYear && isRegistrationPayment(p));
+  const paidRegistrationFee = sumPayments(registrationPayments);
+  const registrationPayment = registrationPayments[registrationPayments.length - 1] || null;
 
   return {
     totalRegistrationFee,

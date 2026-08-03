@@ -1,9 +1,16 @@
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getAllStudents } from '@/db/services/studentDb';
 import { getAllPayments } from '@/db/services/paymentDb';
 import { getAllFeeStructures } from '@/db/services/feeStructureDb';
+
+const NO_STORE_HEADERS = {
+  'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+  Pragma: 'no-cache',
+  Expires: '0',
+};
 
 export async function GET(request: NextRequest) {
   try {
@@ -34,7 +41,7 @@ export async function GET(request: NextRequest) {
     // Traiter chaque étudiant
     const resultStudents = filteredStudents.map(s => {
       const feeRow = feeStructures.find((f: any) => f.className === s.classe);
-      const totalDue = feeRow ? Number(feeRow.total) : 0;
+      const totalDue = feeRow ? Number(feeRow.total || 0) + Number(feeRow.registrationFee || 0) : 0;
       const studentPayments = payments.filter((p: any) => p.studentId === s.id && p.schoolYear === schoolYear);
       const totalPaid = studentPayments.reduce((sum: number, p: any) => sum + Number(p.amount), 0);
       const outstanding = Math.max(0, totalDue - totalPaid);
@@ -84,12 +91,12 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    return NextResponse.json(result);
+    return NextResponse.json(result, { headers: NO_STORE_HEADERS });
   } catch (error) {
     console.error('Erreur lors de la génération du rapport financier:', error);
     return NextResponse.json(
       { error: 'Erreur lors de la génération du rapport financier' },
-      { status: 500 }
+      { status: 500, headers: NO_STORE_HEADERS }
     );
   }
 }

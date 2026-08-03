@@ -1,8 +1,15 @@
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getOverallFinancialSummary } from '@/services/financeService';
 import pool from '@/db/mysql';
+
+const NO_STORE_HEADERS = {
+  'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+  Pragma: 'no-cache',
+  Expires: '0',
+};
 
 export async function GET(request: NextRequest) {
   try {
@@ -15,7 +22,7 @@ export async function GET(request: NextRequest) {
     if (!schoolYear) {
       return NextResponse.json(
         { error: 'School year is required' },
-        { status: 400 }
+        { status: 400, headers: NO_STORE_HEADERS }
       );
     }
 
@@ -78,22 +85,24 @@ export async function GET(request: NextRequest) {
       totalOtherIncome = Number((rows as any[])[0]?.totalOtherIncome || 0);
     }
 
+    const extendedTotalPaid = summary.totals.totalPaid + totalOtherIncome;
     const extended = {
       ...summary,
       totals: {
         ...summary.totals,
-        totalPaid: summary.totals.totalPaid + totalOtherIncome
+        totalPaid: extendedTotalPaid,
+        outstanding: Math.max(0, summary.totals.totalDue - extendedTotalPaid)
       },
       otherIncome: {
         totalOtherIncome
       }
     };
-    return NextResponse.json(extended);
+    return NextResponse.json(extended, { headers: NO_STORE_HEADERS });
   } catch (error) {
     console.error('Error fetching overall financial summary:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
-      { status: 500 }
+      { status: 500, headers: NO_STORE_HEADERS }
     );
   }
 } 
