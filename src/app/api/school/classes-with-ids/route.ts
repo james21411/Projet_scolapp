@@ -3,6 +3,15 @@ import pool from '@/db/mysql';
 import { cacheGetOrLoad } from '@/lib/cache';
 import { getCurrentDbName } from '@/db/mysql';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+const NO_STORE_HEADERS = {
+  'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+  Pragma: 'no-cache',
+  Expires: '0',
+};
+
 export async function GET() {
   try {
     const dbName = await getCurrentDbName();
@@ -30,7 +39,7 @@ export async function GET() {
       'school_structure'
     );
 
-    return NextResponse.json(structure);
+    return NextResponse.json(structure, { headers: NO_STORE_HEADERS });
   } catch (error) {
     console.error('Erreur lors de la récupération de la structure:', error);
     return NextResponse.json({
@@ -38,6 +47,6 @@ export async function GET() {
         { id: "sec-6e", name: "6ème", levelId: "secondaire" },
         { id: "sec-5e", name: "5ème", levelId: "secondaire" }
       ]
-    });
+    }, { headers: NO_STORE_HEADERS });
   }
 }
