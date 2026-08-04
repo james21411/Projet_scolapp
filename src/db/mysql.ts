@@ -1,7 +1,8 @@
 import mysql from 'mysql2/promise';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { getIronSession } from 'iron-session';
 import { sessionOptions, type SessionData } from '@/lib/session';
+import { getSchoolByHost } from './registry';
 
 // Cache des pools par nom de base de données persisté entre les rechargements HMR en développement
 const poolCache: Map<string, mysql.Pool> = (global as any)._mysqlPoolCache || new Map<string, mysql.Pool>();
@@ -66,6 +67,16 @@ export async function getCurrentDbName(): Promise<string> {
         if (session && session.dbName) {
             return session.dbName;
         }
+
+        const headerStore = await headers();
+        const host = headerStore.get('x-forwarded-host') || headerStore.get('host');
+        if (host) {
+            const school = await getSchoolByHost(host);
+            if (school?.db_name) {
+                return school.db_name;
+            }
+        }
+
         return defaultDb;
     } catch (error: any) {
         // Erreur silencieuse pour les Pages Router API routes

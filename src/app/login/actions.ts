@@ -3,10 +3,10 @@
 import { getIronSession } from 'iron-session'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
-import { cookies } from 'next/headers'
+import { cookies, headers } from 'next/headers'
 import { sessionOptions, type SessionData } from '@/lib/session'
 import { verifyPassword } from '@/services/userService'
-import { getSchoolBySlug } from '@/db/registry'
+import { getSchoolByHost, getSchoolBySlug } from '@/db/registry'
 import { getPoolForDb } from '@/db/mysql'
 import bcrypt from 'bcryptjs'
 
@@ -27,10 +27,20 @@ export async function login(formData: { username: string, password: string, scho
       dbName = school.db_name;
       console.log(`✅ login: école trouvée slug=${slug} db=${dbName}`);
     } else {
-      // Pas de slug → on utilise la DB par défaut (mode standalone)
-      dbName = process.env.MYSQL_DATABASE || 'scolapp';
-      slug = 'default';
-      console.log(`⚠️ login: pas de slug, utilisation de la DB par défaut: ${dbName}`);
+      const headerStore = await headers();
+      const host = headerStore.get('x-forwarded-host') || headerStore.get('host');
+      const school = host ? await getSchoolByHost(host) : null;
+
+      if (school) {
+        dbName = school.db_name;
+        slug = school.slug;
+        console.log(`✅ login: école trouvée host=${host} slug=${slug} db=${dbName}`);
+      } else {
+        // Pas de slug ni domaine connu → mode standalone/admin local.
+        dbName = process.env.MYSQL_DATABASE || 'scolapp';
+        slug = 'default';
+        console.log(`⚠️ login: pas de slug/domaine, utilisation de la DB par défaut: ${dbName}`);
+      }
     }
 
     // Utiliser directement le pool de la DB cible (sans passer par le proxy qui lit la session)

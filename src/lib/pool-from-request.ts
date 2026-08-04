@@ -7,6 +7,7 @@
 import { getIronSession } from 'iron-session';
 import { sessionOptions, type SessionData } from '@/lib/session';
 import { getPoolForDb } from '@/db/mysql';
+import { getSchoolByHost } from '@/db/registry';
 
 /**
  * @param req - L'objet IncomingMessage des routes Pages API
@@ -18,6 +19,15 @@ export async function getPoolFromRequest(req: any, res: any) {
 
     if (session?.dbName) {
         return getPoolForDb(session.dbName);
+    }
+
+    const host = req?.headers?.['x-forwarded-host'] || req?.headers?.host;
+    const hostValue = Array.isArray(host) ? host[0] : host;
+    if (hostValue) {
+        const school = await getSchoolByHost(hostValue);
+        if (school?.db_name) {
+            return getPoolForDb(school.db_name);
+        }
     }
 
     // Fallback sur la DB par défaut si pas de session

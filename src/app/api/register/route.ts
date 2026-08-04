@@ -23,6 +23,12 @@ function generateDbName(slug: string): string {
     return `scolapp_${slug.replace(/-/g, '_').substring(0, 40)}`;
 }
 
+function generateDomain(slug: string): string | null {
+    const rootDomain = process.env.PUBLIC_ROOT_DOMAIN || process.env.NEXT_PUBLIC_ROOT_DOMAIN;
+    if (!rootDomain) return null;
+    return `${slug}.${rootDomain.replace(/^https?:\/\//, '').replace(/\/$/, '')}`.toLowerCase();
+}
+
 // Générer un UUID
 function generateUUID(): string {
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
@@ -203,6 +209,7 @@ export async function POST(request: NextRequest) {
             slug,
             name: schoolName,
             db_name: dbName,
+            domain: generateDomain(slug),
             admin_email: adminEmail,
             admin_name: adminName,
             phone,
