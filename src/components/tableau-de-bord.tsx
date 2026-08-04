@@ -373,6 +373,37 @@ function applyTheme(themeId: string) {
   }
 }
 
+function HeaderDateTime() {
+  const [now, setNow] = useState<Date | null>(null);
+
+  useEffect(() => {
+    setNow(new Date());
+    const interval = window.setInterval(() => setNow(new Date()), 60_000);
+    return () => window.clearInterval(interval);
+  }, []);
+
+  if (!now) return null;
+
+  const date = now.toLocaleDateString('fr-FR', {
+    weekday: 'short',
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
+  const time = now.toLocaleTimeString('fr-FR', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
+  return (
+    <div className="hidden sm:flex items-center gap-2 rounded-none border bg-background/50 px-3 py-1.5 text-sm shadow-sm">
+      <CalendarDays className="h-4 w-4 text-green-600" />
+      <span className="text-muted-foreground capitalize">{date}</span>
+      <span className="font-semibold text-green-600">{time}</span>
+    </div>
+  );
+}
+
 
 const navItemsConfig = {
   Admin: [
@@ -5015,6 +5046,13 @@ function FinanceTab({ role, currentUser, schoolInfo }: { role: string, currentUs
   // Pagination pour les frais d'inscription
   const [inscriptionCurrentPage, setInscriptionCurrentPage] = useState(1);
   const [inscriptionItemsPerPage] = useState(10);
+  const financeCurrentYear = schoolInfo?.currentSchoolYear || currentSchoolYear || selectedSchoolYear;
+
+  useEffect(() => {
+    if (!schoolInfo?.currentSchoolYear) return;
+    setCurrentSchoolYear(schoolInfo.currentSchoolYear);
+    setSelectedSchoolYear(prev => prev || schoolInfo.currentSchoolYear);
+  }, [schoolInfo?.currentSchoolYear]);
 
   const fetchAllData = useCallback(async (year: string) => {
     setIsLoading(true);
@@ -5041,14 +5079,10 @@ function FinanceTab({ role, currentUser, schoolInfo }: { role: string, currentUs
       setSchoolStructure(structure);
       setOverallSummary(summary);
 
-      // Initialiser les variables pour les composants Select
-      if (schoolInfo?.currentSchoolYear) {
-        setCurrentSchoolYear(schoolInfo.currentSchoolYear);
-        setSelectedSchoolYear(schoolInfo.currentSchoolYear);
-      } else {
-        setCurrentSchoolYear(year);
-        setSelectedSchoolYear(year);
-      }
+      // L'année courante vient des paramètres de l'établissement.
+      const resolvedYear = schoolInfo?.currentSchoolYear || year;
+      setCurrentSchoolYear(resolvedYear);
+      setSelectedSchoolYear(prev => prev || resolvedYear);
 
       // Recharger les années dynamiquement depuis l'API
       const yearsResp = await fetch('/api/school/years');
@@ -5056,9 +5090,7 @@ function FinanceTab({ role, currentUser, schoolInfo }: { role: string, currentUs
         const yearsData = await yearsResp.json();
         if (yearsData.success) {
           setAvailableYears(yearsData.years);
-          if (yearsData.defaultYear && !selectedSchoolYear) {
-            setSelectedSchoolYear(yearsData.defaultYear);
-          }
+          setSelectedSchoolYear(prev => prev || yearsData.defaultYear || resolvedYear);
         }
       }
 
@@ -5425,7 +5457,7 @@ function FinanceTab({ role, currentUser, schoolInfo }: { role: string, currentUs
               <Card>
                 <CardHeader className="flex flex-row justify-between items-center">
                   <div className="flex items-center gap-4">
-                    <CardTitle>Situation Financière Globale ({selectedSchoolYear})</CardTitle>
+                    <CardTitle>Situation Financière Globale ({financeCurrentYear})</CardTitle>
                     <Button size="sm" onClick={() => setOpenPaymentDialog(true)}><Plus className="mr-2 h-4 w-4" /> Encaisser un Paiement</Button>
                   </div>
                 </CardHeader>
@@ -5621,7 +5653,12 @@ function FinanceTab({ role, currentUser, schoolInfo }: { role: string, currentUs
                   <Label>Année scolaire</Label>
                   <SchoolYearSelect
                     value={selectedSchoolYear}
-                    onValueChange={setSelectedSchoolYear}
+                    onValueChange={(year) => {
+                      setSelectedSchoolYear(year);
+                      setSelectedClass('');
+                      setClassSummary(null);
+                      fetchAllData(year);
+                    }}
                     availableYears={availableYears}
                     currentSchoolYear={currentSchoolYear}
                     placeholder="Sélectionner l'année"
@@ -5970,10 +6007,10 @@ function FinanceTab({ role, currentUser, schoolInfo }: { role: string, currentUs
         <DialogContent className="w-full sm:max-w-5xl sm:max-h-[90vh] sm:overflow-y-auto">
           <PaymentSearchDialog
             allStudents={allStudents}
-            schoolYear={selectedSchoolYear}
+            schoolYear={financeCurrentYear}
             currentUser={currentUser}
             onPaymentSuccess={() => {
-              fetchAllData(selectedSchoolYear); // Refresh all financial data
+              fetchAllData(financeCurrentYear); // Refresh all financial data
               if (selectedClass) handleClassChange(selectedClass); // Refresh class view if one is selected
             }}
             onOpenChange={setOpenPaymentDialog}
@@ -6020,7 +6057,7 @@ function FinanceTab({ role, currentUser, schoolInfo }: { role: string, currentUs
           {selectedStudentForDetails && (
             <DossierFinancierEleve
               studentId={selectedStudentForDetails}
-              schoolYear={selectedSchoolYear}
+              schoolYear={financeCurrentYear}
               onClose={() => {
                 setShowStudentFinancialDetails(false);
                 setSelectedStudentForDetails(null);
@@ -6093,11 +6130,11 @@ function FinanceTab({ role, currentUser, schoolInfo }: { role: string, currentUs
           <DialogHeader>
             <DialogTitle>Liste des Élèves Insolvables</DialogTitle>
             <DialogDescription>
-              Élèves en retard de paiement pour l'année {selectedSchoolYear}
+              Élèves en retard de paiement pour l'année {financeCurrentYear}
             </DialogDescription>
           </DialogHeader>
           <InsolventList
-            schoolYear={selectedSchoolYear}
+            schoolYear={financeCurrentYear}
             onClose={() => setOpenInsolventList(false)}
             onViewStudentDetails={(studentId) => {
               setSelectedStudentForDetails(studentId);
@@ -6112,7 +6149,7 @@ function FinanceTab({ role, currentUser, schoolInfo }: { role: string, currentUs
       <AdvancedReminderDialog
         isOpen={openAdvancedReminderDialog}
         onOpenChange={setOpenAdvancedReminderDialog}
-        schoolYear={selectedSchoolYear}
+        schoolYear={financeCurrentYear}
         allStudents={allStudents}
         onGenerateCoupons={handleGenerateAdvancedCoupons}
       />
@@ -6259,6 +6296,12 @@ function PaymentFollowupTab({ schoolYear, onDataChange, onOpenPaymentDialog }: {
   const [availableYears, setAvailableYears] = useState<string[]>([]);
 
   useEffect(() => {
+    if (schoolYear) {
+      setSelectedSchoolYear(schoolYear);
+    }
+  }, [schoolYear]);
+
+  useEffect(() => {
     fetch('/api/school/years')
       .then(r => r.json())
       .then(data => {
@@ -6326,10 +6369,9 @@ function PaymentFollowupTab({ schoolYear, onDataChange, onOpenPaymentDialog }: {
   // Filtrage des insolvables selon les sélections
   const filteredInsolvents = useMemo(() => {
     return allStudentsWithBalance.filter(s => {
-      const matchYear = !selectedSchoolYear || s?.studentId?.includes(selectedSchoolYear);
       const matchLevel = !selectedLevel || s?.class?.includes(selectedLevel);
       const matchClass = !selectedClass || s?.class === selectedClass;
-      return matchYear && matchLevel && matchClass && s?.outstanding > 0;
+      return matchLevel && matchClass && s?.outstanding > 0;
     });
   }, [allStudentsWithBalance, selectedSchoolYear, selectedLevel, selectedClass]);
 
@@ -8799,6 +8841,7 @@ function TableauDeBord({ role, currentUser }: { role: string, currentUser: User 
             <h1 className="text-lg font-semibold">Agent SQL IA</h1>
           </div>
           <div className="flex items-center gap-2 ml-auto pr-4">
+            <HeaderDateTime />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full border bg-background/50 backdrop-blur-sm shadow-sm hover:shadow-md transition-all">
@@ -8931,6 +8974,7 @@ function TableauDeBord({ role, currentUser }: { role: string, currentUser: User 
             </h1>
           </div>
           <div className="flex items-center gap-2 ml-auto pr-4">
+            <HeaderDateTime />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full border bg-background/50 backdrop-blur-sm shadow-sm hover:shadow-md transition-all">
