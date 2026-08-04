@@ -233,23 +233,23 @@ function LoginForm() {
                                         </div>
                                         <h2 className="login-form-title mt-4">Trouvez votre école</h2>
                                         <p className="login-form-subtitle">
-                                            Entrez le nom ou l'identifiant de votre établissement.
+                                            Entrez le nom ou l&apos;identifiant de votre établissement.
                                         </p>
                                     </div>
 
                                     <form onSubmit={handleWorkspaceDiscoveryManual} className="space-y-6 relative">
                                         <div className="login-field relative">
                                             <label className="login-label">
-                                                <Building2 size={14} />
                                                 Rechercher votre école
                                             </label>
                                             <div className="login-input-wrapper">
+                                                <Building2 size={18} className="login-input-icon" />
                                                 <input
                                                     type="text"
                                                     value={workspaceInput}
                                                     onChange={(e) => setWorkspaceInput(e.target.value)}
                                                     placeholder="Ex: Collège de la Salle..."
-                                                    className="login-input bg-white border-[#dce9ff] text-[#0b1c30] w-full px-4 py-3 rounded-none focus:outline-none focus:ring-2 focus:ring-[#00288e]"
+                                                    className="login-input login-input-with-left-icon"
                                                     autoFocus
                                                 />
                                                 {workspaceLoading && (
@@ -332,11 +332,7 @@ function LoginForm() {
                                             )}
                                         </p>
 
-                                        <div className="flex gap-2 items-center justify-center mt-3">
-                                            <div className="login-school-badge">
-                                                <Building2 size={12} />
-                                                {activeSlug}
-                                            </div>
+                                        <div className="flex items-center justify-center mt-3">
                                             <button
                                                 onClick={() => {
                                                     setActiveSlug(null);
@@ -345,7 +341,7 @@ function LoginForm() {
                                                 }}
                                                 className="text-xs text-slate-400 hover:text-white underline transition-colors"
                                             >
-                                                Changer d'école
+                                                Changer d&apos;école
                                             </button>
                                         </div>
                                     </div>
@@ -353,15 +349,15 @@ function LoginForm() {
                                     <form onSubmit={handleSubmit(onSubmit)} className="login-form-body" noValidate>
                                         <div className="login-field">
                                             <label className="login-label">
-                                                <User size={14} />
                                                 Identifiant
                                             </label>
                                             <div className="login-input-wrapper">
+                                                <User size={18} className="login-input-icon" />
                                                 <input
                                                     {...register('username')}
                                                     type="text"
                                                     placeholder="Ex: ADMIN_001"
-                                                    className={`login-input ${errors.username ? 'error' : ''}`}
+                                                    className={`login-input login-input-with-left-icon ${errors.username ? 'error' : ''}`}
                                                     disabled={isLoading}
                                                     autoComplete="username"
                                                 />
@@ -373,15 +369,15 @@ function LoginForm() {
 
                                         <div className="login-field">
                                             <label className="login-label">
-                                                <Lock size={14} />
                                                 Mot de passe
                                             </label>
                                             <div className="login-input-wrapper">
+                                                <Lock size={18} className="login-input-icon" />
                                                 <input
                                                     {...register('password')}
                                                     type={showPassword ? 'text' : 'password'}
                                                     placeholder="••••••••"
-                                                    className={`login-input pr-12 ${errors.password ? 'error' : ''}`}
+                                                    className={`login-input login-input-with-left-icon login-input-with-right-action ${errors.password ? 'error' : ''}`}
                                                     disabled={isLoading}
                                                     autoComplete="current-password"
                                                 />
@@ -424,7 +420,7 @@ function LoginForm() {
                         <div className="mt-8 text-center">
                             <div className="login-form-footer">
                                 <p className="text-[#5c5f61] text-sm">
-                                    Votre école n'est pas encore inscrite ?{' '}
+                                    Votre école n&apos;est pas encore inscrite ?{' '}
                                     <Link href="/register" className="text-[#0b1c30] hover:text-[#000000] font-bold">
                                         Créer un compte FosilaMaster →
                                     </Link>
