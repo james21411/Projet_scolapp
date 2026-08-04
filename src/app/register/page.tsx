@@ -19,7 +19,18 @@ interface FormData {
     adminEmail: string;
     adminPassword: string;
     adminPasswordConfirm: string;
+    plan: 'starter' | 'pro' | 'enterprise';
+    paymentProofUrl: string | null;
 }
+
+const PLAN_OPTIONS = [
+    { id: 'starter', label: 'Starter', maxStudents: 100, price: 50000 },
+    { id: 'pro', label: 'Pro', maxStudents: 500, price: 150000 },
+    { id: 'enterprise', label: 'Enterprise', maxStudents: 9999, price: 300000 },
+] as const;
+
+const ORANGE_MONEY_PHONE = '698 38 51 85';
+const ORANGE_MONEY_ACCOUNT = 'NSOUNJOU TOUNSIE DUKRAM';
 
 const CURRENCIES = [
     { code: 'XAF', label: 'Franc CFA (XAF)' },
@@ -50,6 +61,7 @@ export default function RegisterPage() {
     const [error, setError] = useState('');
     const [success, setSuccess] = useState<{ slug: string; name: string } | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const paymentProofInputRef = useRef<HTMLInputElement>(null);
 
     const section1Ref = useRef<HTMLDivElement>(null);
     const section2Ref = useRef<HTMLDivElement>(null);
@@ -71,6 +83,8 @@ export default function RegisterPage() {
         adminEmail: '',
         adminPassword: '',
         adminPasswordConfirm: '',
+        plan: 'starter',
+        paymentProofUrl: null,
     });
 
     const update = (field: keyof FormData, value: string | null) => {
@@ -93,6 +107,18 @@ export default function RegisterPage() {
         }
         const reader = new FileReader();
         reader.onload = (ev) => update('logoUrl', ev.target?.result as string);
+        reader.readAsDataURL(file);
+    }, []);
+
+    const handlePaymentProofUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        if (file.size > 4 * 1024 * 1024) {
+            setError('La capture de paiement ne doit pas dépasser 4 Mo.');
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = (ev) => update('paymentProofUrl', ev.target?.result as string);
         reader.readAsDataURL(file);
     }, []);
 
@@ -151,6 +177,10 @@ export default function RegisterPage() {
 
     const handleSubmit = async () => {
         if (!validateSection1() || !validateSection3()) return;
+        if (!form.paymentProofUrl) {
+            setError('Veuillez ajouter la capture d’écran du paiement Orange Money.');
+            return;
+        }
         setIsLoading(true);
         setError('');
         try {
@@ -177,9 +207,9 @@ export default function RegisterPage() {
             <div className="min-h-screen bg-[#f8f9ff] flex items-center justify-center p-6 font-roboto">
                 <div className="bg-white border-2 border-[#00288e] p-8 md:p-12 max-w-xl w-full text-center shadow-2xl">
                     <div className="w-16 h-16 bg-[#3fd298] text-[#002113] font-black text-2xl flex items-center justify-center mx-auto mb-6">✓</div>
-                    <h1 className="text-3xl font-extrabold text-[#00288e] uppercase tracking-tight mb-2">Établissement Créé !</h1>
+                    <h1 className="text-3xl font-extrabold text-[#00288e] uppercase tracking-tight mb-2">Demande Envoyée !</h1>
                     <p className="text-slate-600 mb-6">
-                        L'espace pour <strong className="text-black">{success.name}</strong> a été initialisé avec succès.
+                        L&apos;espace pour <strong className="text-black">{success.name}</strong> est en attente de validation. Vous pourrez vous connecter après confirmation du paiement par le super administrateur.
                     </p>
                     <div className="bg-[#f8f9ff] border border-slate-200 p-4 mb-8 text-left space-y-2">
                         <div className="flex justify-between text-sm">
@@ -187,14 +217,16 @@ export default function RegisterPage() {
                             <span className="font-mono font-bold text-[#00288e]">ADMIN_001</span>
                         </div>
                         <div className="flex justify-between text-sm">
-                            <span className="text-slate-500 font-bold uppercase text-xs">Lien d'accès :</span>
+                            <span className="text-slate-500 font-bold uppercase text-xs">Statut :</span>
+                            <span className="font-bold text-amber-700">En attente de validation</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                            <span className="text-slate-500 font-bold uppercase text-xs">Lien après validation :</span>
                             <span className="font-mono text-slate-800">/login?school={success.slug}</span>
                         </div>
                     </div>
-                    <Link href={`/login?school=${success.slug}`}>
-                        <button className="w-full py-4 bg-[#00288e] text-white font-bold hover:bg-[#1e40af] transition-colors uppercase tracking-wider text-sm">
-                            Accéder à mon espace →
-                        </button>
+                    <Link href="/">
+                        <button className="w-full py-4 bg-[#00288e] text-white font-bold hover:bg-[#1e40af] transition-colors uppercase tracking-wider text-sm">Retour à l&apos;accueil</button>
                     </Link>
                 </div>
             </div>
@@ -226,7 +258,7 @@ export default function RegisterPage() {
                         Nouvel Établissement
                     </span>
                     <h1 className="text-3xl sm:text-4xl font-extrabold text-[#0b1c30] tracking-tight uppercase">
-                        Création d'Établissement
+                        Création d&apos;Établissement
                     </h1>
                     <p className="text-slate-500 text-sm mt-1">Remplissez les informations ci-dessous. Les sections se déverrouillent verticalement au fur et à mesure.</p>
                 </div>
@@ -245,7 +277,7 @@ export default function RegisterPage() {
                         <SectionBlock
                             num="01"
                             title="Informations Générales"
-                            desc="Nom, type, pays et contacts de l'école"
+                            desc="Nom, type, pays et contacts de l&apos;école"
                             isActive={activeSection === 1}
                             isDone={unlockedStep > 1}
                             isLocked={false}
@@ -263,7 +295,7 @@ export default function RegisterPage() {
                         >
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div className="sm:col-span-2">
-                                    <Label required>Nom complet de l'établissement</Label>
+                                    <Label required>Nom complet de l&apos;établissement</Label>
                                     <input
                                         type="text"
                                         placeholder="Ex: Lycée Bilingue de Yaoundé"
@@ -273,7 +305,7 @@ export default function RegisterPage() {
                                     />
                                 </div>
                                 <div>
-                                    <Label>Type d'établissement</Label>
+                                    <Label>Type d&apos;établissement</Label>
                                     <select value={form.schoolType} onChange={e => update('schoolType', e.target.value)} className="form-control">
                                         {SCHOOL_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                                     </select>
@@ -335,7 +367,7 @@ export default function RegisterPage() {
                                     />
                                 </div>
                                 <div>
-                                    <Label>Monnaie d'Opération</Label>
+                                    <Label>Monnaie d&apos;Opération</Label>
                                     <select value={form.currency} onChange={e => update('currency', e.target.value)} className="form-control">
                                         {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.label}</option>)}
                                     </select>
@@ -396,7 +428,7 @@ export default function RegisterPage() {
                                 ) : (
                                     <div>
                                         <p className="font-bold text-[#00288e] text-sm uppercase">Cliquez pour importer un logo</p>
-                                        <p className="text-xs text-slate-400 mt-1">PNG, JPG jusqu'à 2 Mo</p>
+                                        <p className="text-xs text-slate-400 mt-1">PNG, JPG jusqu&apos;à 2 Mo</p>
                                     </div>
                                 )}
                                 <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
@@ -439,7 +471,7 @@ export default function RegisterPage() {
                         >
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div className="sm:col-span-2">
-                                    <Label required>Nom complet de l'administrateur</Label>
+                                    <Label required>Nom complet de l&apos;administrateur</Label>
                                     <input
                                         type="text"
                                         placeholder="Ex: Jean-Paul MBARGA"
@@ -490,7 +522,7 @@ export default function RegisterPage() {
                             </div>
 
                             <div className="mt-4 p-4 bg-slate-100 border-l-4 border-[#00288e] text-xs text-slate-700">
-                                <strong>Identifiant généré :</strong> Votre nom d'utilisateur sera <span className="font-mono font-bold text-[#00288e]">ADMIN_001</span>.
+                                <strong>Identifiant généré :</strong> Votre nom d&apos;utilisateur sera <span className="font-mono font-bold text-[#00288e]">ADMIN_001</span>.
                             </div>
 
                             <div className="mt-6 pt-4 border-t border-slate-200 flex justify-between items-center">
@@ -513,7 +545,7 @@ export default function RegisterPage() {
                         <SectionBlock
                             num="04"
                             title="Récapitulatif & Activation"
-                            desc="Vérifiez vos informations avant création"
+                            desc="Choisissez le plan, payez et joignez la capture"
                             isActive={activeSection === 4}
                             isDone={false}
                             isLocked={unlockedStep < 4}
@@ -539,6 +571,52 @@ export default function RegisterPage() {
                                 </div>
                             </div>
 
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-6">
+                                {PLAN_OPTIONS.map(plan => (
+                                    <button
+                                        key={plan.id}
+                                        type="button"
+                                        onClick={() => update('plan', plan.id)}
+                                        className={`text-left border-2 p-4 transition-colors ${form.plan === plan.id ? 'border-[#00288e] bg-[#00288e]/5' : 'border-slate-200 hover:border-slate-400'}`}
+                                    >
+                                        <div className="font-extrabold uppercase text-[#00288e]">{plan.label}</div>
+                                        <div className="text-2xl font-black text-[#0b1c30] mt-2">{plan.price.toLocaleString()} XAF</div>
+                                        <div className="text-xs text-slate-500 mt-1">Jusqu&apos;à {plan.maxStudents === 9999 ? 'illimité' : plan.maxStudents.toLocaleString()} élèves/an</div>
+                                    </button>
+                                ))}
+                            </div>
+
+                            <div className="mb-6 border-2 border-orange-300 bg-orange-50 p-5">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="h-10 w-10 bg-orange-500 text-white font-black flex items-center justify-center">OM</div>
+                                    <div>
+                                        <h4 className="font-black text-orange-900 uppercase">Paiement Orange Money</h4>
+                                        <p className="text-xs text-orange-800">Abonnement valable pour un an après validation.</p>
+                                    </div>
+                                </div>
+                                <div className="grid sm:grid-cols-2 gap-3 text-sm">
+                                    <div className="bg-white border border-orange-200 p-3">
+                                        <span className="block text-[10px] font-bold text-orange-700 uppercase">Numéro Orange Money</span>
+                                        <span className="text-xl font-black text-orange-950">{ORANGE_MONEY_PHONE}</span>
+                                    </div>
+                                    <div className="bg-white border border-orange-200 p-3">
+                                        <span className="block text-[10px] font-bold text-orange-700 uppercase">Nom du compte</span>
+                                        <span className="font-black text-orange-950">{ORANGE_MONEY_ACCOUNT}</span>
+                                    </div>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => paymentProofInputRef.current?.click()}
+                                    className="mt-4 w-full border-2 border-dashed border-orange-300 bg-white p-4 text-sm font-bold text-orange-900 hover:border-orange-500"
+                                >
+                                    {form.paymentProofUrl ? 'Capture de paiement ajoutée ✓' : 'Ajouter la capture d’écran du paiement *'}
+                                </button>
+                                <input ref={paymentProofInputRef} type="file" accept="image/*" className="hidden" onChange={handlePaymentProofUpload} />
+                                {form.paymentProofUrl && (
+                                    <img src={form.paymentProofUrl} alt="Capture du paiement Orange Money" className="mt-3 max-h-40 border border-orange-200 bg-white object-contain" />
+                                )}
+                            </div>
+
                             <div className="flex justify-between items-center pt-4 border-t border-slate-200">
                                 <button type="button" onClick={() => setActiveSection(3)} className="text-xs text-slate-500 font-bold uppercase hover:text-black">
                                     ← Précédent
@@ -549,7 +627,7 @@ export default function RegisterPage() {
                                     disabled={isLoading}
                                     className="px-8 py-4 bg-[#3fd298] text-[#002113] font-extrabold text-sm uppercase tracking-wider hover:bg-[#34bc86] transition-colors shadow-md disabled:opacity-50"
                                 >
-                                    {isLoading ? 'Création en cours...' : 'Créer l\'Établissement'}
+                                    {isLoading ? 'Envoi en cours...' : 'Soumettre pour Validation'}
                                 </button>
                             </div>
                         </SectionBlock>

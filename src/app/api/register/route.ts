@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import fs from 'fs';
 import path from 'path';
 import { registerSchool, isSlugAvailable, getSchoolByEmail } from '@/db/registry';
+import { ORANGE_MONEY_PAYMENT, PLAN_LIMITS } from '@/services/masterAdminService';
 
 // Générer un slug depuis le nom de l'école
 function generateSlug(name: string): string {
@@ -53,6 +54,8 @@ export async function POST(request: NextRequest) {
             adminEmail,
             adminPassword,
             logoUrl,
+            plan = 'starter',
+            paymentProofUrl,
             schoolType = 'Lycée',
             country = 'Cameroun',
         } = body;
@@ -61,6 +64,14 @@ export async function POST(request: NextRequest) {
         if (!schoolName || !adminEmail || !adminPassword || !adminName) {
             return NextResponse.json(
                 { error: 'Champs obligatoires manquants : nom, email admin, mot de passe, nom admin' },
+                { status: 400 }
+            );
+        }
+
+        const selectedPlan = PLAN_LIMITS[plan] ? plan : 'starter';
+        if (!paymentProofUrl) {
+            return NextResponse.json(
+                { error: 'Veuillez joindre la capture d’écran du paiement Orange Money.' },
                 { status: 400 }
             );
         }
@@ -215,16 +226,22 @@ export async function POST(request: NextRequest) {
             phone,
             address,
             logo_url: logoUrl || null,
-            plan: 'starter',
+            plan: selectedPlan,
+            approval_status: 'pending',
+            subscription_expires_at: null,
+            max_students: PLAN_LIMITS[selectedPlan].maxStudents,
+            payment_proof_url: paymentProofUrl,
+            payment_phone: ORANGE_MONEY_PAYMENT.phone,
+            payment_account_name: ORANGE_MONEY_PAYMENT.accountName,
+            is_active: false,
         });
 
         return NextResponse.json({
             success: true,
-            message: 'École créée avec succès ! Vous pouvez maintenant vous connecter.',
+            message: 'Demande envoyée avec succès. Votre accès sera activé après validation du paiement par le super administrateur.',
             school: {
                 slug,
                 name: schoolName,
-                loginUrl: `/login?school=${slug}`,
                 adminUsername: 'ADMIN_001',
             },
         });

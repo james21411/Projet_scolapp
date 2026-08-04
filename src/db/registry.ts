@@ -24,6 +24,12 @@ export interface School {
     address?: string;
     logo_url?: string;
     plan: 'starter' | 'pro' | 'enterprise';
+    approval_status?: 'pending' | 'approved' | 'rejected';
+    subscription_expires_at?: string | null;
+    max_students?: number;
+    payment_proof_url?: string | null;
+    payment_phone?: string | null;
+    payment_account_name?: string | null;
     is_active: boolean;
     created_at: string;
 }
@@ -111,14 +117,17 @@ export async function isSlugAvailable(slug: string): Promise<boolean> {
 }
 
 // Enregistrer une nouvelle école dans le registry
-export async function registerSchool(school: Omit<School, 'id' | 'created_at' | 'is_active'>): Promise<School> {
+export async function registerSchool(school: Omit<School, 'id' | 'created_at' | 'is_active'> & { is_active?: boolean }): Promise<School> {
     const id = generateUUID();
     try {
         await registryPool.query(
-            `INSERT INTO schools (id, slug, name, db_name, domain, admin_email, admin_name, phone, address, logo_url, plan)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            `INSERT INTO schools (id, slug, name, db_name, domain, admin_email, admin_name, phone, address, logo_url, plan, approval_status, subscription_expires_at, max_students, payment_proof_url, payment_phone, payment_account_name, is_active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [id, school.slug, school.name, school.db_name, school.domain || null, school.admin_email, school.admin_name,
-                school.phone || null, school.address || null, school.logo_url || null, school.plan]
+                school.phone || null, school.address || null, school.logo_url || null, school.plan,
+                school.approval_status || 'pending', school.subscription_expires_at || null, school.max_students || 100,
+                school.payment_proof_url || null, school.payment_phone || null, school.payment_account_name || null,
+                school.is_active ? 1 : 0]
         );
     } catch (error: any) {
         if (!String(error?.message || '').includes('Unknown column')) throw error;
@@ -130,8 +139,8 @@ export async function registerSchool(school: Omit<School, 'id' | 'created_at' | 
                 school.phone || null, school.address || null, school.logo_url || null, school.plan]
         );
     }
-    const created = await getSchoolBySlug(school.slug);
-    return created!;
+    const [rows] = await registryPool.query('SELECT * FROM schools WHERE id = ?', [id]) as any[];
+    return rows[0] as School;
 }
 
 // Lister toutes les écoles (pour un panneau superadmin futur)

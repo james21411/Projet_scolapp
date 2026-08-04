@@ -69,8 +69,20 @@ interface SchoolData {
   admin_email: string; admin_name: string; phone?: string; address?: string;
   logo_url?: string; plan: 'starter' | 'pro' | 'enterprise';
   is_active: boolean; created_at: string;
-  studentCount?: number; revenueTotal?: number;
+  studentCount?: number; revenueTotal?: number; teacherCount?: number; classCount?: number;
+  approval_status?: 'pending' | 'approved' | 'rejected';
+  subscription_expires_at?: string | null;
+  max_students?: number;
+  payment_proof_url?: string | null;
+  payment_phone?: string | null;
+  payment_account_name?: string | null;
 }
+
+const PLAN_LIMITS = {
+  starter: { maxStudents: 100, price: 50000 },
+  pro: { maxStudents: 500, price: 150000 },
+  enterprise: { maxStudents: 9999, price: 300000 },
+} as const;
 
 // ─── Sidebar Config ───────────────────────────────────────────────
 const navItems = [
@@ -93,6 +105,7 @@ export default function SuperAdminDashboard() {
   const [showSchoolDetail, setShowSchoolDetail] = useState<SchoolData | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<SchoolData | null>(null);
   const [saving, setSaving] = useState(false);
+  const [planDraft, setPlanDraft] = useState({ plan: 'starter' as 'starter' | 'pro' | 'enterprise', maxStudents: 100 });
   const [formData, setFormData] = useState({
     schoolName: '', adminName: '', adminEmail: '', adminPassword: '',
     phone: '', address: '', plan: 'starter' as 'starter' | 'pro' | 'enterprise',
@@ -117,7 +130,7 @@ export default function SuperAdminDashboard() {
   const stats = {
     totalSchools: schools.length,
     activeSchools: schools.filter(s => s.is_active).length,
-    totalStudents: schools.reduce((a, s) => a + (s.studentCount || 0), 0),
+    totalStudents: schools.reduce((a, s) => a + (Number(s.studentCount) || 0), 0),
     totalRevenue: schools.reduce((a, s) => a + (s.revenueTotal || 0), 0),
   };
 
@@ -138,6 +151,45 @@ export default function SuperAdminDashboard() {
       });
       if (resp.ok) fetchSchools();
     } catch (err) { console.error(err); }
+  };
+
+  const runSchoolAction = async (payload: Record<string, any>) => {
+    setSaving(true);
+    try {
+      const resp = await fetch('/api/master/schools', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!resp.ok) {
+        const data = await resp.json().catch(() => ({}));
+        alert(data.error || 'Action impossible');
+        return;
+      }
+      await fetchSchools();
+      setShowSchoolDetail((current) => {
+        if (!current) return current;
+        if (payload.action === 'approve') {
+          const expiresAt = new Date();
+          expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+          return { ...current, approval_status: 'approved', is_active: true, subscription_expires_at: expiresAt.toISOString().slice(0, 10) };
+        }
+        if (payload.action === 'reject') return { ...current, approval_status: 'rejected', is_active: false };
+        if (payload.action === 'suspend') return { ...current, is_active: false };
+        if (payload.action === 'renew') {
+          const expiresAt = new Date();
+          expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+          return { ...current, is_active: true, subscription_expires_at: expiresAt.toISOString().slice(0, 10) };
+        }
+        if (payload.action === 'update-plan') return { ...current, plan: payload.plan, max_students: payload.maxStudents };
+        return current;
+      });
+    } catch { alert('Erreur lors de l’action'); }
+    finally { setSaving(false); }
+  };
+
+  const openSchoolDetail = (school: SchoolData) => {
+    setPlanDraft({ plan: school.plan, maxStudents: school.max_students || PLAN_LIMITS[school.plan]?.maxStudents || 100 });
+    setShowSchoolDetail(school);
   };
 
   const handleCreateSchool = async () => {
@@ -167,6 +219,12 @@ export default function SuperAdminDashboard() {
     if (plan === 'enterprise') return <Badge className="bg-purple-100 text-purple-700 border-none text-[10px] uppercase font-semibold">{plan}</Badge>;
     if (plan === 'pro') return <Badge className="bg-blue-100 text-blue-700 border-none text-[10px] uppercase font-semibold">{plan}</Badge>;
     return <Badge variant="outline" className="bg-slate-50 text-slate-600 border-slate-200 text-[10px] uppercase font-semibold">{plan}</Badge>;
+  };
+
+  const getApprovalBadge = (school: SchoolData) => {
+    if (school.approval_status === 'pending') return <Badge className="bg-amber-100 text-amber-800 border-none text-[10px]">En attente</Badge>;
+    if (school.approval_status === 'rejected') return <Badge className="bg-rose-100 text-rose-700 border-none text-[10px]">Refusé</Badge>;
+    return <Badge className="bg-emerald-100 text-emerald-700 border-none text-[10px]">Validé</Badge>;
   };
 
   // ─── Sidebar ──────────────────────────────────────────────────
@@ -260,13 +318,14 @@ export default function SuperAdminDashboard() {
                 <div key={school.id} className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-accent/50 transition-colors">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center"><Building2 className="h-5 w-5 text-primary" /></div>
-                    <div>
-                      <div className="font-semibold text-sm">{school.name}</div>
+                      <div className="min-w-0">
+                      <button className="font-semibold text-sm truncate max-w-[260px] hover:text-primary text-left" onClick={() => openSchoolDetail(school)}>{school.name}</button>
                       <div className="text-xs text-muted-foreground flex items-center gap-1"><Globe className="h-3 w-3" /> {school.slug}</div>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
                     {getPlanBadge(school.plan)}
+                    {getApprovalBadge(school)}
                     <Badge className={school.is_active ? 'bg-emerald-100 text-emerald-700 border-none text-xs' : 'bg-rose-100 text-rose-700 border-none text-xs'}>
                       {school.is_active ? 'Actif' : 'Inactif'}
                     </Badge>
@@ -346,8 +405,8 @@ export default function SuperAdminDashboard() {
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0"><Building2 className="h-4 w-4 text-primary" /></div>
-                          <div>
-                            <div className="font-semibold text-sm">{school.name}</div>
+                          <div className="min-w-0 max-w-[260px]">
+                            <button className="font-semibold text-sm truncate block max-w-full hover:text-primary" onClick={() => openSchoolDetail(school)} title={school.name}>{school.name}</button>
                             <div className="text-xs text-muted-foreground font-mono flex items-center gap-1"><Globe className="h-3 w-3" /> {school.slug}</div>
                           </div>
                         </div>
@@ -361,18 +420,20 @@ export default function SuperAdminDashboard() {
                       <TableCell>
                         <div className="flex flex-col gap-1.5 items-start">
                           {getPlanBadge(school.plan)}
+                          {getApprovalBadge(school)}
                           <Badge className={school.is_active ? 'bg-emerald-100 text-emerald-700 border-none text-[10px]' : 'bg-rose-100 text-rose-700 border-none text-[10px]'}>{school.is_active ? 'Actif' : 'Inactif'}</Badge>
                         </div>
                       </TableCell>
-                      <TableCell className="text-right">
-                        <div className="text-xs text-muted-foreground space-y-0.5">
-                          <div className="flex items-center justify-end gap-1"><Users className="h-3 w-3" /> {school.studentCount || 0}</div>
+                      <TableCell>
+                        <div className="text-xs text-muted-foreground flex flex-col items-end gap-1 leading-tight">
+                          <div className="flex items-center justify-end gap-1"><Users className="h-3 w-3" /> {(school.studentCount || 0).toLocaleString()} élèves</div>
                           <div className="flex items-center justify-end gap-1"><Wallet className="h-3 w-3" /> {(school.revenueTotal || 0).toLocaleString()} XAF</div>
+                          <div className="flex items-center justify-end gap-1"><Building2 className="h-3 w-3" /> max {(school.max_students || PLAN_LIMITS[school.plan]?.maxStudents || 100).toLocaleString()}</div>
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
-                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => setShowSchoolDetail(school)}><Eye className="h-4 w-4" /></Button>
+                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => openSchoolDetail(school)}><Eye className="h-4 w-4" /></Button>
                           <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => window.open('/?school=' + school.slug, '_blank')}><ExternalLink className="h-4 w-4" /></Button>
                           <Button size="sm" variant="ghost" className={`h-8 w-8 p-0 ${school.is_active ? 'text-rose-600 hover:bg-rose-50' : 'text-emerald-600 hover:bg-emerald-50'}`} onClick={() => handleToggleStatus(school)}><Power className="h-4 w-4" /></Button>
                           <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-rose-600 hover:bg-rose-50" onClick={() => setShowDeleteConfirm(school)}><Trash2 className="h-4 w-4" /></Button>
@@ -579,19 +640,67 @@ export default function SuperAdminDashboard() {
 
       {/* School Detail Dialog */}
       <Dialog open={!!showSchoolDetail} onOpenChange={(o) => { if (!o) setShowSchoolDetail(null); }}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle className="flex items-center gap-2"><Building2 className="h-5 w-5" /> {showSchoolDetail?.name}</DialogTitle></DialogHeader>
           {showSchoolDetail && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between py-2 border-b"><span className="text-sm text-muted-foreground">Slug</span><code className="text-xs font-mono">{showSchoolDetail.slug}</code></div>
-              <div className="flex items-center justify-between py-2 border-b"><span className="text-sm text-muted-foreground">Admin</span><span className="text-sm font-medium">{showSchoolDetail.admin_name}</span></div>
-              <div className="flex items-center justify-between py-2 border-b"><span className="text-sm text-muted-foreground">Email</span><span className="text-sm">{showSchoolDetail.admin_email}</span></div>
-              <div className="flex items-center justify-between py-2 border-b"><span className="text-sm text-muted-foreground">Téléphone</span><span className="text-sm">{showSchoolDetail.phone || 'Non renseigné'}</span></div>
-              <div className="flex items-center justify-between py-2 border-b"><span className="text-sm text-muted-foreground">Base de données</span><code className="text-xs bg-muted px-2 py-1 rounded font-mono">{showSchoolDetail.db_name}</code></div>
-              <div className="flex items-center justify-between py-2 border-b"><span className="text-sm text-muted-foreground">Domaine</span><span className="text-sm">{showSchoolDetail.domain || 'Non configuré'}</span></div>
-              <div className="flex items-center justify-between py-2 border-b"><span className="text-sm text-muted-foreground">Plan</span>{getPlanBadge(showSchoolDetail.plan)}</div>
-              <div className="flex items-center justify-between py-2 border-b"><span className="text-sm text-muted-foreground">Statut</span><Badge className={showSchoolDetail.is_active ? 'bg-emerald-100 text-emerald-700 border-none' : 'bg-rose-100 text-rose-700 border-none'}>{showSchoolDetail.is_active ? 'Actif' : 'Inactif'}</Badge></div>
-              <div className="flex items-center justify-between py-2"><span className="text-sm text-muted-foreground">Créée le</span><span className="text-sm">{new Date(showSchoolDetail.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })}</span></div>
+            <div className="space-y-5">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="border rounded-lg p-3"><div className="text-[10px] uppercase text-muted-foreground font-bold">Élèves</div><div className="text-2xl font-black">{(showSchoolDetail.studentCount || 0).toLocaleString()}</div></div>
+                <div className="border rounded-lg p-3"><div className="text-[10px] uppercase text-muted-foreground font-bold">Limite</div><div className="text-2xl font-black">{(showSchoolDetail.max_students || 100).toLocaleString()}</div></div>
+                <div className="border rounded-lg p-3"><div className="text-[10px] uppercase text-muted-foreground font-bold">Classes</div><div className="text-2xl font-black">{showSchoolDetail.classCount || 0}</div></div>
+                <div className="border rounded-lg p-3"><div className="text-[10px] uppercase text-muted-foreground font-bold">Revenu</div><div className="text-lg font-black text-emerald-600">{(showSchoolDetail.revenueTotal || 0).toLocaleString()} XAF</div></div>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between py-2 border-b"><span className="text-sm text-muted-foreground">Slug</span><code className="text-xs font-mono">{showSchoolDetail.slug}</code></div>
+                  <div className="flex items-center justify-between py-2 border-b"><span className="text-sm text-muted-foreground">Admin</span><span className="text-sm font-medium text-right">{showSchoolDetail.admin_name}</span></div>
+                  <div className="flex items-center justify-between py-2 border-b gap-4"><span className="text-sm text-muted-foreground">Email</span><span className="text-sm truncate">{showSchoolDetail.admin_email}</span></div>
+                  <div className="flex items-center justify-between py-2 border-b"><span className="text-sm text-muted-foreground">Téléphone</span><span className="text-sm">{showSchoolDetail.phone || 'Non renseigné'}</span></div>
+                  <div className="flex items-center justify-between py-2 border-b"><span className="text-sm text-muted-foreground">Validation</span>{getApprovalBadge(showSchoolDetail)}</div>
+                  <div className="flex items-center justify-between py-2 border-b"><span className="text-sm text-muted-foreground">Abonnement</span><span className="text-sm">{showSchoolDetail.subscription_expires_at ? `Expire le ${new Date(showSchoolDetail.subscription_expires_at).toLocaleDateString('fr-FR')}` : 'Non actif'}</span></div>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="border rounded-lg p-3 space-y-3">
+                    <div className="text-sm font-bold">Plan et limite élèves</div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Select value={planDraft.plan} onValueChange={(value: 'starter' | 'pro' | 'enterprise') => setPlanDraft({ plan: value, maxStudents: PLAN_LIMITS[value].maxStudents })}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="starter">Starter</SelectItem>
+                          <SelectItem value="pro">Pro</SelectItem>
+                          <SelectItem value="enterprise">Enterprise</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Input type="number" min={0} value={planDraft.maxStudents} onChange={(e) => setPlanDraft({ ...planDraft, maxStudents: Number(e.target.value) })} />
+                    </div>
+                    <Button className="w-full" disabled={saving} onClick={() => runSchoolAction({ id: showSchoolDetail.id, action: 'update-plan', plan: planDraft.plan, maxStudents: planDraft.maxStudents })}>Appliquer le plan</Button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button disabled={saving} onClick={() => runSchoolAction({ id: showSchoolDetail.id, action: 'approve' })} className="bg-emerald-600 hover:bg-emerald-700">Valider</Button>
+                    <Button disabled={saving} variant="destructive" onClick={() => runSchoolAction({ id: showSchoolDetail.id, action: 'reject' })}>Refuser</Button>
+                    <Button disabled={saving} variant="outline" onClick={() => runSchoolAction({ id: showSchoolDetail.id, action: 'renew' })}>Renouveler 1 an</Button>
+                    <Button disabled={saving} variant="outline" onClick={() => runSchoolAction({ id: showSchoolDetail.id, action: 'suspend' })}>Suspendre</Button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border rounded-lg p-3">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <div className="text-sm font-bold">Paiement Orange Money</div>
+                    <div className="text-xs text-muted-foreground">{showSchoolDetail.payment_account_name || 'NSOUNJOU TOUNSIE DUKRAM'} - {showSchoolDetail.payment_phone || '698 38 51 85'}</div>
+                  </div>
+                  {getPlanBadge(showSchoolDetail.plan)}
+                </div>
+                {showSchoolDetail.payment_proof_url ? (
+                  <img src={showSchoolDetail.payment_proof_url} alt="Capture du paiement" className="max-h-72 max-w-full rounded border object-contain bg-muted" />
+                ) : (
+                  <div className="text-sm text-muted-foreground py-6 text-center border border-dashed rounded">Aucune capture de paiement jointe.</div>
+                )}
+              </div>
             </div>
           )}
         </DialogContent>

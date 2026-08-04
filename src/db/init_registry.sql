@@ -13,6 +13,12 @@ CREATE TABLE IF NOT EXISTS schools (
     address TEXT,
     logo_url TEXT,
     plan ENUM('starter', 'pro', 'enterprise') DEFAULT 'starter',
+    approval_status ENUM('pending', 'approved', 'rejected') DEFAULT 'approved',
+    subscription_expires_at DATE NULL,
+    max_students INT DEFAULT 100,
+    payment_proof_url LONGTEXT,
+    payment_phone VARCHAR(30),
+    payment_account_name VARCHAR(120),
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

@@ -12,6 +12,8 @@ import { cookies } from 'next/headers';
 import type { SessionData } from '@/lib/session';
 import { sessionOptions } from '@/lib/session';
 import { getAllStudents as getAllStudentsDb, getStudentById as getStudentByIdDb, addStudent as addStudentDb, updateStudent as updateStudentDb } from '../db/services/studentDb';
+import { getCurrentDbName } from '@/db/mysql';
+import { registryPool } from '@/db/registry';
 
 // Export direct de getAllStudents pour l'API
 export async function getAllStudents() {
@@ -65,6 +67,41 @@ async function generateNewMatricule(): Promise<string> {
     return `${currentYearPrefix}-${String(newSequence).padStart(4, '0')}`;
 }
 
+async function assertCanAddStudent(currentCount: number) {
+    try {
+        const dbName = await getCurrentDbName();
+        const [rows] = await registryPool.query(
+            'SELECT name, is_active, approval_status, subscription_expires_at, max_students FROM schools WHERE db_name = ? LIMIT 1',
+            [dbName]
+        ) as any[];
+        const school = rows?.[0];
+        if (!school) return;
+
+        if (!school.is_active || school.approval_status !== 'approved') {
+            throw new Error("L'abonnement de cet établissement n'est pas actif. Veuillez contacter le super administrateur.");
+        }
+
+        if (school.subscription_expires_at) {
+            const expiresAt = new Date(school.subscription_expires_at);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            if (expiresAt < today) {
+                throw new Error("L'abonnement annuel de cet établissement a expiré. Veuillez renouveler l'abonnement.");
+            }
+        }
+
+        const maxStudents = Number(school.max_students || 100);
+        if (maxStudents > 0 && currentCount >= maxStudents) {
+            throw new Error(`Limite du plan atteinte : ${currentCount}/${maxStudents} élèves. Augmentez la limite depuis FosilaMaster SuperAdmin.`);
+        }
+    } catch (error: any) {
+        if (String(error?.message || '').includes('Limite du plan') || String(error?.message || '').includes('abonnement')) {
+            throw error;
+        }
+        console.error('Vérification abonnement/plan impossible:', error);
+    }
+}
+
 export async function getStudents(): Promise<Student[]> {
     const students = await getAllStudentsDb() as Student[];
     return students.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -103,6 +140,7 @@ export async function addStudent(studentData: Omit<Student, 'id' | 'historiqueCl
     const schoolInfo = await getSchoolInfo();
     const anneeScolaire = schoolInfo.currentSchoolYear;
     const students = await getAllStudentsDb();
+    await assertCanAddStudent(students.length);
     const currentYearPrefix = anneeScolaire.substring(2, 4);
     const studentsFromCurrentYear = students.filter(s => s.id.startsWith(`${currentYearPrefix}-`));
     const newSequence = studentsFromCurrentYear.length + 1;
