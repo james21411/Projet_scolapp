@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getAllRegisteredSchools, updateSchoolStatus } from '@/services/masterAdminService';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
     try {
         const schools = await getAllRegisteredSchools();
