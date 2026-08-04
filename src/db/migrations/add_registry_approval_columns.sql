@@ -1,28 +1,86 @@
--- Migration: Add approval, subscription and max_students columns to schools table
--- Run this on scolapp_registry database
+-- Migration: Add approval, subscription, plan limit and payment proof columns.
+-- Compatible with MySQL versions that do not support ALTER TABLE ADD COLUMN IF NOT EXISTS.
 
 USE scolapp_registry;
 
--- Add approval_status column
-ALTER TABLE schools 
-ADD COLUMN IF NOT EXISTS approval_status ENUM('pending', 'approved', 'rejected') DEFAULT 'approved';
+SET @db_name := DATABASE();
 
--- Add subscription_expires_at column
-ALTER TABLE schools 
-ADD COLUMN IF NOT EXISTS subscription_expires_at DATE NULL;
+SET @sql := (
+  SELECT IF(
+    COUNT(*) = 0,
+    'ALTER TABLE schools ADD COLUMN approval_status ENUM(''pending'', ''approved'', ''rejected'') DEFAULT ''approved''',
+    'SELECT ''approval_status already exists'''
+  )
+  FROM INFORMATION_SCHEMA.COLUMNS
+  WHERE TABLE_SCHEMA = @db_name AND TABLE_NAME = 'schools' AND COLUMN_NAME = 'approval_status'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
--- Add max_students column
-ALTER TABLE schools 
-ADD COLUMN IF NOT EXISTS max_students INT DEFAULT 100;
+SET @sql := (
+  SELECT IF(
+    COUNT(*) = 0,
+    'ALTER TABLE schools ADD COLUMN subscription_expires_at DATE NULL',
+    'SELECT ''subscription_expires_at already exists'''
+  )
+  FROM INFORMATION_SCHEMA.COLUMNS
+  WHERE TABLE_SCHEMA = @db_name AND TABLE_NAME = 'schools' AND COLUMN_NAME = 'subscription_expires_at'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
-ALTER TABLE schools
-ADD COLUMN IF NOT EXISTS payment_proof_url LONGTEXT;
+SET @sql := (
+  SELECT IF(
+    COUNT(*) = 0,
+    'ALTER TABLE schools ADD COLUMN max_students INT DEFAULT 100',
+    'SELECT ''max_students already exists'''
+  )
+  FROM INFORMATION_SCHEMA.COLUMNS
+  WHERE TABLE_SCHEMA = @db_name AND TABLE_NAME = 'schools' AND COLUMN_NAME = 'max_students'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
-ALTER TABLE schools
-ADD COLUMN IF NOT EXISTS payment_phone VARCHAR(30);
+SET @sql := (
+  SELECT IF(
+    COUNT(*) = 0,
+    'ALTER TABLE schools ADD COLUMN payment_proof_url LONGTEXT',
+    'SELECT ''payment_proof_url already exists'''
+  )
+  FROM INFORMATION_SCHEMA.COLUMNS
+  WHERE TABLE_SCHEMA = @db_name AND TABLE_NAME = 'schools' AND COLUMN_NAME = 'payment_proof_url'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
-ALTER TABLE schools
-ADD COLUMN IF NOT EXISTS payment_account_name VARCHAR(120);
+SET @sql := (
+  SELECT IF(
+    COUNT(*) = 0,
+    'ALTER TABLE schools ADD COLUMN payment_phone VARCHAR(30)',
+    'SELECT ''payment_phone already exists'''
+  )
+  FROM INFORMATION_SCHEMA.COLUMNS
+  WHERE TABLE_SCHEMA = @db_name AND TABLE_NAME = 'schools' AND COLUMN_NAME = 'payment_phone'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
--- Update existing schools to approved status
+SET @sql := (
+  SELECT IF(
+    COUNT(*) = 0,
+    'ALTER TABLE schools ADD COLUMN payment_account_name VARCHAR(120)',
+    'SELECT ''payment_account_name already exists'''
+  )
+  FROM INFORMATION_SCHEMA.COLUMNS
+  WHERE TABLE_SCHEMA = @db_name AND TABLE_NAME = 'schools' AND COLUMN_NAME = 'payment_account_name'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
 UPDATE schools SET approval_status = 'approved' WHERE approval_status IS NULL;
