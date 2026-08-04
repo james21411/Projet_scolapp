@@ -2809,6 +2809,7 @@ function PaymentSearchDialog({
   const [selectedInstallmentIdx, setSelectedInstallmentIdx] = useState(0);
   const selectedInstallment = paymentSummary && Array.isArray(paymentSummary.installments)
     ? paymentSummary.installments[selectedInstallmentIdx] : null;
+  const effectiveSchoolYear = selectedStudent?.anneeScolaire || schoolYear;
 
   // Ajout des hooks pour le reçu de tranche
   const [showInstallmentReceipt, setShowInstallmentReceipt] = useState(false);
@@ -2833,11 +2834,12 @@ function PaymentSearchDialog({
   const searchResults = useMemo(() => {
     if (searchQuery.length < 2) return [];
     return allStudents.filter(s =>
-      s.nom.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      s.prenom.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      s.id.includes(searchQuery)
+      (!schoolYear || s.anneeScolaire === schoolYear) &&
+      (s.nom.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        s.prenom.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        s.id.includes(searchQuery))
     ).slice(0, 10);
-  }, [searchQuery, allStudents]);
+  }, [searchQuery, allStudents, schoolYear]);
 
   const selectStudent = useCallback(async (student: Student) => {
     setIsPaymentLoading(true);
@@ -2846,8 +2848,9 @@ function PaymentSearchDialog({
     setPaymentType(null); // Reset payment type when selecting a new student
     console.log('[DEBUG] Sélection élève:', student);
     try {
+      const studentSchoolYear = student.anneeScolaire || schoolYear;
       // Charger le résumé financier
-      const res = await fetch(`/api/finance/student-summary?studentId=${student.id}&schoolYear=${schoolYear}`);
+      const res = await fetch(`/api/finance/student-summary?studentId=${student.id}&schoolYear=${studentSchoolYear}`);
       if (!res.ok) throw new Error('Erreur API: ' + res.status);
       const summary = await res.json();
       console.log('[DEBUG] Résumé financier reçu:', summary);
@@ -2869,7 +2872,7 @@ function PaymentSearchDialog({
 
       // Vérifier s'il existe déjà un paiement d'inscription pour cet élève
       try {
-        const existingPaymentRes = await fetch(`/api/finance/find-registration-payment?studentId=${student.id}&schoolYear=${schoolYear}`);
+        const existingPaymentRes = await fetch(`/api/finance/find-registration-payment?studentId=${student.id}&schoolYear=${studentSchoolYear}`);
         if (existingPaymentRes.ok) {
           const existingPayment = await existingPaymentRes.json();
           setExistingRegistrationPayment(existingPayment);
@@ -2885,12 +2888,12 @@ function PaymentSearchDialog({
         const nextInstallment = (summary as any).installments.find((i: any) => (i.balance || 0) > 0);
         if (nextInstallment) {
           const trancheIndex = (summary as any).installments.indexOf(nextInstallment) + 1;
-          setPaymentReason(`Paiement Tranche ${trancheIndex} Scolarité ${schoolYear}`);
+          setPaymentReason(`Paiement Tranche ${trancheIndex} Scolarité ${studentSchoolYear}`);
         } else {
-          setPaymentReason(`Paiement Scolarité ${schoolYear}`);
+          setPaymentReason(`Paiement Scolarité ${studentSchoolYear}`);
         }
       } else {
-        setPaymentReason(`Paiement Scolarité ${schoolYear}`);
+        setPaymentReason(`Paiement Scolarité ${studentSchoolYear}`);
       }
     } catch (e) {
       console.error('[DEBUG] Erreur lors du chargement du dossier financier:', e);
@@ -2922,7 +2925,7 @@ function PaymentSearchDialog({
         body: JSON.stringify({
           studentId: selectedStudent.id,
           amount: amount,
-          schoolYear,
+          schoolYear: effectiveSchoolYear,
           method: paymentMethod,
           reason: `Frais d'inscription - ${selectedStudent.classe}`,
           cashier: currentUser.fullName,
@@ -3020,7 +3023,7 @@ function PaymentSearchDialog({
         body: JSON.stringify({
           studentId: selectedStudent.id,
           amount: amount,
-          schoolYear,
+          schoolYear: effectiveSchoolYear,
           method: paymentMethod,
           reason: paymentReason,
           cashier: currentUser.fullName,
@@ -3070,7 +3073,7 @@ function PaymentSearchDialog({
     let receiptAmount = (installment.amount || 0);
     try {
       if (selectedStudent) {
-        const res = await fetch(`/api/finance/payments?studentId=${selectedStudent.id}&schoolYear=${encodeURIComponent(schoolYear)}`);
+        const res = await fetch(`/api/finance/payments?studentId=${selectedStudent.id}&schoolYear=${encodeURIComponent(effectiveSchoolYear)}`);
         if (res.ok) {
           const payments: any[] = await res.json();
           // Stratégies de correspondance, du plus strict au plus souple
@@ -3100,7 +3103,7 @@ function PaymentSearchDialog({
       date: receiptDate,
       cashier: currentUser.fullName,
       cashierUsername: currentUser.username,
-      reason: `Paiement Tranche ${trancheNumber} Scolarité ${schoolYear}`,
+      reason: `Paiement Tranche ${trancheNumber} Scolarité ${effectiveSchoolYear}`,
     });
     setShowInstallmentReceipt(true);
   };
@@ -3117,7 +3120,7 @@ function PaymentSearchDialog({
     const loadPayments = async () => {
       if (!selectedStudent || !editPaymentsOpen) return;
       try {
-        const res = await fetch(`/api/finance/payments?studentId=${selectedStudent.id}&schoolYear=${schoolYear}`);
+        const res = await fetch(`/api/finance/payments?studentId=${selectedStudent.id}&schoolYear=${effectiveSchoolYear}`);
         if (res.ok) {
           const data = await res.json();
           setStudentPayments(Array.isArray(data) ? data : []);
@@ -3127,7 +3130,7 @@ function PaymentSearchDialog({
       }
     };
     loadPayments();
-  }, [editPaymentsOpen, selectedStudent, schoolYear]);
+  }, [editPaymentsOpen, selectedStudent, effectiveSchoolYear]);
 
   const openEditRow = (p: any) => {
     setEditingPayment(p);
@@ -3155,7 +3158,7 @@ function PaymentSearchDialog({
       if (!res.ok) throw new Error('PATCH échoué');
       // Recharger la liste
       if (selectedStudent) {
-        const refreshed = await fetch(`/api/finance/payments?studentId=${selectedStudent.id}&schoolYear=${schoolYear}`);
+        const refreshed = await fetch(`/api/finance/payments?studentId=${selectedStudent.id}&schoolYear=${effectiveSchoolYear}`);
         setStudentPayments(refreshed.ok ? await refreshed.json() : []);
       }
       setEditingPayment(null);
@@ -3187,7 +3190,7 @@ function PaymentSearchDialog({
                 const studentId = autoReceiptData.studentId;
                 const [schoolRes, paymentsRes, feeRes] = await Promise.all([
                   fetch('/api/school/info'),
-                  fetch(`/api/finance/payments?studentId=${encodeURIComponent(studentId)}&schoolYear=${encodeURIComponent(schoolYear)}`),
+                  fetch(`/api/finance/payments?studentId=${encodeURIComponent(studentId)}&schoolYear=${encodeURIComponent(effectiveSchoolYear)}`),
                   fetch('/api/finance/fee-structure')
                 ]);
                 const schoolInfo = schoolRes.ok ? await schoolRes.json() : null;
@@ -3392,7 +3395,7 @@ function PaymentSearchDialog({
                     </div>
                     <div className="flex justify-between">
                       <span>Année scolaire :</span>
-                      <span className="font-semibold">{schoolYear}</span>
+                      <span className="font-semibold">{effectiveSchoolYear}</span>
                     </div>
                   </div>
                 </div>
@@ -3458,7 +3461,7 @@ function PaymentSearchDialog({
                 ← Retour
               </Button>
             </div>
-            <FinanceServicesPayments student={selectedStudent} schoolYear={schoolYear} />
+            <FinanceServicesPayments student={selectedStudent} schoolYear={effectiveSchoolYear} />
           </div>
         )}
 
