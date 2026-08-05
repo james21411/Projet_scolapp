@@ -32,17 +32,20 @@ import { getSchoolBySlug } from '@/db/registry';
 import { getIronSession } from 'iron-session';
 import { cookies } from 'next/headers';
 import { sessionOptions, type SessionData } from '@/lib/session';
+import { getRequestedSchoolSlug } from '@/db/mysql';
 
 export async function getSchoolInfo(): Promise<SchoolInfo> {
     try {
         // Enforce blocking mechanism: check if the school is active in the registry
         const cookieStore = await cookies();
         const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
+        const requestedSlug = await getRequestedSchoolSlug();
+        const activeSlug = requestedSlug || session?.schoolSlug;
 
-        if (session?.schoolSlug && session.schoolSlug !== 'default') {
-            const school = await getSchoolBySlug(session.schoolSlug);
+        if (activeSlug && activeSlug !== 'default') {
+            const school = await getSchoolBySlug(activeSlug);
             if (!school) {
-                console.error(`🛑 getSchoolInfo blocked: School "${session.schoolSlug}" is inactive or missing in registry.`);
+                console.error(`🛑 getSchoolInfo blocked: School "${activeSlug}" is inactive or missing in registry.`);
                 throw new Error('Votre établissement est désactivé. Veuillez contacter l\'administrateur.');
             }
         }

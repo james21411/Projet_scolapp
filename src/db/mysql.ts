@@ -55,6 +55,29 @@ export function getPoolForDb(dbName: string): mysql.Pool {
     return pool;
 }
 
+function getSchoolSlugFromReferer(referer?: string | null): string | null {
+    if (!referer) return null;
+    try {
+        const url = new URL(referer);
+        return url.searchParams.get('school') || url.searchParams.get('slug');
+    } catch {
+        return null;
+    }
+}
+
+export async function getRequestedSchoolSlug(): Promise<string | null> {
+    try {
+        const headerStore = await headers();
+        return (
+            headerStore.get('x-school-slug') ||
+            getSchoolSlugFromReferer(headerStore.get('referer')) ||
+            null
+        );
+    } catch {
+        return null;
+    }
+}
+
 // Déterminer la DB de manière dynamique (selon la session ou processus)
 export async function getCurrentDbName(): Promise<string> {
     const defaultDb = process.env.MYSQL_DATABASE || 'scolapp';
@@ -64,6 +87,12 @@ export async function getCurrentDbName(): Promise<string> {
         // On la détecte silencieusement et on retourne la DB par défaut.
         const cookieStore = await cookies();
         const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
+
+        const requestedSlug = await getRequestedSchoolSlug();
+        if (requestedSlug && session?.tenantSessions?.[requestedSlug]?.dbName) {
+            return session.tenantSessions[requestedSlug].dbName;
+        }
+
         if (session && session.dbName) {
             return session.dbName;
         }

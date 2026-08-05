@@ -10,7 +10,7 @@ import { getSchoolByHost, getSchoolBySlug } from '@/db/registry'
 import { getPoolForDb } from '@/db/mysql'
 import bcrypt from 'bcryptjs'
 
-export async function login(formData: { username: string, password: string, schoolSlug?: string }): Promise<{ error?: string, success?: boolean }> {
+export async function login(formData: { username: string, password: string, schoolSlug?: string }): Promise<{ error?: string, success?: boolean, schoolSlug?: string }> {
   try {
     const cookieStore = await cookies();
     const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
@@ -67,12 +67,21 @@ export async function login(formData: { username: string, password: string, scho
     session.role = user.role;
     session.dbName = dbName;
     session.schoolSlug = slug;
+    session.tenantSessions = {
+      ...(session.tenantSessions || {}),
+      [slug]: {
+        id: user.id,
+        username: user.username,
+        role: user.role,
+        dbName,
+      },
+    };
     await session.save();
 
     console.log(` login: Session créée → user=${user.username}, db=${dbName}, slug=${slug}`);
 
     revalidatePath('/');
-    return { success: true };
+    return { success: true, schoolSlug: slug };
   } catch (error) {
     console.error('Erreur lors de la connexion:', error);
     return { error: 'Une erreur est survenue. Veuillez réessayer.' };

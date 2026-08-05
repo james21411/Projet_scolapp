@@ -10,6 +10,12 @@ export interface SessionData {
   isLoggedIn: boolean
   schoolSlug?: string
   dbName?: string
+  tenantSessions?: Record<string, {
+    id: string
+    username: string
+    role: UserRole
+    dbName: string
+  }>
 }
 
 if (!process.env.SESSION_PASSWORD) {

@@ -145,7 +145,7 @@ function LoginForm() {
             if (result.error) {
                 toast({ variant: "destructive", title: "Erreur de connexion", description: result.error })
             } else if (result.success) {
-                window.location.href = '/dashboard'
+                window.location.href = `/dashboard?school=${encodeURIComponent(result.schoolSlug || activeSlug)}`
             }
         } catch {
             toast({ variant: "destructive", title: "Erreur inattendue", description: "Une erreur est survenue. Veuillez réessayer." })

@@ -7,6 +7,7 @@ import { getPoolForDb } from '@/db/mysql';
 import { cookies } from 'next/headers';
 import { getIronSession } from 'iron-session';
 import { sessionOptions, type SessionData } from '@/lib/session';
+import { getRequestedSchoolSlug } from '@/db/mysql';
 
 export async function GET(request: NextRequest) {
   try {
@@ -29,9 +30,11 @@ export async function GET(request: NextRequest) {
     // Pour l'accès authentifié, vérifier aussi si l'école est toujours active
     const cookieStore = await cookies();
     const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
+    const requestedSlug = await getRequestedSchoolSlug();
+    const activeSlug = requestedSlug || session?.schoolSlug;
 
-    if (session?.schoolSlug && session.schoolSlug !== 'default') {
-      const school = await getSchoolBySlug(session.schoolSlug);
+    if (activeSlug && activeSlug !== 'default') {
+      const school = await getSchoolBySlug(activeSlug);
       if (!school) {
         // L'école a été désactivée ou supprimée dans le registre
         return NextResponse.json({
