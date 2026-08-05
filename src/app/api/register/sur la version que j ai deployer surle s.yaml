@@ -1,0 +1,592 @@
+sur la version que j ai deployer surle serveur il ya plusieurs probleme , sur les frais de paiment quand je fini de configurer la grille tarrifaire , tout le champs se vide , et tout affiche 0 , mais quand je pars sur la section pour encaisser le paiment quand je selectionne l eleve et sa clase je vois bien que ses frais sont charges , mais pour les frais d inscriptuion ne sont pas pas charges :"Choisissez le type de paiement :
+
+Frais d'Inscription
+Non configuré
+
+Frais de Scolarité
+Paiement par tranches
+
+Services
+Uniformes, cantine, etc.
+Les frais d'inscription ne sont pas configurés pour la classe CM2. Configurez-les d'abord dans les paramètres avant de pouvoir encaisser des frais d'inscription." parreil pour la classse , quand j aajoute par exemple une classe on dit bien classe ajoutee avc succes mais je ne vois pas sa parmi mes classes , vraiment prend le temps d anlyser et de trouver le vrai probleme  voic cer que je vois sur la console du navigateur:"page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Computing studentDistributionData, filteredStudents: 0
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: No students or invalid data, returning empty array
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: financialChartData: Array(0)
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: financialChartData type: object
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: financialChartData isArray: true
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: financialChartData length: 0
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Rendering component, isLoading: true
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Showing loading state
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Starting data fetch...
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: financialChartData: Array(0)
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: financialChartData type: object
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: financialChartData isArray: true
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: financialChartData length: 0
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Rendering component, isLoading: true
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Showing loading state
+page-0bd5abb208217ed1.js:1 🔄 Chargement global des données maîtres pour 2026-2027...
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: financialChartData: Array(0)
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: financialChartData type: object
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: financialChartData isArray: true
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: financialChartData length: 0
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Rendering component, isLoading: true
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Showing loading state
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: School year: 2026-2027
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Fetching API data...
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Computing studentDistributionData, filteredStudents: 0
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: No students or invalid data, returning empty array
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: financialChartData: Array(0)
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: financialChartData type: object
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: financialChartData isArray: true
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: financialChartData length: 0
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Rendering component, isLoading: true
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Showing loading state
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: financialChartData: Array(0)
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: financialChartData type: object
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: financialChartData isArray: true
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: financialChartData length: 0
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Rendering component, isLoading: true
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Showing loading state
+ 🔍 DashboardTab: API responses received
+ 🔍 DashboardTab: Parsed data: Object
+ 🔍 DashboardTab: Chart data details: Array(12)
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Activities data details: Array(2)
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Chart data is array, length: 12
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Chart item 0: Object
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Chart item 1: Object
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Chart item 2: Object
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Chart item 3: Object
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Chart item 4: Object
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Chart item 5: Object
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Chart item 6: Object
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Chart item 7: Object
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Chart item 8: Object
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Chart item 9: Object
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Chart item 10: Object
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Chart item 11: Object
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Setting financialChartData: Array(12)
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Formatted chart data: Array(12)
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Data fetch completed, setting loading to false
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Computing studentDistributionData, filteredStudents: 1
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: studentDistributionData computed: Array(0)
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: financialChartData: Array(12)
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: financialChartData type: object
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: financialChartData isArray: true
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: financialChartData length: 12
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Rendering component, isLoading: false
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Received data: Array(12)
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Data type: object
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Is array: true
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Data length: 12
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Cleaned data: Array(12)
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Cleaned item 0: Object
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Item total: 0 type: number
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Cleaned item 1: Object
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Item total: 0 type: number
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Cleaned item 2: Object
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Item total: 0 type: number
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Cleaned item 3: Object
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Item total: 0 type: number
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Cleaned item 4: Object
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Item total: 0 type: number
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Cleaned item 5: Object
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Item total: 0 type: number
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Cleaned item 6: Object
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Item total: 0 type: number
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Cleaned item 7: Object
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Item total: 0 type: number
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Cleaned item 8: Object
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Item total: 0 type: number
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Cleaned item 9: Object
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Item total: 0 type: number
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Cleaned item 10: Object
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Item total: 0 type: number
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Cleaned item 11: Object
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Item total: 0 type: number
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Has non-zero data: false
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Rendering chart with data: Array(12)
+761-83746c756829e719.js:15 Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+(anonymous) @ 761-83746c756829e719.js:15
+aD @ fd9d1056-1498dcb1b30a8237.js:1
+a1 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+a4 @ fd9d1056-1498dcb1b30a8237.js:1
+a6 @ fd9d1056-1498dcb1b30a8237.js:1
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Computing studentDistributionData, filteredStudents: 0
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: No students or invalid data, returning empty array
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: financialChartData: Array(0)
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: financialChartData type: object
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: financialChartData isArray: true
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: financialChartData length: 0
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Rendering component, isLoading: true
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Showing loading state
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Starting data fetch...
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: School year: 2026-2027
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Fetching API data...
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Computing studentDistributionData, filteredStudents: 0
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: No students or invalid data, returning empty array
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: financialChartData: Array(0)
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: financialChartData type: object
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: financialChartData isArray: true
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: financialChartData length: 0
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Rendering component, isLoading: true
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Showing loading state
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: API responses received
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Parsed data: Object
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Chart data details: Array(12)
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Activities data details: Array(2)
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Chart data is array, length: 12
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Chart item 0: Object
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Chart item 1: Object
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Chart item 2: Object
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Chart item 3: Object
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Chart item 4: Object
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Chart item 5: Object
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Chart item 6: Object
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Chart item 7: Object
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Chart item 8: Object
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Chart item 9: Object
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Chart item 10: Object
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Chart item 11: Object
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Setting financialChartData: Array(12)
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Formatted chart data: Array(12)
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Data fetch completed, setting loading to false
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Computing studentDistributionData, filteredStudents: 2
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: studentDistributionData computed: Array(0)
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: financialChartData: Array(12)
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: financialChartData type: object
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: financialChartData isArray: true
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: financialChartData length: 12
+page-0bd5abb208217ed1.js:1 🔍 DashboardTab: Rendering component, isLoading: false
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Received data: Array(12)
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Data type: object
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Is array: true
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Data length: 12
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Cleaned data: Array(12)
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Cleaned item 0: Object
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Item total: 0 type: number
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Cleaned item 1: Object
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Item total: 0 type: number
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Cleaned item 2: Object
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Item total: 0 type: number
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Cleaned item 3: Object
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Item total: 0 type: number
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Cleaned item 4: Object
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Item total: 0 type: number
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Cleaned item 5: Object
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Item total: 0 type: number
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Cleaned item 6: Object
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Item total: 0 type: number
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Cleaned item 7: Object
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Item total: 0 type: number
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Cleaned item 8: Object
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Item total: 0 type: number
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Cleaned item 9: Object
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Item total: 0 type: number
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Cleaned item 10: Object
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Item total: 0 type: number
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Cleaned item 11: Object
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Item total: 0 type: number
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Has non-zero data: false
+page-0bd5abb208217ed1.js:1 🔍 FinancialBarChart: Rendering chart with data: Array(12)
+page-0bd5abb208217ed1.js:1 🔍 Chargement de la structure de l'école
+page-0bd5abb208217ed1.js:1 🔍 Structure reçue: Object
+page-0bd5abb208217ed1.js:1 🔍 Niveaux disponibles: Array(8)
+page-0bd5abb208217ed1.js:1 🔍 Classes pour Maternelle: Array(3)
+page-0bd5abb208217ed1.js:1 🔍 Classes pour Primaire: Array(6)
+page-0bd5abb208217ed1.js:1 🔍 Classes pour Secondaire: Array(7)
+page-0bd5abb208217ed1.js:1 🔍 Classes pour Nursery: Array(0)
+page-0bd5abb208217ed1.js:1 🔍 Classes pour Primary: Array(0)
+page-0bd5abb208217ed1.js:1 🔍 Classes pour Secondary: Array(0)
+page-0bd5abb208217ed1.js:1 🔍 Classes pour Enseignement Technique: Array(0)
+page-0bd5abb208217ed1.js:1 🔍 Classes pour Technical Education: Array(0)
+page-0bd5abb208217ed1.js:1 🔍 Informations de l'établissement reçues: Object
+page-0bd5abb208217ed1.js:1 🔍 Rendering level: Maternelle data: Object
+page-0bd5abb208217ed1.js:1 🔍 Rendering level: Primaire data: Object
+page-0bd5abb208217ed1.js:1 🔍 Rendering level: Secondaire data: Object
+page-0bd5abb208217ed1.js:1 🔍 Rendering level: Nursery data: Object
+page-0bd5abb208217ed1.js:1 🔍 Rendering level: Primary data: Object
+page-0bd5abb208217ed1.js:1 🔍 Rendering level: Secondary data: Object
+page-0bd5abb208217ed1.js:1 🔍 Rendering level: Maternelle data: Object
+page-0bd5abb208217ed1.js:1 🔍 Rendering level: Primaire data: Object
+page-0bd5abb208217ed1.js:1 🔍 Rendering level: Secondaire data: Object
+page-0bd5abb208217ed1.js:1 🔍 Rendering level: Nursery data: Object
+page-0bd5abb208217ed1.js:1 🔍 Rendering level: Primary data: Object
+page-0bd5abb208217ed1.js:1 🔍 Rendering level: Secondary data: Object
+page-0bd5abb208217ed1.js:1 🔍 Rendering level: Maternelle data: Object
+page-0bd5abb208217ed1.js:1 🔍 Rendering level: Primaire data: Object
+page-0bd5abb208217ed1.js:1 🔍 Rendering level: Secondaire data: Object
+page-0bd5abb208217ed1.js:1 🔍 Rendering level: Nursery data: Object
+page-0bd5abb208217ed1.js:1 🔍 Rendering level: Primary data: Object
+page-0bd5abb208217ed1.js:1 🔍 Rendering level: Secondary data: Object
+page-0bd5abb208217ed1.js:1 🔍 Rendering level: Maternelle data: Object
+page-0bd5abb208217ed1.js:1 🔍 Rendering level: Primaire data: Object
+page-0bd5abb208217ed1.js:1 🔍 Rendering level: Secondaire data: Object
+page-0bd5abb208217ed1.js:1 🔍 Rendering level: Nursery data: Object
+page-0bd5abb208217ed1.js:1 🔍 Rendering level: Primary data: Object
+page-0bd5abb208217ed1.js:1 🔍 Rendering level: Secondary data: Object
+page-0bd5abb208217ed1.js:1 🔍 Rendering level: Maternelle data: Object
+page-0bd5abb208217ed1.js:1 🔍 Rendering level: Primaire data: Object
+page-0bd5abb208217ed1.js:1 🔍 Rendering level: Secondaire data: Object
+page-0bd5abb208217ed1.js:1 🔍 Rendering level: Nursery data: Object
+page-0bd5abb208217ed1.js:1 🔍 Rendering level: Primary data: Object
+page-0bd5abb208217ed1.js:1 🔍 Rendering level: Secondary data: Object
+page-0bd5abb208217ed1.js:1 [DEBUG] Sélection élève: Object
+page-0bd5abb208217ed1.js:1 [DEBUG] Résumé financier reçu: Object
+page-0bd5abb208217ed1.js:1 [DEBUG] paymentSummary: Object
+page-0bd5abb208217ed1.js:1 🔍 Rendering level: Maternelle data: Object
+page-0bd5abb208217ed1.js:1 🔍 Rendering level: Primaire data: Object
+page-0bd5abb208217ed1.js:1 🔍 Rendering level: Secondaire data: Object
+page-0bd5abb208217ed1.js:1 🔍 Rendering level: Nursery data: Object
+page-0bd5abb208217ed1.js:1 🔍 Rendering level: Primary data: Object
+page-0bd5abb208217ed1.js:1 🔍 Rendering level: Secondary data: Object
+page-0bd5abb208217ed1.js:1 [DEBUG] paymentSummary: Object
+page-0bd5abb208217ed1.js:1 🔍 Rendering level: Maternelle data: Object
+page-0bd5abb208217ed1.js:1 🔍 Rendering level: Primaire data: Object
+page-0bd5abb208217ed1.js:1 🔍 Rendering level: Secondaire data: Object
+page-0bd5abb208217ed1.js:1 🔍 Rendering level: Nursery data: Object
+page-0bd5abb208217ed1.js:1 🔍 Rendering level: Primary data: Object
+page-0bd5abb208217ed1.js:1 🔍 Rendering level: Secondary data: Object
+page-0bd5abb208217ed1.js:1 [DEBUG] Sélection élève: Object
+page-0bd5abb208217ed1.js:1 [DEBUG] Résumé financier reçu: Object
+page-0bd5abb208217ed1.js:1 🔍 Rendering level: Maternelle data: Object
+page-0bd5abb208217ed1.js:1 🔍 Rendering level: Primaire data: Object
+page-0bd5abb208217ed1.js:1 🔍 Rendering level: Secondaire data: Object
+page-0bd5abb208217ed1.js:1 🔍 Rendering level: Nursery data: Object
+page-0bd5abb208217ed1.js:1 🔍 Rendering level: Primary data: Object
+page-0bd5abb208217ed1.js:1 🔍 Rendering level: Secondary data: Object
+" voic les logs que je vois du cote du serveur:"
+/home/james/.pm2/logs/fosilamaster-error.log last 15 lines:
+5|fosilama |     at async cacheEntry.responseCache.get.routeKind (/home/james/Fosilamaster/node_modules/next/dist/server/base-server.js:1552:28)
+5|fosilama |     at async NextNodeServer.renderToResponseWithComponentsImpl (/home/james/Fosilamaster/node_modules/next/dist/server/base-server.js:1460:28)
+5|fosilama |     at async NextNodeServer.renderPageComponent (/home/james/Fosilamaster/node_modules/next/dist/server/base-server.js:1843:24)
+5|fosilama |     at async NextNodeServer.renderToResponseImpl (/home/james/Fosilamaster/node_modules/next/dist/server/base-server.js:1881:32)
+5|fosilama | Error: Failed to find Server Action "null". This request might be from an older or newer deployment. Original error: Invariant: Missing 'next-action' header.
+5|fosilama |     at ry (/home/james/Fosilamaster/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:16:1644)
+5|fosilama |     at /home/james/Fosilamaster/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:15:6358
+5|fosilama |     at AsyncLocalStorage.run (node:async_hooks:346:14)
+5|fosilama |     at rm (/home/james/Fosilamaster/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:15:5711)
+5|fosilama |     at rD (/home/james/Fosilamaster/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:16:22552)
+5|fosilama |     at /home/james/Fosilamaster/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:16:25097
+5|fosilama |     at AsyncLocalStorage.run (node:async_hooks:346:14)
+5|fosilama |     at Object.wrap (/home/james/Fosilamaster/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:13:16241)
+5|fosilama |     at /home/james/Fosilamaster/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:16:24987
+5|fosilama |     at AsyncLocalStorage.run (node:async_hooks:346:14)
+
+/home/james/.pm2/logs/frontend-out.log last 15 lines:
+0|frontend |   → API Gateway:    http://localhost:3000
+0|frontend | ✓ [Frontend]        http://localhost:9000
+0|frontend |   → API Gateway:    http://localhost:3000
+0|frontend | ✓ [Frontend]        http://localhost:9000
+0|frontend |   → API Gateway:    http://localhost:3000
+0|frontend | ✓ [Frontend]        http://localhost:9000
+0|frontend |   → API Gateway:    http://localhost:3000
+0|frontend | ✓ [Frontend]        http://localhost:9000
+0|frontend |   → API Gateway:    http://localhost:3000
+0|frontend | ✓ [Frontend]        http://localhost:9000
+0|frontend |   → API Gateway:    http://localhost:3000
+0|frontend | ✓ [Frontend]        http://localhost:9000
+0|frontend |   → API Gateway:    http://localhost:3000
+0|frontend | ✓ [Frontend]        http://localhost:9000
+0|frontend |   → API Gateway:    http://localhost:3000
+
+/home/james/.pm2/logs/api-gateway-out.log last 15 lines:
+1|api-gate | [HPM] Proxy created: /  -> http://localhost:3001
+1|api-gate | [HPM] Proxy created: /  -> http://localhost:3002
+1|api-gate | ✓ [API Gateway]     http://localhost:3000
+1|api-gate |   → ticket-service: http://localhost:3001
+1|api-gate |   → admin-service:  http://localhost:3002
+1|api-gate | [HPM] Proxy created: /  -> http://localhost:3001
+1|api-gate | [HPM] Proxy created: /  -> http://localhost:3002
+1|api-gate | ✓ [API Gateway]     http://localhost:3000
+1|api-gate |   → ticket-service: http://localhost:3001
+1|api-gate |   → admin-service:  http://localhost:3002
+1|api-gate | [HPM] Proxy created: /  -> http://localhost:3001
+1|api-gate | [HPM] Proxy created: /  -> http://localhost:3002
+1|api-gate | ✓ [API Gateway]     http://localhost:3000
+1|api-gate |   → ticket-service: http://localhost:3001
+1|api-gate |   → admin-service:  http://localhost:3002
+
+/home/james/.pm2/logs/ticket-service-out.log last 15 lines:
+2|ticket-s | [ticket-service] Ticket jrbvjibrjbjbrjbjrjvrjvornovnr → valide
+2|ticket-s | [ticket-service] Ticket tr ktr kntrknkrn[knrklnklrnk → valide
+2|ticket-s | [ticket-service] Ticket r k nrkon kornknro[nokrnkonr → valide
+2|ticket-s | [ticket-service] Ticket rk nko[rnkonrko[nknrko[nrknkonrkon[ → valide
+2|ticket-s | [ticket-service] 4 ticket(s) reçu(s) de nexusjames8@gmail.com
+2|ticket-s | [ticket-service] 4 ticket(s) reçu(s) de nsounjou2@gmail.com
+2|ticket-s | ✓ [ticket-service]  http://localhost:3001
+2|ticket-s | ✓ [ticket-service]  http://localhost:3001
+2|ticket-s | [ticket-service] Ticket test1 → invalide
+2|ticket-s | [ticket-service] Ticket test2 → valide
+2|ticket-s | [ticket-service] Ticket test 3 → valide
+2|ticket-s | [ticket-service] Ticket test4 → valide
+2|ticket-s | ✓ [ticket-service]  http://localhost:3001
+2|ticket-s | ✓ [ticket-service]  http://localhost:3001
+2|ticket-s | ✓ [ticket-service]  http://localhost:3001
+
+/home/james/.pm2/logs/admin-service-out.log last 15 lines:
+3|admin-se | [Mailer] Serveur SMTP (Brevo) configuré.
+3|admin-se | ✓ [admin-service]   http://localhost:3002
+3|admin-se |   → ticket-service: http://localhost:3001
+3|admin-se | [admin-service] ✓ Login: jemilj09@gmail.com
+3|admin-se | [Mailer] Serveur SMTP (Brevo) configuré.
+3|admin-se | ✓ [admin-service]   http://localhost:3002
+3|admin-se |   → ticket-service: http://localhost:3001
+3|admin-se | [Mailer] Serveur SMTP (Brevo) configuré.
+3|admin-se | ✓ [admin-service]   http://localhost:3002
+3|admin-se |   → ticket-service: http://localhost:3001
+3|admin-se | [admin-service] ✓ Login: dukram.nsounjou@ens-uy1.cm
+3|admin-se | [admin-service] ✓ Login: jemilj09@gmail.com
+3|admin-se | [Mailer] Serveur SMTP (Brevo) configuré.
+3|admin-se | ✓ [admin-service]   http://localhost:3002
+3|admin-se |   → ticket-service: http://localhost:3001
+
+/home/james/.pm2/logs/fosilamaster-out.log last 15 lines:
+5|fosilama | 🔍 API recent-activities: Activities received: [
+5|fosilama |   {
+5|fosilama |     id: 'RECU-1785481886682',
+5|fosilama |     type: 'payment',
+5|fosilama |     time: '31/07 08:11',
+5|fosilama |     text: 'Paiement de 40000.00 XAF par JULES MARCHE TOUNSIE'
+5|fosilama |   },
+5|fosilama |   {
+5|fosilama |     id: 'RECU-1785295391847',
+5|fosilama |     type: 'payment',
+5|fosilama |     time: '29/07 04:23',
+5|fosilama |     text: 'Paiement de 25000.00 XAF par JULES MARCHE TOUNSIE'
+5|fosilama |   }
+5|fosilama | ]
+5|fosilama | ✅ Structure tarifaire par défaut créée pour la classe: CLS
+
+" et aussi voici quelques logs de l autre service d un autre site qui tourne sur le meme serveur  :"
+/home/james/.pm2/logs/frontend-error.log last 15 lines:
+/home/james/.pm2/logs/ticket-service-error.log last 15 lines:
+/home/james/.pm2/logs/admin-service-error.log last 15 lines:
+3|admin-se | [admin-service] Erreur envoi email à nsounjou1@gmail.com: Invalid login: 535 5.7.8 Authentication failed
+3|admin-se | [Mailer] Erreur envoi email à nsounjou1@gmail.com: Invalid login: 535 5.7.8 Authentication failed
+3|admin-se | [admin-service] Erreur envoi email: Invalid login: 535 5.7.8 Authentication failed
+3|admin-se | [Mailer] Erreur envoi email à nuttert237@gmail.com: Invalid login: 535 5.7.8 Authentication failed
+3|admin-se | [admin-service] Erreur envoi email à nuttert237@gmail.com: Invalid login: 535 5.7.8 Authentication failed
+3|admin-se | [Mailer] Erreur envoi email à nuttert237@gmail.com: Invalid login: 535 5.7.8 Authentication failed
+3|admin-se | [admin-service] Erreur envoi email à nuttert237@gmail.com: Invalid login: 535 5.7.8 Authentication failed
+3|admin-se | [Mailer] Erreur envoi email à nuttert237@gmail.com: Invalid login: 535 5.7.8 Authentication failed
+3|admin-se | [admin-service] Erreur envoi email à nuttert237@gmail.com: Invalid login: 535 5.7.8 Authentication failed
+3|admin-se | [Mailer] Erreur envoi email à nuttert237@gmail.com: Invalid login: 535 5.7.8 Authentication failed
+3|admin-se | [admin-service] Erreur envoi email à nuttert237@gmail.com: Invalid login: 535 5.7.8 Authentication failed
+3|admin-se | [Mailer] Erreur envoi email à nuttert237@gmail.com: Invalid login: 535 5.7.8 Authentication failed
+3|admin-se | [admin-service] Erreur envoi email: Invalid login: 535 5.7.8 Authentication failed
+3|admin-se | [Mailer] Erreur envoi email à dukram.nsounjou@ens-uy1.cm: Invalid login: 535 5.7.8 Authentication failed
+3|admin-se | [admin-service] Erreur notify-submission: Invalid login: 535 5.7.8 Authentication failed
+
+/home/james/.pm2/logs/api-gateway-error.log last 15 lines:
+1|api-gate |     at /home/james/plateform-verification/backend/api-gateway/node_modules/express/lib/router/index.js:286:9
+1|api-gate |     at Function.process_params (/home/james/plateform-verification/backend/api-gateway/node_modules/express/lib/router/index.js:346:12)
+1|api-gate |     at next (/home/james/plateform-verification/backend/api-gateway/node_modules/express/lib/router/index.js:280:10)
+1|api-gate |     at expressInit (/home/james/plateform-verification/backend/api-gateway/node_modules/express/lib/middleware/init.js:40:5)
+1|api-gate | Error: Non autorisé par le CORS
+1|api-gate |     at origin (/home/james/plateform-verification/backend/api-gateway/server.js:43:22)
+1|api-gate |     at /home/james/plateform-verification/backend/api-gateway/node_modules/cors/lib/index.js:219:13
+1|api-gate |     at optionsCallback (/home/james/plateform-verification/backend/api-gateway/node_modules/cors/lib/index.js:199:9)
+1|api-gate |     at corsMiddleware (/home/james/plateform-verification/backend/api-gateway/node_modules/cors/lib/index.js:204:7)
+1|api-gate |     at Layer.handle [as handle_request] (/home/james/plateform-verification/backend/api-gateway/node_modules/express/lib/router/layer.js:95:5)
+1|api-gate |     at trim_prefix (/home/james/plateform-verification/backend/api-gateway/node_modules/express/lib/router/index.js:328:13)
+1|api-gate |     at /home/james/plateform-verification/backend/api-gateway/node_modules/express/lib/router/index.js:286:9
+1|api-gate |     at Function.process_params (/home/james/plateform-verification/backend/api-gateway/node_modules/express/lib/router/index.js:346:12)
+1|api-gate |     at next (/home/james/plateform-verification/backend/api-gateway/node_modules/express/lib/router/index.js:280:10)
+1|api-gate |     at expressInit (/home/james/plateform-verification/backend/api-gateway/node_modules/express/lib/middleware/init.js:40:5)
+
+/home/james/.pm2/logs/fosilamaster-error.log last 15 lines:
+5|fosilama |     at async cacheEntry.responseCache.get.routeKind (/home/james/Fosilamaster/node_modules/next/dist/server/base-server.js:1552:28)" si jamais il ya chevauchement , tu peux meme me donner les commandes ou bien les requettes pour que je puisse executer sur le serveur pour identifier le bug

@@ -64,7 +64,7 @@ export const LazyFinancePaymentsSection = (props: FinancePaymentsProps) => {
 export const LazyFinanceServicesPayments = (props: FinanceServicesPaymentsProps) => {
   return (
     <Suspense fallback={<FinanceSkeleton />}>
-      <LazyFinanceServicesPayments {...props} />
+      <LazyFinanceServicesPaymentsComponent {...props} />
     </Suspense>
   );
 };

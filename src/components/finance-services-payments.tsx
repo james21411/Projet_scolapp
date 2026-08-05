@@ -44,21 +44,29 @@ export function FinanceServicesPayments({ student, schoolYear }: { student: Stud
   const [pendingPaymentData, setPendingPaymentData] = useState<any | null>(null);
   const [amountInWords, setAmountInWords] = useState<string>("");
 
+  const normalizeServices = (raw: any[]): ServiceItem[] => raw.map((it: any) => ({
+    id: String(it.id),
+    name: String(it.name || ''),
+    description: it.description || '',
+    amount: Number(it.amount ?? it.price ?? 0),
+    isActive: Boolean(Number(it.isActive ?? 1)),
+  })).filter(service => service.id && service.name);
+
   useEffect(() => {
     (async () => {
       try {
         const s = await fetch(`/api/finance/services?schoolYear=${encodeURIComponent(schoolYear)}`);
         if (!s.ok) throw new Error("Erreur de chargement des services");
         const list = await s.json();
-        const raw = Array.isArray(list) ? list : (Array.isArray(list?.data) ? list.data : []);
-        // Normaliser: price -> amount et valeurs par défaut
-        const normalized: ServiceItem[] = raw.map((it: any) => ({
-          id: String(it.id),
-          name: String(it.name || ''),
-          description: it.description || '',
-          amount: Number(it.amount ?? it.price ?? 0),
-          isActive: Boolean(it.isActive ?? true),
-        }));
+        let raw = Array.isArray(list) ? list : (Array.isArray(list?.data) ? list.data : []);
+        if (raw.length === 0) {
+          const fallback = await fetch('/api/finance/services');
+          if (fallback.ok) {
+            const fallbackList = await fallback.json();
+            raw = Array.isArray(fallbackList) ? fallbackList : (Array.isArray(fallbackList?.data) ? fallbackList.data : []);
+          }
+        }
+        const normalized = normalizeServices(raw);
         setServices(normalized);
 
         const p = await fetch(`/api/finance/service-payments?studentId=${student.id}&schoolYear=${schoolYear}`);
@@ -73,6 +81,11 @@ export function FinanceServicesPayments({ student, schoolYear }: { student: Stud
   }, [student.id, schoolYear, toast]);
 
   const activeServices = useMemo(() => services.filter(s => s.isActive), [services]);
+
+  useEffect(() => {
+    const service = services.find(s => s.id === selectedService);
+    if (service && !amount) setAmount(String(service.amount));
+  }, [amount, selectedService, services]);
 
   const handleAddPayment = async () => {
     if (!selectedService) {
@@ -441,5 +454,4 @@ export function FinanceServicesPayments({ student, schoolYear }: { student: Stud
 }
 
 export default FinanceServicesPayments;
-
 

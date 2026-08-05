@@ -33,9 +33,12 @@ export async function GET(request: NextRequest) {
       if (e.code !== 'ER_DUP_FIELDNAME') throw e;
     }
 
-    let query = 'SELECT * FROM financial_services';
+    let query = 'SELECT *, price AS amount FROM financial_services';
     const params: any[] = [];
-    if (schoolYear) { query += ' WHERE schoolYear = ?'; params.push(schoolYear); }
+    if (schoolYear) {
+      query += ' WHERE schoolYear = ? OR schoolYear IS NULL OR schoolYear = ""';
+      params.push(schoolYear);
+    }
     query += ' ORDER BY name ASC';
     const [rows] = await pool.execute(query, params) as any;
     return NextResponse.json({ success: true, data: rows });
@@ -91,5 +94,4 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ success: false, error: 'Erreur serveur' }, { status: 500 });
   }
 }
-
 
