@@ -82,6 +82,11 @@ export function FinanceServicesPayments({ student, schoolYear }: { student: Stud
 
   const activeServices = useMemo(() => services.filter(s => s.isActive), [services]);
 
+  const paidServiceIds = useMemo(
+    () => new Set(payments.map(p => String(p.serviceId))),
+    [payments]
+  );
+
   useEffect(() => {
     const service = services.find(s => s.id === selectedService);
     if (service && !amount) setAmount(String(service.amount));
@@ -98,9 +103,19 @@ export function FinanceServicesPayments({ student, schoolYear }: { student: Stud
       toast({ variant: "destructive", title: "Montant invalide", description: "Saisissez un montant valide" });
       return;
     }
-    // Validation: ne pas dépasser le montant configuré pour le service
-    if (parsedAmount > service.amount) {
-      toast({ variant: "destructive", title: "Montant supérieur", description: `Le montant ne peut pas dépasser ${service.amount.toLocaleString('fr-FR')} XAF pour ce service` });
+    // Validation: un service ne se paie qu'une seule fois par élève et par année scolaire
+    if (paidServiceIds.has(service.id)) {
+      toast({ variant: "destructive", title: "Service déjà payé", description: "Ce service a déjà été payé par cet élève pour cette année scolaire." });
+      return;
+    }
+    // Validation: le montant doit être payé en une seule fois (exactement le prix du service)
+    if (Math.abs(parsedAmount - service.amount) > 0.001) {
+      const sens = parsedAmount > service.amount ? 'supérieur' : 'inférieur';
+      toast({
+        variant: "destructive",
+        title: `Montant ${sens} au prix du service`,
+        description: `Ce service doit être payé en une seule fois. Le montant doit être exactement ${service.amount.toLocaleString('fr-FR')} XAF (${service.name}).`
+      });
       return;
     }
 
@@ -136,10 +151,18 @@ export function FinanceServicesPayments({ student, schoolYear }: { student: Stud
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      if (!res.ok) throw new Error("Échec de l'enregistrement du paiement");
+      if (!res.ok) {
+        let message = "Échec de l'enregistrement du paiement";
+        try {
+          const err = await res.json();
+          if (err?.error) message = err.error;
+        } catch { }
+        throw new Error(message);
+      }
       const created = await res.json();
       setPayments(p => [created, ...p]);
       setAmount("");
+      setSelectedService("");
       toast({ title: "Paiement enregistré", description: `${service.name} - ${parsedAmount.toLocaleString()} XAF` });
 
       // Déclencher impression du reçu pour services (même style)
@@ -389,9 +412,11 @@ export function FinanceServicesPayments({ student, schoolYear }: { student: Stud
               <SelectContent>
                 {activeServices.map(s => {
                   const amt = isFinite(Number(s.amount)) ? Number(s.amount) : 0;
+                  const alreadyPaid = paidServiceIds.has(s.id);
                   return (
-                    <SelectItem key={s.id} value={s.id}>
+                    <SelectItem key={s.id} value={s.id} disabled={alreadyPaid}>
                       {s.name} ({amt.toLocaleString('fr-FR')} XAF)
+                      {alreadyPaid ? ' - déjà payé' : ''}
                     </SelectItem>
                   );
                 })}

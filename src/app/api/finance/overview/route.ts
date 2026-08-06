@@ -85,7 +85,51 @@ export async function GET(request: NextRequest) {
       totalOtherIncome = Number((rows as any[])[0]?.totalOtherIncome || 0);
     }
 
-    const extendedTotalPaid = summary.totals.totalPaid + totalOtherIncome;
+    // Ajouter les paiements de services (financial_service_payments) selon le filtre
+    let totalServicePayments = 0;
+    if (!financeType || financeType === 'all' || financeType === 'services') {
+      await pool.execute(`
+        CREATE TABLE IF NOT EXISTS financial_service_payments (
+          id VARCHAR(64) PRIMARY KEY,
+          studentId VARCHAR(32) NOT NULL,
+          schoolYear VARCHAR(10) NOT NULL,
+          serviceId VARCHAR(64) NOT NULL,
+          serviceName VARCHAR(200) NOT NULL,
+          amount DECIMAL(12,2) NOT NULL,
+          method VARCHAR(50) NOT NULL,
+          date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          cashier VARCHAR(100),
+          cashierUsername VARCHAR(100),
+          createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )
+      `);
+      let serviceQuery = `
+        SELECT COALESCE(SUM(fsp.amount),0) as total
+        FROM financial_service_payments fsp
+        JOIN students s ON fsp.studentId = s.id
+        WHERE fsp.schoolYear = ?
+      `;
+      const serviceParams: any[] = [schoolYear];
+      if (className && className !== 'all') {
+        serviceQuery += ' AND s.classe = ?';
+        serviceParams.push(className);
+      } else if (level && level !== 'all') {
+        const { getSchoolStructure } = await import('@/db/services/schoolStructureDb');
+        const structure = await getSchoolStructure();
+        const levelClasses = structure.levels?.[level]?.classes || [];
+        if (levelClasses.length > 0) {
+          serviceQuery += ` AND s.classe IN (${levelClasses.map(() => '?').join(',')})`;
+          serviceParams.push(...levelClasses);
+        }
+      }
+      const [serviceRows] = await pool.execute(serviceQuery, serviceParams) as any;
+      totalServicePayments = Number((serviceRows as any[])[0]?.total || 0);
+    }
+
+    const totalOtherIncomeWithServices = totalOtherIncome + totalServicePayments;
+
+    const extendedTotalPaid = summary.totals.totalPaid + totalOtherIncomeWithServices;
     const extended = {
       ...summary,
       totals: {
@@ -94,7 +138,8 @@ export async function GET(request: NextRequest) {
         outstanding: Math.max(0, summary.totals.totalDue - extendedTotalPaid)
       },
       otherIncome: {
-        totalOtherIncome
+        totalOtherIncome: totalOtherIncomeWithServices,
+        totalServicePayments
       }
     };
     return NextResponse.json(extended, { headers: NO_STORE_HEADERS });

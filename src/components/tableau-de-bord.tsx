@@ -215,6 +215,7 @@ import { PresenceManager } from "@/components/presence-manager";
 import { SecurityManager } from "@/components/security-manager";
 import { ActiveLevelsManager } from "@/components/active-levels-manager";
 import { StatisticsDashboard } from "@/components/statistics-dashboard";
+import ExpenseManager from "./expense-manager";
 import { isValid, addDays } from 'date-fns';
 import {
   Sidebar,
@@ -410,6 +411,7 @@ const navItemsConfig = {
     { icon: Home, label: "Tableau de bord" },
     { icon: UsersRound, label: "Élèves" },
     { icon: Wallet, label: "Finances" },
+    { icon: Wallet, label: "Dépenses" },
     // { icon: Database, label: "Agent SQL IA" },
     { icon: FileText, label: "Gestion Notes" },
     { icon: FileText, label: "Gestion Bulletins" },
@@ -425,6 +427,7 @@ const navItemsConfig = {
     { icon: Home, label: "Tableau de bord" },
     { icon: UsersRound, label: "Élèves" },
     { icon: Wallet, label: "Finances" },
+    { icon: Wallet, label: "Dépenses" },
     // { icon: Database, label: "Agent SQL IA" },
     { icon: FileText, label: "Gestion Notes" },
     { icon: FileText, label: "Gestion Bulletins" },
@@ -435,6 +438,7 @@ const navItemsConfig = {
   Comptable: [
     { icon: Home, label: "Tableau de bord" },
     { icon: Wallet, label: "Finances" },
+    { icon: Wallet, label: "Dépenses" },
     // { icon: Database, label: "Agent SQL IA" },
     { icon: Building, label: "Comptabilité" },
   ],
@@ -442,6 +446,7 @@ const navItemsConfig = {
     { icon: Home, label: "Tableau de bord" },
     { icon: UsersRound, label: "Mes Classes" },
     { icon: FileText, label: "Gestion Notes" },
+    { icon: Wallet, label: "Dépenses" },
     { icon: Bell, label: "Communication" },
   ],
   Parent: [
@@ -759,7 +764,9 @@ function DashboardTab({ schoolInfo }: { schoolInfo: SchoolInfo | null }) {
               </CardHeader>
               <CardContent>
                 <div className="text-lg font-black text-orange-600 whitespace-nowrap">
-                  {financialSummary?.totals ? ((financialSummary.totals.totalPaid / financialSummary.totals.totalDue) * 100).toFixed(1) : 0}%
+                  {financialSummary?.totals && financialSummary.totals.totalDue > 0
+                    ? ((financialSummary.totals.totalPaid / financialSummary.totals.totalDue) * 100).toFixed(1)
+                    : (financialSummary?.totals?.totalPaid ?? 0) > 0 ? '100.0' : '0'}%
                 </div>
                 <p className="text-[11px] font-medium text-slate-500 leading-tight">
                   Basé sur le total attendu.
@@ -8634,6 +8641,8 @@ function TableauDeBord({ role, currentUser }: { role: string, currentUser: User 
         return 'text-green-500';
       case 'finances':
         return 'text-purple-500';
+      case 'dépenses':
+        return 'text-indigo-500';
       case 'rapports':
         return 'text-orange-500';
       case 'utilisateurs':
@@ -8655,6 +8664,8 @@ function TableauDeBord({ role, currentUser }: { role: string, currentUser: User 
         return <StudentsTab role={role} currentUser={currentUser} schoolInfo={schoolInfo} />;
       case 'finances':
         return <FinanceTab role={role} currentUser={currentUser} schoolInfo={schoolInfo} />;
+      case 'depenses':
+        return <ExpenseManager role={role} currentUser={currentUser} schoolInfo={schoolInfo} />;
       case 'gestionnotes':
         return <GradesTab role={role} currentUser={currentUser} schoolInfo={schoolInfo} cachedSubjects={allSubjects} cachedSequences={allSequences} />;
       case 'mesclasses':
