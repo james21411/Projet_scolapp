@@ -9020,7 +9020,7 @@ function TableauDeBord({ role, currentUser }: { role: string, currentUser: User 
 
         {/* Barre de navigation pour les sous-menus de Paramètres - Liste déroulante sur mobile, onglets sur PC */}
         {activeTab.startsWith('parametres') && (
-          <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 py-2">
+          <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-md pb-2 pt-2 border-b shadow-xs mb-4 px-4">
             {/* Mobile: Liste déroulante */}
             <div className="md:hidden">
               <Label htmlFor="settings-subnav-select" className="sr-only">Sous-menu Paramètres</Label>
@@ -9046,8 +9046,8 @@ function TableauDeBord({ role, currentUser }: { role: string, currentUser: User 
             </div>
 
             {/* PC/Desktop: Barre horizontale classique */}
-            <div className="hidden md:flex h-10 items-center overflow-x-auto">
-              <nav className="flex items-center gap-4 text-sm font-medium whitespace-nowrap">
+            <div className="hidden md:flex h-12 items-center overflow-x-auto w-full -webkit-overflow-scrolling-touch">
+              <nav className="flex items-center gap-4 text-sm font-medium whitespace-nowrap px-1 pb-1">
                 <button
                   onClick={() => setActiveTab('parametres')}
                   className={`transition-colors hover:text-foreground/80 ${activeTab === 'parametres' ? 'text-blue-600 font-semibold' : 'text-muted-foreground'}`}
