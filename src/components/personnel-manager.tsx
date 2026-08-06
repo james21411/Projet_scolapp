@@ -557,7 +557,7 @@ export function PersonnelManager({ currentUser, role }: { currentUser?: User; ro
   return (
     <div className="space-y-0">
       {/* ===== EN-TETE ===== */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-white sticky top-0 z-10">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-white/95 backdrop-blur-md sticky top-0 z-20 shadow-xs">
         <div className="flex items-center gap-3">
           <div className="bg-blue-600 text-white p-1.5 rounded-none">
             <Users className="w-4 h-4" />
@@ -578,7 +578,7 @@ export function PersonnelManager({ currentUser, role }: { currentUser?: User; ro
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         {/* ===== BARRE D'ONGLETS ===== */}
-        <div className="border-b border-slate-200 bg-white px-4">
+        <div className="border-b border-slate-200 bg-white/95 backdrop-blur-md px-4 sticky top-[52px] z-10 shadow-2xs">
           <TabsList className="h-auto bg-transparent p-0 gap-0 rounded-none">
             {[
               { value: 'personnel', label: 'Personnel', icon: <Users className="w-3 h-3" /> },

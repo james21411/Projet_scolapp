@@ -2531,7 +2531,7 @@ function StudentsTab({ role, currentUser, schoolInfo }: { role: string, currentU
   return (
     <>
       <Tabs defaultValue="list" className="w-full">
-        <div className="flex items-center justify-between bg-slate-100 p-1 border border-slate-200">
+        <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-md flex items-center justify-between p-1 border border-slate-200 shadow-xs mb-2">
           <TabsList className="h-8 bg-slate-200/50 p-0 rounded-none gap-0">
             <TabsTrigger value="list" className="rounded-none h-full px-4 text-[11px] font-bold uppercase data-[state=active]:bg-white data-[state=active]:text-blue-600 border-r border-slate-200">Liste des élèves</TabsTrigger>
             
@@ -5430,34 +5430,37 @@ function FinanceTab({ role, currentUser, schoolInfo }: { role: string, currentUs
   return (
     <div className="space-y-4">
       <Tabs value={activeFinanceTab} onValueChange={setActiveFinanceTab} className="w-full">
-        {/* Mobile: Liste déroulante pour basculer facilement entre sous-menus */}
-        <div className="md:hidden w-full mb-3">
-          <Label htmlFor="finance-subtabs-select" className="sr-only">Sous-menu Finance</Label>
-          <Select
-            value={activeFinanceTab}
-            onValueChange={setActiveFinanceTab}
-          >
-            <SelectTrigger id="finance-subtabs-select" className="w-full h-10 rounded-none border-slate-300 bg-white text-slate-800 font-semibold text-sm shadow-sm">
-              <SelectValue placeholder="Sous-menu Finance" />
-            </SelectTrigger>
-            <SelectContent className="rounded-none">
-              <SelectItem value="overview">Vue d'Ensemble</SelectItem>
-              <SelectItem value="management">Gestion & Suivi</SelectItem>
-              <SelectItem value="inscription-fees">Frais d'Inscription</SelectItem>
-              <SelectItem value="reports">Rapports Financiers</SelectItem>
-              <SelectItem value="payments">Paiements</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        {/* Sticky Sub-menu Container for Finance */}
+        <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-md pb-2 pt-2 border-b shadow-xs mb-4">
+          {/* Mobile: Liste déroulante pour basculer facilement entre sous-menus */}
+          <div className="md:hidden w-full">
+            <Label htmlFor="finance-subtabs-select" className="sr-only">Sous-menu Finance</Label>
+            <Select
+              value={activeFinanceTab}
+              onValueChange={setActiveFinanceTab}
+            >
+              <SelectTrigger id="finance-subtabs-select" className="w-full h-10 rounded-none border-slate-300 bg-white text-slate-800 font-semibold text-sm shadow-sm">
+                <SelectValue placeholder="Sous-menu Finance" />
+              </SelectTrigger>
+              <SelectContent className="rounded-none">
+                <SelectItem value="overview">Vue d'Ensemble</SelectItem>
+                <SelectItem value="management">Gestion & Suivi</SelectItem>
+                <SelectItem value="inscription-fees">Frais d'Inscription</SelectItem>
+                <SelectItem value="reports">Rapports Financiers</SelectItem>
+                <SelectItem value="payments">Paiements</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-        {/* Desktop: Onglets grilles classiques */}
-        <TabsList className="hidden md:grid w-full grid-cols-5">
-          <TabsTrigger value="overview">Vue d'Ensemble</TabsTrigger>
-          <TabsTrigger value="management">Gestion & Suivi</TabsTrigger>
-          <TabsTrigger value="inscription-fees">Frais d'Inscription</TabsTrigger>
-          <TabsTrigger value="reports">Rapports Financiers</TabsTrigger>
-          <TabsTrigger value="payments">Paiements</TabsTrigger>
-        </TabsList>
+          {/* Desktop: Onglets grilles classiques */}
+          <TabsList className="hidden md:grid w-full grid-cols-5">
+            <TabsTrigger value="overview">Vue d'Ensemble</TabsTrigger>
+            <TabsTrigger value="management">Gestion & Suivi</TabsTrigger>
+            <TabsTrigger value="inscription-fees">Frais d'Inscription</TabsTrigger>
+            <TabsTrigger value="reports">Rapports Financiers</TabsTrigger>
+            <TabsTrigger value="payments">Paiements</TabsTrigger>
+          </TabsList>
+        </div>
         <TabsContent value="overview" className="space-y-6 pt-4">
           {isLoading ? <div className="flex justify-center p-8"><Loader2 className="animate-spin h-8 w-8" /></div> : overallSummary && (
             <>
