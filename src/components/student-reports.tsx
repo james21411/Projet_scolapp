@@ -530,7 +530,7 @@ function StudentReports({ students, schoolStructure, onExport }: StudentReportsP
 
       {/* Filtres avancés */}
       <Card className="rounded-none border-slate-200">
-        <CardHeader className="bg-slate-50/50 border-b border-slate-100">
+        <CardHeader className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-slate-100 shadow-xs">
           <CardTitle className="flex items-center gap-2 text-sm font-bold uppercase text-slate-700">
             <Filter className="h-4 w-4" />
             Filtres Avancés
@@ -625,7 +625,7 @@ function StudentReports({ students, schoolStructure, onExport }: StudentReportsP
 
       {/* Tableau des résultats */}
       <Card className="rounded-none border-slate-200">
-        <CardHeader className="bg-slate-50/50 border-b border-slate-100 py-3">
+        <CardHeader className="sticky top-0 z-10 bg-white/95 backdrop-blur-md border-b border-slate-100 py-3 shadow-xs">
           <CardTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-sm font-bold uppercase text-slate-700">
               <Users className="h-4 w-4" />

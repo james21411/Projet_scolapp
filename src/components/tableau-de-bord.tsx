@@ -7237,7 +7237,7 @@ function UsersTab({ role, currentUser }: { role: string, currentUser?: User }) {
   return (
     <>
       <Card className="card-glow">
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-row items-center justify-between sticky top-0 z-20 bg-card/95 backdrop-blur-md border-b shadow-xs rounded-none">
           <div>
             <CardTitle className="flex items-center gap-2">
               <Users className="h-5 w-5" />

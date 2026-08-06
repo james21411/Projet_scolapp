@@ -1961,7 +1961,7 @@ export default function SaisieNotesAvancee({ currentUser, role, teacherId, schoo
       )}
 
       {/* En-tête avec bouton de réduction des filtres */}
-      <div className="flex justify-between items-center bg-white p-4 rounded-none border border-slate-200 shadow-sm">
+      <div className="sticky top-0 z-20 flex justify-between items-center bg-white/95 backdrop-blur-md p-4 border border-slate-200 shadow-xs">
         <div className="flex items-center gap-2">
           <div className="bg-blue-600 p-2 rounded-none">
             <FileSpreadsheet className="h-5 w-5 text-white" />
@@ -2106,7 +2106,7 @@ export default function SaisieNotesAvancee({ currentUser, role, teacherId, schoo
       {/* Tableau de saisie des notes */}
       {selectedClass && selectedSubject && selectedPeriod && students.length > 0 && (
         <Card className="shadow-none border-slate-200 rounded-none w-full border-x-0 sm:border-x">
-          <CardHeader className="pb-4 bg-slate-50/50 border-b border-slate-100 rounded-none">
+          <CardHeader className="sticky top-[60px] z-10 pb-4 bg-white/95 backdrop-blur-md border-b border-slate-100 rounded-none shadow-xs">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <Badge variant="outline" className="bg-white rounded-none">
