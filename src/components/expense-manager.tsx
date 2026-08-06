@@ -225,7 +225,6 @@ export default function ExpenseManager({ role, currentUser, schoolInfo }: Expens
       if (res.ok) {
         toast({ title: 'Succès', description: 'Votre demande de dépense a été soumise avec succès.' });
         setOpenCreateModal(false);
-        // Reset form
         setAmountRequested('');
         setJustificationText('');
         setItems([{ description: '', supplier1: '', price1: 0, supplier2: '', price2: 0, supplier3: '', price3: 0 }]);
@@ -361,12 +360,12 @@ export default function ExpenseManager({ role, currentUser, schoolInfo }: Expens
   }, [requests]);
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-card p-5 rounded-xl border shadow-sm">
+    <div className="p-4 md:p-6 space-y-6 max-w-full">
+      {/* Sticky Header Bar */}
+      <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-md pb-4 pt-2 -mt-2 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-card p-5 rounded-xl border shadow-sm">
         <div>
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-blue-500/10 text-blue-600 rounded-lg">
+            <div className="p-2.5 bg-blue-500/10 text-blue-600 rounded-lg shrink-0">
               <Wallet className="h-6 w-6" />
             </div>
             <div>
@@ -380,13 +379,13 @@ export default function ExpenseManager({ role, currentUser, schoolInfo }: Expens
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
           <Button
             onClick={() => {
               setDesiredDate(new Date().toISOString().split('T')[0]);
               setOpenCreateModal(true);
             }}
-            className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-md flex items-center gap-2"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-md flex items-center gap-2 text-xs sm:text-sm"
           >
             <Plus className="h-4 w-4" />
             Nouvelle Demande
@@ -396,7 +395,7 @@ export default function ExpenseManager({ role, currentUser, schoolInfo }: Expens
             <Button
               variant="outline"
               onClick={handleExportCsv}
-              className="flex items-center gap-2 border-emerald-500/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/20"
+              className="flex items-center gap-2 border-emerald-500/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 text-xs sm:text-sm"
             >
               <FileDown className="h-4 w-4" />
               Exporter Rapport CSV
@@ -466,16 +465,17 @@ export default function ExpenseManager({ role, currentUser, schoolInfo }: Expens
         </Card>
       </div>
 
-      {/* Main Content Tabs */}
+      {/* Main Content Tabs & Sticky Controls */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        {/* Sticky Filters & Tabs Row */}
+        <div className="sticky top-[80px] z-10 bg-background/95 backdrop-blur-md py-3 px-1 border-b flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <TabsList className="grid grid-cols-2 sm:flex sm:w-auto">
-            <TabsTrigger value="toutes" className="flex items-center gap-2">
+            <TabsTrigger value="toutes" className="flex items-center gap-2 text-xs sm:text-sm">
               <FileText className="h-4 w-4" />
               Toutes les Demandes ({filteredRequests.length})
             </TabsTrigger>
             {isAdmin && (
-              <TabsTrigger value="validation" className="flex items-center gap-2 relative">
+              <TabsTrigger value="validation" className="flex items-center gap-2 relative text-xs sm:text-sm">
                 <ShieldCheck className="h-4 w-4" />
                 À Valider
                 {pendingRequests.length > 0 && (
@@ -485,7 +485,7 @@ export default function ExpenseManager({ role, currentUser, schoolInfo }: Expens
                 )}
               </TabsTrigger>
             )}
-            <TabsTrigger value="rapports" className="flex items-center gap-2">
+            <TabsTrigger value="rapports" className="flex items-center gap-2 text-xs sm:text-sm">
               <BarChart3 className="h-4 w-4" />
               Rapports Financiers
             </TabsTrigger>
@@ -499,12 +499,12 @@ export default function ExpenseManager({ role, currentUser, schoolInfo }: Expens
                 placeholder="Rechercher N°, demandeur, rubrique..."
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
-                className="pl-9 text-sm"
+                className="pl-9 text-xs sm:text-sm h-9"
               />
             </div>
 
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[140px] text-xs">
+              <SelectTrigger className="w-[130px] text-xs h-9">
                 <SelectValue placeholder="Statut" />
               </SelectTrigger>
               <SelectContent>
@@ -517,9 +517,9 @@ export default function ExpenseManager({ role, currentUser, schoolInfo }: Expens
           </div>
         </div>
 
-        {/* Tab 1: Toutes les Demandes */}
+        {/* Tab 1: Toutes les Demandes avec Entête Fixe et Scroll Interne */}
         <TabsContent value="toutes">
-          <Card>
+          <Card className="shadow-sm">
             <CardHeader className="pb-3">
               <CardTitle className="text-base font-semibold">Historique des Demandes de Dépense</CardTitle>
               <CardDescription>Liste exhaustive des formulaires de déblocage créés.</CardDescription>
@@ -536,23 +536,24 @@ export default function ExpenseManager({ role, currentUser, schoolInfo }: Expens
                   <p className="text-sm text-muted-foreground mt-1">Créez votre première demande de déblocage de fonds.</p>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
+                /* Scrollable container with sticky header */
+                <div className="relative max-h-[calc(100vh-320px)] overflow-y-auto overflow-x-auto rounded-lg border">
                   <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>N° Demande / Auth</TableHead>
-                        <TableHead>Demandeur</TableHead>
-                        <TableHead>Rubrique / Objet</TableHead>
-                        <TableHead className="text-right">Montant Sollicité</TableHead>
-                        <TableHead className="text-right">Montant Accordé</TableHead>
-                        <TableHead className="text-center">Statut</TableHead>
-                        <TableHead className="text-center">Date Souhaitée</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
+                    <TableHeader className="sticky top-0 z-10 bg-card shadow-xs">
+                      <TableRow className="bg-muted/50 hover:bg-muted/50">
+                        <TableHead className="font-bold">N° Demande / Auth</TableHead>
+                        <TableHead className="font-bold">Demandeur</TableHead>
+                        <TableHead className="font-bold">Rubrique / Objet</TableHead>
+                        <TableHead className="text-right font-bold">Montant Sollicité</TableHead>
+                        <TableHead className="text-right font-bold">Montant Accordé</TableHead>
+                        <TableHead className="text-center font-bold">Statut</TableHead>
+                        <TableHead className="text-center font-bold">Date Souhaitée</TableHead>
+                        <TableHead className="text-right font-bold">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredRequests.map(req => (
-                        <TableRow key={req.id}>
+                        <TableRow key={req.id} className="hover:bg-muted/30 transition-colors">
                           <TableCell className="font-mono text-xs">
                             <div className="font-bold text-foreground">{req.requestNumber}</div>
                             {req.authorizationNumber && (
@@ -659,9 +660,9 @@ export default function ExpenseManager({ role, currentUser, schoolInfo }: Expens
                     <p className="font-semibold text-foreground">Aucune demande en attente de validation.</p>
                   </div>
                 ) : (
-                  <div className="space-y-4">
+                  <div className="space-y-4 max-h-[calc(100vh-320px)] overflow-y-auto pr-2">
                     {pendingRequests.map(req => (
-                      <div key={req.id} className="p-4 border rounded-xl bg-card hover:border-primary/50 transition-all flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                      <div key={req.id} className="p-4 border rounded-xl bg-card hover:border-primary/50 transition-all flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-2xs">
                         <div className="space-y-1">
                           <div className="flex items-center gap-2">
                             <span className="font-bold text-base">{req.requestNumber}</span>
@@ -750,7 +751,7 @@ export default function ExpenseManager({ role, currentUser, schoolInfo }: Expens
                     <TrendingUp className="h-4 w-4 text-emerald-600" />
                     Répartition par Rubriques Budgétaires
                   </h4>
-                  <div className="space-y-2">
+                  <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
                     {stats?.categoryStats && Object.keys(stats.categoryStats).length > 0 ? (
                       Object.entries(stats.categoryStats).map(([cat, val]: any) => (
                         <div key={cat} className="flex justify-between items-center text-xs p-2 border-b">
@@ -773,7 +774,7 @@ export default function ExpenseManager({ role, currentUser, schoolInfo }: Expens
                     Rapport Officiel du Dossier Financier
                   </h4>
                   <p className="text-xs text-muted-foreground">
-                    Générez un bilan consolidé des dépense débloquées avec signatures et autorisations pour les archives comptables.
+                    Générez un bilan consolidé des dépenses débloquées avec signatures et autorisations pour les archives comptables.
                   </p>
                   <div className="pt-4 flex flex-col gap-2">
                     <Button onClick={handleExportCsv} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center gap-2">
@@ -790,8 +791,8 @@ export default function ExpenseManager({ role, currentUser, schoolInfo }: Expens
 
       {/* Modal 1: Creation Form */}
       <Dialog open={openCreateModal} onOpenChange={setOpenCreateModal}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="max-w-4xl max-h-[88vh] flex flex-col p-0 overflow-hidden">
+          <DialogHeader className="p-6 pb-2 border-b bg-muted/20">
             <DialogTitle className="text-lg font-bold flex items-center gap-2">
               <FileText className="h-5 w-5 text-blue-600" />
               Nouveau Formulaire de Demande de Déblocage de Fonds
@@ -801,7 +802,7 @@ export default function ExpenseManager({ role, currentUser, schoolInfo }: Expens
             </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={handleCreateSubmit} className="space-y-6 pt-2">
+          <form onSubmit={handleCreateSubmit} className="flex-1 overflow-y-auto p-6 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border p-4 rounded-lg bg-muted/10">
               {/* Box 1: Rubrique */}
               <div className="space-y-2">
@@ -881,7 +882,7 @@ export default function ExpenseManager({ role, currentUser, schoolInfo }: Expens
             </div>
 
             {/* Dynamic Items Table */}
-            <div className="space-y-2 border p-3 rounded-lg">
+            <div className="space-y-2 border p-3 rounded-lg bg-card">
               <div className="flex justify-between items-center">
                 <Label className="text-xs font-bold uppercase">Tableau des Dépenses & Offres Fournisseurs</Label>
                 <Button type="button" size="sm" variant="outline" onClick={handleAddItem} className="text-xs flex items-center gap-1">
@@ -889,9 +890,9 @@ export default function ExpenseManager({ role, currentUser, schoolInfo }: Expens
                 </Button>
               </div>
 
-              <div className="overflow-x-auto">
+              <div className="max-h-60 overflow-y-auto border rounded">
                 <Table className="text-xs">
-                  <TableHeader>
+                  <TableHeader className="sticky top-0 bg-muted z-10">
                     <TableRow>
                       <TableHead className="w-[200px]">Intitulé de la dépense</TableHead>
                       <TableHead>Fournisseur 1</TableHead>
@@ -990,7 +991,7 @@ export default function ExpenseManager({ role, currentUser, schoolInfo }: Expens
               </div>
             </div>
 
-            <DialogFooter>
+            <DialogFooter className="p-4 border-t bg-muted/20">
               <Button type="button" variant="outline" onClick={() => setOpenCreateModal(false)}>
                 Annuler
               </Button>
@@ -1095,7 +1096,7 @@ export default function ExpenseManager({ role, currentUser, schoolInfo }: Expens
 
       {/* Modal 4: View Details */}
       <Dialog open={openDetailModal} onOpenChange={setOpenDetailModal}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-base font-bold flex items-center justify-between">
               <span>Détails Demande : {selectedRequest?.requestNumber}</span>
@@ -1126,24 +1127,26 @@ export default function ExpenseManager({ role, currentUser, schoolInfo }: Expens
               {selectedRequest.items && selectedRequest.items.length > 0 && (
                 <div>
                   <div className="font-bold mb-1">Tableau des Dépenses :</div>
-                  <Table className="border">
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Dépense</TableHead>
-                        <TableHead>Fournisseur 1</TableHead>
-                        <TableHead>Prix 1</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {selectedRequest.items.map((it, idx) => (
-                        <TableRow key={idx}>
-                          <TableCell>{it.description || '-'}</TableCell>
-                          <TableCell>{it.supplier1 || '-'}</TableCell>
-                          <TableCell>{it.price1 ? `${it.price1.toLocaleString()} XAF` : '-'}</TableCell>
+                  <div className="max-h-48 overflow-y-auto border rounded">
+                    <Table>
+                      <TableHeader className="sticky top-0 bg-muted">
+                        <TableRow>
+                          <TableHead>Dépense</TableHead>
+                          <TableHead>Fournisseur 1</TableHead>
+                          <TableHead>Prix 1</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {selectedRequest.items.map((it, idx) => (
+                          <TableRow key={idx}>
+                            <TableCell>{it.description || '-'}</TableCell>
+                            <TableCell>{it.supplier1 || '-'}</TableCell>
+                            <TableCell>{it.price1 ? `${it.price1.toLocaleString()} XAF` : '-'}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </div>
               )}
 
