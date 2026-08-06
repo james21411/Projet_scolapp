@@ -471,6 +471,41 @@ CREATE TABLE IF NOT EXISTS `schema_cache` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS `expense_requests` (
+  `id` varchar(64) NOT NULL,
+  `requestNumber` varchar(64) NOT NULL,
+  `authorizationNumber` varchar(100) DEFAULT NULL,
+  `schoolYear` varchar(20) NOT NULL,
+  `applicantId` varchar(255) NOT NULL,
+  `applicantName` varchar(255) NOT NULL,
+  `applicantRole` varchar(100) NOT NULL,
+  `subjectCategory` varchar(255) NOT NULL,
+  `subjectOther` varchar(255) DEFAULT NULL,
+  `justificationDocs` json DEFAULT NULL,
+  `justificationOther` varchar(255) DEFAULT NULL,
+  `amountRequested` decimal(12,2) NOT NULL,
+  `amountApproved` decimal(12,2) DEFAULT NULL,
+  `desiredDate` date NOT NULL,
+  `justificationText` text,
+  `items` json DEFAULT NULL,
+  `status` enum('EN_ATTENTE','VALIDE','REFUSE') NOT NULL DEFAULT 'EN_ATTENTE',
+  `directorAvisStatus` enum('EN_ATTENTE','FAVORABLE','DEFAVORABLE') DEFAULT 'EN_ATTENTE',
+  `directorAvisName` varchar(255) DEFAULT NULL,
+  `directorAvisDate` date DEFAULT NULL,
+  `directorAvisComments` text,
+  `foundationAvisStatus` enum('EN_ATTENTE','FAVORABLE','DEFAVORABLE') DEFAULT 'EN_ATTENTE',
+  `foundationAvisName` varchar(255) DEFAULT NULL,
+  `foundationAvisDate` date DEFAULT NULL,
+  `foundationAvisComments` text,
+  `rejectionReason` text,
+  `location` varchar(255) DEFAULT 'Yaoundé',
+  `requestDate` date NOT NULL,
+  `createdAt` datetime DEFAULT CURRENT_TIMESTAMP,
+  `updatedAt` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `requestNumber` (`requestNumber`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- Initialiser les niveaux par défaut
